@@ -1,1 +1,4 @@
-# csp_classifier
+# CSP classifier
+
+## Setup
+Change paths in `config.py` file
