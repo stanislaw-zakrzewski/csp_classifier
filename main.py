@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pygds
 from classifiers.flat import process
+from config import configurations, experiment_frequency_range
 
 
 print("Inicjalizacja trochę trwa...")
@@ -83,51 +84,44 @@ def calculate_combined_precision(predictions, corrects):
     return numerator / denominator
 
 
-def main(subjects_id, band, channels, randomness):
-    chosen_bands = [band]
+def main(subjects_id, bands, channels, randomness):
+
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    for subject_index in subjects_id:
-        print('Processing', subject_index, 'of', len(subjects_id), 'subjects')
-        if subject_index < 10:
-            subject_name = 's0{}'.format(subject_index)
-        else:
-            subject_name = 's{}'.format(subject_index)
-        window_times, window_scores, csp_filters, epochs_info, predictions, corrects = process(subject_name,
-                                                                                               chosen_bands, channels,
-                                                                                               randomness)
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects = process(bands, channels,
+                                                                                           randomness)
 
-        # update_predictions = []
-        # for i in range(len(predictions)):
-        #     update_predictions.append([])
-        #     for j in range(len(predictions[i])):
-        #         if predictions[i][j] == 0:
-        #             update_predictions[i].append(1)
-        #         else:
-        #             update_predictions[i].append(0)
-        # predictions = update_predictions
+    # update_predictions = []
+    # for i in range(len(predictions)):
+    #     update_predictions.append([])
+    #     for j in range(len(predictions[i])):
+    #         if predictions[i][j] == 0:
+    #             update_predictions[i].append(1)
+    #         else:
+    #             update_predictions[i].append(0)
+    # predictions = update_predictions
 
-        for i in range(len(predictions)):
-            for j in range(2):
-                nprec, dprec = calculate_precision(predictions[i], corrects[i], j)
-                nrec, drec = calculate_recall(predictions[i], corrects[i], j)
-                precision_numerator[j] = precision_numerator[j] + nprec
-                precision_denominator[j] = precision_denominator[j] + dprec
-                recall_numerator[j] = recall_numerator[j] + nrec
-                recall_denominator[j] = recall_denominator[j] + drec
+    for i in range(len(predictions)):
+        for j in range(2):
+            nprec, dprec = calculate_precision(predictions[i], corrects[i], j)
+            nrec, drec = calculate_recall(predictions[i], corrects[i], j)
+            precision_numerator[j] = precision_numerator[j] + nprec
+            precision_denominator[j] = precision_denominator[j] + dprec
+            recall_numerator[j] = recall_numerator[j] + nrec
+            recall_denominator[j] = recall_denominator[j] + drec
 
-        accuracy_nominator = 0
-        accuracy_denumerator = 0
-        for i in range(len(predictions)):
-            for j in range(len(predictions[i])):
-                accuracy_denumerator += 1
-                if predictions[i][j] == corrects[i][j]:
-                    accuracy_nominator += 1
+    accuracy_nominator = 0
+    accuracy_denumerator = 0
+    for i in range(len(predictions)):
+        for j in range(len(predictions[i])):
+            accuracy_denumerator += 1
+            if predictions[i][j] == corrects[i][j]:
+                accuracy_nominator += 1
 
-        print('Accuracy: {}'.format(accuracy_nominator / accuracy_denumerator))
+    print('Accuracy: {}'.format(accuracy_nominator / accuracy_denumerator))
 
     final_precision = [0, 0]
     final_recall = [0, 0]
@@ -152,42 +146,37 @@ def main(subjects_id, band, channels, randomness):
     return accuracy_nominator / accuracy_denumerator
 
 
-def configuration_to_label(configuration):
-    channels = configuration['channels']
+def configuration_to_label(config):
+    channels = config['channels']
     if len(channels) == 0:
         channels = 'all'
     else:
         channels = len(channels)
     return '{}Hz width {} channels {} randomness'.format(
-        configuration['band_width'],
+        config['band_width'],
         channels,
-        configuration['randomness'])
+        config['randomness'])
 
 
-channels1 = ['C3', 'C4']
-channels2 = ['C5', 'C3', 'C1', 'C2', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4']
-channels3 = []
 
-start_frequency = 19
-end_frequency = 21
-configurations = [
-    # {'channels': channels3, 'band_width': 1, 'randomness': 0},
-    # {'channels': channels3, 'band_width': 2, 'randomness': 0},
-    {'channels': channels3, 'band_width': 3, 'randomness': 0},
-    {'channels': channels3, 'band_width': 4, 'randomness': 0},
-    # {'channels': channels3, 'band_width': 5, 'randomness': 0}
-]
+# print(main(
+#             [1],
+#             [(10,15), (19,22)],
+#             [],
+#             0
+#         ))
+
 
 labels = list(map(configuration_to_label, configurations))
 processed_data = []
 for i in range(len(configurations)):
     processed_data.append([])
 bins = []
-for frequency in range(start_frequency, end_frequency):
+for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1]):
     for index, configuration in enumerate(configurations):
         processed_data[index].append(main(
             [1],
-            (frequency, frequency + configuration['band_width']),
+            [(frequency, frequency + configuration['band_width'])],
             configuration['channels'],
             configuration['randomness']
         ))

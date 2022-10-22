@@ -30,6 +30,9 @@ class Subject:
             if preprocess_data:
                 preprocess_subject(signals)
 
+        self.id_dict = {}
+        for signal in signals:
+            self.id_dict[signal['label']] = signal['id']
         self.electrode_names = electrode_names
         self.events = self.generate_events(signals, randomness)
 
