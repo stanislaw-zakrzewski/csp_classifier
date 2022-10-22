@@ -1,8 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pygds
 from classifiers.flat import process
 
+
+print("Inicjalizacja trochę trwa...")
+d = pygds.GDS()
+pygds.configure_demo(d) # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
+d.SetConfiguration()
 
 def get_individual_accuracy(predicions, correct):
     all = [0, 0, 0]
@@ -163,8 +168,8 @@ channels1 = ['C3', 'C4']
 channels2 = ['C5', 'C3', 'C1', 'C2', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4']
 channels3 = []
 
-start_frequency = 5
-end_frequency = 30
+start_frequency = 19
+end_frequency = 21
 configurations = [
     # {'channels': channels3, 'band_width': 1, 'randomness': 0},
     # {'channels': channels3, 'band_width': 2, 'randomness': 0},

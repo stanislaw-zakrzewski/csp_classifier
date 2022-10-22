@@ -10,7 +10,7 @@ from data_classes.subject import Subject
 
 
 def process(subject_name, bands, selected_channels, randomness, reg=None, balanced=True):
-    tmin, tmax = 0., 2.
+    tmin, tmax = 0., 1.
     event_id = dict(movement=0, rest=1)
     subject = Subject(randomness)
 
@@ -43,7 +43,7 @@ def process(subject_name, bands, selected_channels, randomness, reg=None, balanc
         epochs.append(
             Epochs(filtered_raw_signals[index], subject.events, event_id, tmin, tmax, proj=True, picks=picks,
                    baseline=None, preload=True))
-        epochs_train.append(epochs[index].copy().crop(tmin=0., tmax=2.))
+        epochs_train.append(epochs[index].copy().crop(tmin=0., tmax=1.))
 
         epochs_data.append(epochs[index].get_data())
         epochs_data_train.append(epochs_train[index].get_data())
