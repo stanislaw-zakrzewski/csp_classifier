@@ -37,6 +37,7 @@ class Subject:
         self.events = self.generate_events(signals, randomness)
 
         mne_info = create_info(self.electrode_names, sampling_frequency, 'eeg')
+        self.info = mne_info
 
         raws = list(map(lambda signal: RawArray(signal['seamless'], mne_info), signals))
 

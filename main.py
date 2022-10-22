@@ -5,10 +5,10 @@ from classifiers.flat import process
 from config import configurations, experiment_frequency_range
 
 
-print("Inicjalizacja trochę trwa...")
-d = pygds.GDS()
-pygds.configure_demo(d) # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
-d.SetConfiguration()
+# print("Inicjalizacja trochę trwa...")
+# d = pygds.GDS()
+# pygds.configure_demo(d) # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
+# d.SetConfiguration()
 
 def get_individual_accuracy(predicions, correct):
     all = [0, 0, 0]
@@ -91,7 +91,7 @@ def main(subjects_id, bands, channels, randomness):
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects = process(bands, channels,
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects,_,_ = process(bands, channels,
                                                                                            randomness)
 
     # update_predictions = []

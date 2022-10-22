@@ -18,13 +18,13 @@ channels1 = ['C3', 'C4']
 channels2 = ['C5', 'C3', 'C1', 'C2', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4']
 channels3 = []
 configurations = [
-    {'channels': channels2, 'band_width': 1, 'randomness': 0},
-    {'channels': channels2, 'band_width': 2, 'randomness': 0},
-    {'channels': channels2, 'band_width': 3, 'randomness': 0},
-    {'channels': channels2, 'band_width': 4, 'randomness': 0},
-    {'channels': channels2, 'band_width': 5, 'randomness': 0},
-    {'channels': channels2, 'band_width': 6, 'randomness': 0},
-    {'channels': channels2, 'band_width': 7, 'randomness': 0},
+    {'channels': channels3, 'band_width': 4, 'randomness': 0},
+    # {'channels': channels3, 'band_width': 2, 'randomness': 0},
+    # {'channels': channels3, 'band_width': 4, 'randomness': 0},
+    # {'channels': channels2, 'band_width': 4, 'randomness': 0},
+    # {'channels': channels2, 'band_width': 5, 'randomness': 0},
+    # {'channels': channels2, 'band_width': 6, 'randomness': 0},
+    # {'channels': channels2, 'band_width': 7, 'randomness': 0},
 ]
 
-experiment_frequency_range = (5, 30)
+experiment_frequency_range = (8, 22)

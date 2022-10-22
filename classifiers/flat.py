@@ -9,7 +9,7 @@ from data_classes.subject import Subject
 
 
 
-def process(bands, selected_channels, randomness, reg=None):
+def process(bands, selected_channels, randomness,n_splits=10, reg=None):
     tmin, tmax = 0., 2.
     subject = Subject(randomness=randomness)
 
@@ -34,7 +34,7 @@ def process(bands, selected_channels, randomness, reg=None):
     for index, band in enumerate(bands):
         print(band)
         filtered_raw_signals.append(
-            raw_signals[index].filter(band[0], band[1], l_trans_bandwidth=.2, h_trans_bandwidth=.2, fir_design='firwin',
+            raw_signals[index].filter(band[0], band[1], l_trans_bandwidth=2, h_trans_bandwidth=2,filter_length=500, fir_design='firwin',
                                       skip_by_annotation='edge'))
 
     picks = pick_types(filtered_raw_signals[0].info, meg=False, eeg=True, stim=False, eog=False,
@@ -50,7 +50,7 @@ def process(bands, selected_channels, randomness, reg=None):
         epochs_data_train.append(epochs_train[index].get_data())
     labels = np.array(epochs[0].events[:, -1])
 
-    cv = ShuffleSplit(10, test_size=0.2, random_state=42)
+    cv = ShuffleSplit(n_splits=n_splits, test_size=0.2, random_state=42)
     cv_split = cv.split(epochs_data_train[0])
 
     # Assemble a classifier
@@ -79,6 +79,7 @@ def process(bands, selected_channels, randomness, reg=None):
                 x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
             else:
                 x_train_csp = csp.fit_transform(edt[train_idx], y_train)
+                o = edt[test_idx]
                 x_test_csp = csp.transform(edt[test_idx])
 
         classifier.fit(x_train_csp, y_train)
@@ -103,4 +104,4 @@ def process(bands, selected_channels, randomness, reg=None):
         scores_windows.append(score_this_window)
 
     w_times = (w_start + w_length / 2.) / sfreq + epochs[0].tmin
-    return w_times, scores_windows, csp, epochs[0].info, all_predictions, all_correct
+    return w_times, scores_windows, csp, epochs[0].info, all_predictions, all_correct, classifier, subject.info

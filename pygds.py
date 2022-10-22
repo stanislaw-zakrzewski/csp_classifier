@@ -108,7 +108,7 @@ import atexit
 import socket
 
 
-MaxEmptyDataLoops = 1000
+MaxEmptyDataLoops = 10000000
 
 def _gds_running():
     try:
