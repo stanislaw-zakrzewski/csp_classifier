@@ -3,16 +3,14 @@ from mne import Epochs, pick_types
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import ShuffleSplit
-from sklearn.pipeline import make_pipeline
+from sklearn.neural_network import MLPClassifier
 
-from config import eeg_data_path
 from data_classes.subject import Subject
 
 
-def process(subject_name, bands, selected_channels, randomness, reg=None, balanced=True):
+def process(bands, selected_channels, randomness, reg=None):
     tmin, tmax = 0., 2.
-    event_id = dict(movement=0, rest=1)
-    subject = Subject(randomness)
+    subject = Subject(randomness=randomness)
 
     raw_signals = []
     for i in range(len(bands)):
@@ -32,6 +30,7 @@ def process(subject_name, bands, selected_channels, randomness, reg=None, balanc
 
     # Apply band-pass filter
     for index, band in enumerate(bands):
+        print(band)
         filtered_raw_signals.append(
             raw_signals[index].filter(band[0], band[1], l_trans_bandwidth=.2, h_trans_bandwidth=.2, fir_design='firwin',
                                       skip_by_annotation='edge'))
@@ -41,7 +40,7 @@ def process(subject_name, bands, selected_channels, randomness, reg=None, balanc
 
     for index, band in enumerate(bands):
         epochs.append(
-            Epochs(filtered_raw_signals[index], subject.events, event_id, tmin, tmax, proj=True, picks=picks,
+            Epochs(filtered_raw_signals[index], subject.events, subject.id_dict, tmin, tmax, proj=True, picks=picks,
                    baseline=None, preload=True))
         epochs_train.append(epochs[index].copy().crop(tmin=0., tmax=2.))
 
@@ -53,17 +52,11 @@ def process(subject_name, bands, selected_channels, randomness, reg=None, balanc
     cv_split = cv.split(epochs_data_train[0])
 
     # Assemble a classifier
-    # classifier = MLPClassifier(hidden_layer_sizes=(20, 20), random_state=1,
-    #                            max_iter=1000)  # Originally: LinearDiscriminantAnalysis()
+    classifier = MLPClassifier(hidden_layer_sizes=(100, 100), random_state=1,
+                               max_iter=10000)  # Originally: LinearDiscriminantAnalysis()
     classifier = LinearDiscriminantAnalysis()
     csp_n_components = 32 if len(selected_channels) == 0 else min(len(selected_channels), 32)
     csp = CSP(n_components=csp_n_components, reg=reg, log=True, norm_trace=False)
-    clf = make_pipeline(
-        # UnsupervisedSpatialFilter(PCA(csp_n_components), average=False),
-        csp,
-        # StandardScaler(),
-        # SVC()
-    )
 
     sfreq = raw_signals[0].info['sfreq']
     w_length = int(sfreq)  # running classifier: window length
@@ -80,18 +73,16 @@ def process(subject_name, bands, selected_channels, randomness, reg=None, balanc
         x_test_csp = []
         for edt in epochs_data_train:
             if len(x_train_csp) > 0:
-                x_train_csp = np.concatenate((x_train_csp, clf.fit_transform(edt[train_idx], y_train)), axis=1)
-                x_test_csp = np.concatenate((x_test_csp, clf.transform(edt[test_idx])), axis=1)
+                x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train)), axis=1)
+                x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
             else:
-                x_train_csp = clf.fit_transform(edt[train_idx], y_train)
-                x_test_csp = clf.transform(edt[test_idx])
+                x_train_csp = csp.fit_transform(edt[train_idx], y_train)
+                x_test_csp = csp.transform(edt[test_idx])
 
-        # fit classifier
         classifier.fit(x_train_csp, y_train)
-        pred_train = classifier.predict(x_train_csp)
 
         X_test_csp = csp.transform(epochs_data[0][test_idx])
-        predictions = classifier.predict(X_test_csp)
+        predictions = classifier.predict(x_test_csp)
         all_predictions.append(predictions)
         all_correct.append(y_test)
 
@@ -102,10 +93,10 @@ def process(subject_name, bands, selected_channels, randomness, reg=None, balanc
             for edt in epochs_data:
                 if len(x_test_csp) > 0:
                     x_test_csp = np.concatenate(
-                        (x_test_csp, clf.transform(edt[test_idx][:, :, n:(n + w_length)])),
+                        (x_test_csp, csp.transform(edt[test_idx][:, :, n:(n + w_length)])),
                         axis=1)
                 else:
-                    x_test_csp = clf.transform(edt[test_idx][:, :, n:(n + w_length)])
+                    x_test_csp = csp.transform(edt[test_idx][:, :, n:(n + w_length)])
             score_this_window.append(classifier.score(x_test_csp, y_test))
         scores_windows.append(score_this_window)
 
