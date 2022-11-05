@@ -9,6 +9,13 @@ electrode_names = ['FP1', 'FP2', 'FZ', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ',
                    'CP1', 'CPZ', 'CP2', 'CP4', 'CP6', 'TP8', 'PZ', 'POZ']
 sampling_frequency = 250
 
+''' DATA ACQUISITION '''
+batches_per_second = 2
+trial_count = 2
+trial_timeout_in_seconds = 3
+trial_timeout_random_addition_in_seconds = 1
+trial_length_in_seconds = 5
+trial_length_random_addition_in_seconds = 1
 signal_configurations = [
     {'label': 'movement', 'id': 0},
     {'label': 'rest', 'id': 1}
@@ -27,4 +34,4 @@ configurations = [
     # {'channels': channels2, 'band_width': 7, 'randomness': 0},
 ]
 
-experiment_frequency_range = (8, 22)
+experiment_frequency_range = (10, 14)

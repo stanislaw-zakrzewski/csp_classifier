@@ -3,9 +3,9 @@ import numpy as np
 
 import pygds
 
-print("Inicjalizacja trochę trwa...")
+print("Initializing")
 d = pygds.GDS()
-pygds.configure_demo(d)  # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
+pygds.configure_demo(d)
 d.SetConfiguration()
 
 print("Acquisition started")

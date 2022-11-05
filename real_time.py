@@ -7,8 +7,6 @@ from classifiers.flat import process
 from config import configurations, experiment_frequency_range
 
 
-
-
 def get_individual_accuracy(predicions, correct):
     all = [0, 0, 0]
     cor = [0, 0, 0]
@@ -84,14 +82,15 @@ def calculate_combined_precision(predictions, corrects):
 
 
 def main(subjects_id, bands, channels, randomness):
-
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(bands, channels,
-                                                                                           randomness, n_splits=1)
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(bands,
+                                                                                                                 channels,
+                                                                                                                 randomness,
+                                                                                                                 n_splits=1)
 
     # update_predictions = []
     # for i in range(len(predictions)):
@@ -157,7 +156,6 @@ def configuration_to_label(config):
         config['randomness'])
 
 
-
 # print(main(
 #             [1],
 #             [(10,15), (19,22)],
@@ -167,22 +165,24 @@ def configuration_to_label(config):
 band0 = 10
 band1 = 14
 csp, lda, mne_info = main(
-            [1],
-            [(band0, band1)],
-            configurations[0]['channels'],
-            configurations[0]['randomness']
-        )
+    [1],
+    [(band0, band1)],
+    configurations[0]['channels'],
+    configurations[0]['randomness']
+)
 print(csp, lda)
 
 print("Inicjalizacja trochę trwa...")
 d = pygds.GDS()
-pygds.configure_demo(d) # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
+pygds.configure_demo(d)  # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
 d.SetConfiguration()
 i = 0
+
+
 def processCallback(samples):
     # samples = raw_samples[:,0:32]
     global i
-    i+=1
+    i += 1
     try:
         ret = []
         for _ in range(32):
@@ -191,24 +191,23 @@ def processCallback(samples):
             for index, channel in enumerate(sample):
                 if index < 32:
                     ret[index].append(channel)
-        raw = RawArray(ret,mne_info, verbose='CRITICAL')
+        raw = RawArray(ret, mne_info, verbose='CRITICAL')
         raw.filter(band0, band1, l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=500, fir_design='firwin',
-                                      skip_by_annotation='edge', verbose='CRITICAL')
+                   skip_by_annotation='edge', verbose='CRITICAL')
         flt = raw.get_data()
         res = lda.predict(csp.transform(np.array([flt])))
         if res[0] == 0:
             print('Movement')
-        else: print('Rest')
+        else:
+            print('Rest')
     except Exception as e:
         print(e)
 
-
-
-
-    if i < 10:return True
+    if i < 10: return True
     return False
 
-a = d.GetData(d.SamplingRate*2, processCallback)
+
+a = d.GetData(d.SamplingRate * 2, processCallback)
 # labels = list(map(configuration_to_label, configurations))
 # processed_data = []
 # for i in range(len(configurations)):
