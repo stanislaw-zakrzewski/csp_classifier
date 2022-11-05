@@ -3,6 +3,7 @@ import random
 from matplotlib import pyplot as plt
 import numpy as np
 from pyedflib import highlevel
+import time
 
 from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
     trial_length_random_addition_in_seconds, trial_length_in_seconds, trial_timeout_random_addition_in_seconds, \
@@ -77,7 +78,7 @@ def collect_data():
                         np.random.randint(
                             trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
 
-            print(dict[current_label], current_length_in_seconds)
+            print(dict[current_label])#, current_length_in_seconds)
             return True
         except Exception as e:
             print('ERROR:', e)
@@ -98,9 +99,11 @@ def collect_data():
     d.Close()
     del d
 
-    filename = 'data/edf_file.edf'
+    t = time.localtime()
+    timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
+    filename = 'data/{}.edf'.format(timestamp)
 
-    sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency)
+    sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency, physical_max=2000000, physical_min=-2000000)
 
     header = highlevel.make_header(patientname='patient_x', gender='Male')
     header.update({'annotations': annotations})
