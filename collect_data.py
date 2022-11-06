@@ -1,88 +1,113 @@
+import random
+
 from matplotlib import pyplot as plt
 import numpy as np
+from pyedflib import highlevel
+import time
+
+from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
+    trial_length_random_addition_in_seconds, trial_length_in_seconds, trial_timeout_random_addition_in_seconds, \
+    electrode_names, sampling_frequency
 
 import pygds
 
-print("Initializing")
-d = pygds.GDS()
-pygds.configure_demo(d)
-d.SetConfiguration()
-
-print("Acquisition started")
-
-rest_signal = [[]]
-movement_signal = [[]]
-for _ in range(32):
-    rest_signal[-1].append([])
-    movement_signal[-1].append([])
-
-total_iter = 0
-
-rest = True
-try_len = 8 + np.random.randint(4)
+signal = []
+trial_order = []
+current_label = -1
+current_trial_remaining_length = 0
+current_length_in_seconds = 0
+annotations = []
 
 
-def processCallback(samples):
-    try:
-        global rest
-        global try_len
-        global total_iter
-        global rest_signal
-        global movement_signal
-        if rest:
-            print("Rest")
+def collect_data():
+    global current_trial_remaining_length
+    global current_label
+    global trial_order
+    global signal
+    global current_length_in_seconds
+    global annotations
+
+    print("Initializing")
+    d = pygds.GDS()
+    pygds.configure_demo(d)
+    d.SetConfiguration()
+
+    print("Acquisition started")
+    annotations = []
+    current_label = -1
+    current_trial_remaining_length = trial_timeout_in_seconds * batches_per_second
+
+    for _ in range(32):
+        signal.append([])
+
+    instructions_dict = {-1: '---+---'}
+    for signal_configuration in signal_configurations:
+        instructions_dict[signal_configuration['id']] = signal_configuration['label']
+
+    for _ in range(trial_count):
+        for signal_configuration in signal_configurations:
+            trial_order.append(signal_configuration['id'])
+    random.shuffle(trial_order)
+
+    def processCallback(samples):
+        try:
+            global current_trial_remaining_length
+            global current_label
+            global trial_order
+            global signal
+            global current_length_in_seconds
+            global annotations
+
             for channel in range(32):
-                rest_signal[-1][channel] = np.concatenate((rest_signal[-1][channel], list(samples[:, channel])))
-        else:
-            print("Movement")
-            for channel in range(32):
-                movement_signal[-1][channel] = np.concatenate((movement_signal[-1][channel], list(samples[:, channel])))
+                signal[channel] = np.concatenate((signal[channel], list(samples[:, channel])))
+            current_trial_remaining_length -= 1
+            current_length_in_seconds += 1 / batches_per_second
 
-        # print(i)
-        # if(i > 4):
-        #     d.Close()
-        #     return
-        total_iter += 1
+            if current_trial_remaining_length == 0:
+                if current_label == -1:
+                    current_label = trial_order.pop(0)
+                    current_trial_remaining_length = \
+                        np.random.randint(
+                            trial_length_random_addition_in_seconds * batches_per_second + 1) + trial_length_in_seconds * batches_per_second
+                    annotations.append(
+                        [current_length_in_seconds, current_trial_remaining_length / 2,
+                         instructions_dict[current_label]])
+                else:
+                    if len(trial_order) == 0:
+                        return False
+                    current_label = -1
+                    current_trial_remaining_length = \
+                        np.random.randint(
+                            trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
 
-        try_len -= 1
-        if try_len == 0:
-            try_len = 8 + np.random.randint(4)
-            if rest:
-                rest = False
-                rest_signal.append([])
-                for _ in range(32):
-                    rest_signal[-1].append([])
-            else:
-                rest = True
-                movement_signal.append([])
-                for _ in range(32):
-                    movement_signal[-1].append([])
+            print(instructions_dict[current_label])
+            return True
+        except Exception as e:
+            print('ERROR:', e)
 
-        if total_iter > 240 * 2:
-            return False
-        return True
-    except Exception as e:
-        print(e)
+    print(instructions_dict[current_label], 0)
 
+    d.GetData(d.SamplingRate // batches_per_second, processCallback)
+    d.Close()
+    del d
 
-# d.GetData(d.SamplingRate//2, scope) # to standardowy use-case
-print(d.SamplingRate)
-d.GetData(d.SamplingRate // 2, processCallback)  # tu uzywamy wlasnej funkcji, zeby wybrac kanały
-# del scope
+    t = time.localtime()
+    timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
+    filename = 'data/{}.edf'.format(timestamp)
 
-d.Close()
-del d
+    sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency, physical_max=2000000,
+                                                physical_min=-2000000)
 
-movement_signal_npy = np.array(movement_signal, dtype=object)
-rest_signal_npy = np.array(rest_signal, dtype=object)
+    header = highlevel.make_header(patientname='patient_x', gender='Male')
+    header.update({'annotations': annotations})
 
-with open('data/movement.npy', 'wb') as f:
-    np.save(f, movement_signal_npy)
-with open('data/rest.npy', 'wb') as f:
-    np.save(f, rest_signal_npy)
+    highlevel.write_edf(filename, signal, sig_headers, header)
 
-# tak wczytujemy potem te eksperymenty
-# loaded =  np.load('movement.npy', allow_pickle=True)
-print('EXPERIMENT FINISHED')
+    signal, signalheaders, header = highlevel.read_edf(filename)
+    annot = header['annotations']
+    print(annot)
+
+    print('DATA COLLECTION FINISHED')
 
 
+collect_data()

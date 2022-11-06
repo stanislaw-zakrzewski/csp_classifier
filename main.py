@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pygds
+import seaborn as sns
+import pandas as pd
 from classifiers.flat import process
 from config import configurations, experiment_frequency_range
 
@@ -85,14 +87,13 @@ def calculate_combined_precision(predictions, corrects):
 
 
 def main(subjects_id, bands, channels, randomness):
-
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects,_,_ = process(bands, channels,
-                                                                                           randomness)
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = process(bands, channels,
+                                                                                                 randomness)
 
     # update_predictions = []
     # for i in range(len(predictions)):
@@ -158,7 +159,6 @@ def configuration_to_label(config):
         config['randomness'])
 
 
-
 # print(main(
 #             [1],
 #             [(10,15), (19,22)],
@@ -168,21 +168,20 @@ def configuration_to_label(config):
 
 
 labels = list(map(configuration_to_label, configurations))
-processed_data = []
-for i in range(len(configurations)):
-    processed_data.append([])
-bins = []
+
+accuracy_data = {'accuracy': [], 'frequency': [], 'configuration': []}
 for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1]):
     for index, configuration in enumerate(configurations):
-        processed_data[index].append(main(
+        accuracy = main(
             [1],
             [(frequency, frequency + configuration['band_width'])],
             configuration['channels'],
             configuration['randomness']
-        ))
-    bins.append('{}Hz'.format(frequency))
+        )
+        accuracy_data['accuracy'].append(accuracy)
+        accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)
+        accuracy_data['configuration'].append(labels[index])
 
-for index, label in enumerate(labels):
-    plt.plot(bins, processed_data[index], label=label)
-plt.legend()
+accuracy_data = pd.DataFrame(data=accuracy_data)
+sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration")
 plt.show()
