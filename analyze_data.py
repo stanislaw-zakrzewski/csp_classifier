@@ -1,3 +1,4 @@
+import mne
 import numpy as np
 import pandas as pd
 
@@ -98,15 +99,21 @@ def analyze_data(bands, channels):
             recall_numerator[j] = recall_numerator[j] + nrec
             recall_denominator[j] = recall_denominator[j] + drec
 
-    accuracy_nominator = 0
-    accuracy_denumerator = 0
+    combined_accuracy_nominator = 0
+    combined_accuracy_denumerator = 0
+    accuracies = []
     for i in range(len(predictions)):
+        accuracy_nominator = 0
+        accuracy_denumerator = 0
         for j in range(len(predictions[i])):
             accuracy_denumerator += 1
             if predictions[i][j] == corrects[i][j]:
                 accuracy_nominator += 1
+        accuracies.append(accuracy_nominator/accuracy_denumerator)
+        combined_accuracy_nominator += accuracy_nominator
+        combined_accuracy_denumerator += accuracy_denumerator
 
-    print('Accuracy: {}'.format(accuracy_nominator / accuracy_denumerator))
+    print('Accuracy: {}'.format(combined_accuracy_nominator / combined_accuracy_denumerator))
 
     final_precision = [0, 0]
     final_recall = [0, 0]
@@ -128,7 +135,7 @@ def analyze_data(bands, channels):
     print('Combined recall for movement class: {}'.format(final_recall[0]))
     print('Combined recall for rest class: {}'.format(final_recall[1]))
 
-    return accuracy_nominator / accuracy_denumerator
+    return accuracies
 
 
 def configuration_to_label(config):
@@ -147,13 +154,15 @@ labels = list(map(configuration_to_label, configurations))
 accuracy_data = {'accuracy': [], 'frequency': [], 'configuration': []}
 for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1]):
     for index, configuration in enumerate(configurations):
-        accuracy = analyze_data(
+        accuracies = analyze_data(
             [(frequency, frequency + configuration['band_width'])],
             configuration['channels']
         )
-        accuracy_data['accuracy'].append(accuracy)
-        accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)
-        accuracy_data['configuration'].append(labels[index])
+        for accuracy in accuracies:
+            accuracy_data['accuracy'].append(accuracy)
+            accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)
+            accuracy_data['configuration'].append(labels[index])
 
+mne.set_log_level('warning')
 accuracy_data = pd.DataFrame(data=accuracy_data)
 visualize_accuracy_over_bands(accuracy_data)

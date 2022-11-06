@@ -12,7 +12,6 @@ from sklearn.pipeline import make_pipeline
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from config import eeg_data_path
 from data_classes.subject import Subject
 
 

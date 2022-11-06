@@ -7,7 +7,7 @@ from config import electrode_names, sampling_frequency, event_beginning_offset_i
 
 class Subject:
     def __init__(self, subject_edf_path):
-        self.raw = read_raw_edf(subject_edf_path, preload=True)
+        self.raw = read_raw_edf(subject_edf_path, preload=True, verbose='ERROR')
         raw_events, self.id_dict = events_from_annotations(self.raw)
         self.events = []
         for raw_event in raw_events:

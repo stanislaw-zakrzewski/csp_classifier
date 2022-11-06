@@ -1,12 +1,10 @@
+import mne
 import numpy as np
 from mne import Epochs, pick_types
-from mne.decoding import CSP, UnsupervisedSpatialFilter
+from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import ShuffleSplit
 from sklearn.neural_network import MLPClassifier
-from sklearn.pipeline import make_pipeline
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
 from data_classes.subject import Subject
 
@@ -37,7 +35,7 @@ def process(subject_edf_path, bands, selected_channels, n_splits=10, reg=None):
         filtered_raw_signals.append(
             raw_signals[index].filter(band[0], band[1], l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=500,
                                       fir_design='firwin',
-                                      skip_by_annotation='edge'))
+                                      skip_by_annotation='edge', verbose='ERROR'))
 
     picks = pick_types(filtered_raw_signals[0].info, meg=False, eeg=True, stim=False, eog=False,
                        exclude='bads')
@@ -60,6 +58,7 @@ def process(subject_edf_path, bands, selected_channels, n_splits=10, reg=None):
                                max_iter=10000)  # Originally: LinearDiscriminantAnalysis()
     classifier = LinearDiscriminantAnalysis()
     csp_n_components = 32 if len(selected_channels) == 0 else min(len(selected_channels), 32)
+    mne.set_log_level('warning')
     csp = CSP(n_components=csp_n_components, reg=reg, log=True, norm_trace=False)
 
     sfreq = raw_signals[0].info['sfreq']
@@ -77,7 +76,8 @@ def process(subject_edf_path, bands, selected_channels, n_splits=10, reg=None):
         x_test_csp = []
         for edt in epochs_data_train:
             if len(x_train_csp) > 0:
-                x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train, verbose='ERROR')), axis=1)
+                x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train, verbose='ERROR')),
+                                             axis=1)
                 x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
             else:
                 x_train_csp = csp.fit_transform(edt[train_idx], y_train)
