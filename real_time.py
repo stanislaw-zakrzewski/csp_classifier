@@ -1,10 +1,9 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from mne.io import RawArray
 
 import pygds
 from classifiers.flat import process
-from config import configurations, experiment_frequency_range
+from config import configurations, real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency
 
 
 def get_individual_accuracy(predicions, correct):
@@ -81,16 +80,17 @@ def calculate_combined_precision(predictions, corrects):
     return numerator / denominator
 
 
-def main(subjects_id, bands, channels, randomness):
+def main(bands, channels, randomness):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(bands,
-                                                                                                                 channels,
-                                                                                                                 randomness,
-                                                                                                                 n_splits=1)
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(
+        real_time_train_data, bands,
+        channels,
+        randomness,
+        n_splits=1)
 
     # update_predictions = []
     # for i in range(len(predictions)):
@@ -156,17 +156,8 @@ def configuration_to_label(config):
         config['randomness'])
 
 
-# print(main(
-#             [1],
-#             [(10,15), (19,22)],
-#             [],
-#             0
-#         ))
-band0 = 10
-band1 = 14
 csp, lda, mne_info = main(
-    [1],
-    [(band0, band1)],
+    [(bandpass_filter_start_frequency, bandpass_filter_end_frequency)],
     configurations[0]['channels'],
     configurations[0]['randomness']
 )
@@ -192,7 +183,8 @@ def processCallback(samples):
                 if index < 32:
                     ret[index].append(channel)
         raw = RawArray(ret, mne_info, verbose='CRITICAL')
-        raw.filter(band0, band1, l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=500, fir_design='firwin',
+        raw.filter(bandpass_filter_start_frequency, bandpass_filter_end_frequency, l_trans_bandwidth=2,
+                   h_trans_bandwidth=2, filter_length=500, fir_design='firwin',
                    skip_by_annotation='edge', verbose='CRITICAL')
         flt = raw.get_data()
         res = lda.predict(csp.transform(np.array([flt])))
@@ -208,22 +200,5 @@ def processCallback(samples):
 
 
 a = d.GetData(d.SamplingRate * 2, processCallback)
-# labels = list(map(configuration_to_label, configurations))
-# processed_data = []
-# for i in range(len(configurations)):
-#     processed_data.append([])
-# bins = []
-# for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1]):
-#     for index, configuration in enumerate(configurations):
-#         processed_data[index].append(main(
-#             [1],
-#             [(frequency, frequency + configuration['band_width'])],
-#             configuration['channels'],
-#             configuration['randomness']
-#         ))
-#     bins.append('{}Hz'.format(frequency))
-#
-# for index, label in enumerate(labels):
-#     plt.plot(bins, processed_data[index], label=label)
-# plt.legend()
-# plt.show()
+d.Close()
+del d

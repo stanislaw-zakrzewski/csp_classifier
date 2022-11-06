@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from classifiers.flat import process
-from config import configurations, experiment_frequency_range
+from config import configurations, experiment_frequency_range, subject_to_analyze
 from visualization.accuracy_over_bands import visualize_accuracy_over_bands
 
 
@@ -80,14 +80,14 @@ def calculate_combined_precision(predictions, corrects):
     return numerator / denominator
 
 
-def analyze_data(bands, channels, randomness):
+def analyze_data(bands, channels):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = process(bands, channels,
-                                                                                                 randomness)
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = process(subject_to_analyze,
+                                                                                                 bands, channels)
 
     for i in range(len(predictions)):
         for j in range(2):
@@ -137,10 +137,9 @@ def configuration_to_label(config):
         channels = 'all'
     else:
         channels = len(channels)
-    return '{}Hz width {} channels {} randomness'.format(
+    return '{}Hz width {} channels'.format(
         config['band_width'],
-        channels,
-        config['randomness'])
+        channels)
 
 
 labels = list(map(configuration_to_label, configurations))
@@ -150,8 +149,7 @@ for frequency in range(experiment_frequency_range[0], experiment_frequency_range
     for index, configuration in enumerate(configurations):
         accuracy = analyze_data(
             [(frequency, frequency + configuration['band_width'])],
-            configuration['channels'],
-            configuration['randomness']
+            configuration['channels']
         )
         accuracy_data['accuracy'].append(accuracy)
         accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)

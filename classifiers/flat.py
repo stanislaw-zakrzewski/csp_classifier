@@ -11,9 +11,9 @@ from sklearn.preprocessing import StandardScaler
 from data_classes.subject import Subject
 
 
-def process(bands, selected_channels, randomness, n_splits=10, reg=None):
+def process(subject_edf_path, bands, selected_channels, n_splits=10, reg=None):
     tmin, tmax = 1., 3.
-    subject = Subject()
+    subject = Subject(subject_edf_path)
 
     raw_signals = []
     for i in range(len(bands)):
@@ -61,12 +61,6 @@ def process(bands, selected_channels, randomness, n_splits=10, reg=None):
     classifier = LinearDiscriminantAnalysis()
     csp_n_components = 32 if len(selected_channels) == 0 else min(len(selected_channels), 32)
     csp = CSP(n_components=csp_n_components, reg=reg, log=True, norm_trace=False)
-    clf = make_pipeline(
-        UnsupervisedSpatialFilter(PCA(csp_n_components), average=False),
-        csp,
-        StandardScaler(),
-        # SVC()
-    )
 
     sfreq = raw_signals[0].info['sfreq']
     w_length = int(sfreq)  # running classifier: window length
@@ -83,16 +77,14 @@ def process(bands, selected_channels, randomness, n_splits=10, reg=None):
         x_test_csp = []
         for edt in epochs_data_train:
             if len(x_train_csp) > 0:
-                x_train_csp = np.concatenate((x_train_csp, clf.fit_transform(edt[train_idx], y_train)), axis=1)
-                x_test_csp = np.concatenate((x_test_csp, clf.transform(edt[test_idx])), axis=1)
+                x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train, verbose='ERROR')), axis=1)
+                x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
             else:
-                x_train_csp = clf.fit_transform(edt[train_idx], y_train)
-                o = edt[test_idx]
-                x_test_csp = clf.transform(edt[test_idx])
+                x_train_csp = csp.fit_transform(edt[train_idx], y_train)
+                x_test_csp = csp.transform(edt[test_idx])
 
         classifier.fit(x_train_csp, y_train)
 
-        X_test_csp = clf.transform(epochs_data[0][test_idx])
         predictions = classifier.predict(x_test_csp)
         all_predictions.append(predictions)
         all_correct.append(y_test)
@@ -104,10 +96,10 @@ def process(bands, selected_channels, randomness, n_splits=10, reg=None):
             for edt in epochs_data:
                 if len(x_test_csp) > 0:
                     x_test_csp = np.concatenate(
-                        (x_test_csp, clf.transform(edt[test_idx][:, :, n:(n + w_length)])),
+                        (x_test_csp, csp.transform(edt[test_idx][:, :, n:(n + w_length)])),
                         axis=1)
                 else:
-                    x_test_csp = clf.transform(edt[test_idx][:, :, n:(n + w_length)])
+                    x_test_csp = csp.transform(edt[test_idx][:, :, n:(n + w_length)])
             score_this_window.append(classifier.score(x_test_csp, y_test))
         scores_windows.append(score_this_window)
 

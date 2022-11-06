@@ -11,4 +11,5 @@ import matplotlib.pyplot as plt
 
 def visualize_accuracy_over_bands(accuracy_data):
     sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration")
+    plt.grid()
     plt.show()

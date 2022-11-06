@@ -17,3 +17,6 @@ Run `analyze_data.py` script, it can take some time, depending on configurations
 
 ## Browse EDF file
 You can see the raw (lowpass to 40Hz) EDF files using `visualize_edf_in_mne_browser` from `visualization/edf_in_mne_browser.py`.
+
+## Real time classification
+Classifier trained on the specified run (`real_time_train_data`) can be run in near real-time give feedback on detected activity to subject.

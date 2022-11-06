@@ -22,29 +22,27 @@ signal_configurations = [
 ]
 
 ''' DATA ANALYSIS '''
-subject_to_analyze = 'data/2022-11-05T15-54-46.edf'
+subject_to_analyze = 'data/2022-11-05T15-11-01.edf'
 # We don't want (at least yet) to have P300 in our data
 event_beginning_offset_in_seconds = 1
 event_length_in_seconds = 2
 
 channels1 = ['C3', 'C4']
 channels2 = ['C5', 'C3', 'C1', 'C2', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
-channelsK = ['C5', 'C3', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
 channels3 = []
 configurations = [
-    {'channels': channelsK, 'band_width': 1, 'randomness': 0},
-    # {'channels': channelsK, 'band_width': 2, 'randomness': 0},
-    # {'channels': channelsK, 'band_width': 3, 'randomness': 0},
-    # {'channels': channelsK, 'band_width': 4, 'randomness': 0},
-    # {'channels': channelsK, 'band_width': 5, 'randomness': 0},
-    # {'channels': channelsK, 'band_width': 6, 'randomness': 0},
-    # {'channels': channelsK, 'band_width': 7, 'randomness': 0},
-    # {'channels': channels3, 'band_width': 2, 'randomness': 0},
-    # {'channels': channels3, 'band_width': 4, 'randomness': 0},
-    # {'channels': channels2, 'band_width': 4, 'randomness': 0},
-    # {'channels': channels2, 'band_width': 5, 'randomness': 0},
-    # {'channels': channels2, 'band_width': 6, 'randomness': 0},
-    # {'channels': channels2, 'band_width': 7, 'randomness': 0},
+    {'channels': channels2, 'band_width': 1},
+    {'channels': channels2, 'band_width': 2},
+    # {'channels': channels2, 'band_width': 3},
+    # {'channels': channels2, 'band_width': 4},
+    # {'channels': channels2, 'band_width': 5},
+    # {'channels': channels2, 'band_width': 6},
+    # {'channels': channels2, 'band_width': 7},
 ]
 
-experiment_frequency_range = (2, 30)
+experiment_frequency_range = (2, 15)
+
+''' REAL TIME '''
+real_time_train_data = 'data/2022-11-05T15-11-01.edf'
+bandpass_filter_start_frequency = 10
+bandpass_filter_end_frequency = 14
