@@ -4,10 +4,12 @@ from matplotlib import pyplot as plt
 import numpy as np
 from pyedflib import highlevel
 import time
+from datetime import datetime
 
+import SenderLib
 from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
     trial_length_random_addition_in_seconds, trial_length_in_seconds, trial_timeout_random_addition_in_seconds, \
-    electrode_names, sampling_frequency
+    electrode_names, sampling_frequency, ipaddress, port, sender, send_to_vr
 
 import pygds
 
@@ -17,7 +19,7 @@ current_label = -1
 current_trial_remaining_length = 0
 current_length_in_seconds = 0
 annotations = []
-
+last = 0
 
 def collect_data():
     global current_trial_remaining_length
@@ -26,6 +28,7 @@ def collect_data():
     global signal
     global current_length_in_seconds
     global annotations
+    global last
 
     print("Initializing")
     d = pygds.GDS()
@@ -57,6 +60,10 @@ def collect_data():
             global signal
             global current_length_in_seconds
             global annotations
+            global last
+            dt = datetime.now()
+            print("samples",len(samples), dt-last)
+            last=dt
 
             for channel in range(32):
                 signal[channel] = np.concatenate((signal[channel], list(samples[:, channel])))
@@ -81,14 +88,21 @@ def collect_data():
                             trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
 
             print(instructions_dict[current_label])
+            if send_to_vr:
+                movement = instructions_dict[current_label] == "movement"
+                sender.send_data(movement, movement)
             return True
         except Exception as e:
             print('ERROR:', e)
 
     print(instructions_dict[current_label], 0)
 
+    last = datetime.now()
+    all = datetime.now()
     d.GetData(d.SamplingRate // batches_per_second, processCallback)
     d.Close()
+    all = datetime.now() - all
+    print(current_length_in_seconds, all)
     del d
 
     t = time.localtime()

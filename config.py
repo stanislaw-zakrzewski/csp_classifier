@@ -1,4 +1,6 @@
 ''' GLOBAL DATA'''
+import SenderLib
+
 preprocessed_data_path = 'preprocessed_data/subjects'
 use_common_average_reference = False  # this is not working at this time
 electrode_names = ['FP1', 'FP2', 'FZ', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ',
@@ -20,14 +22,14 @@ signal_configurations = [
 ]
 
 ''' DATA ANALYSIS '''
-subject_to_analyze = 'data/2022-11-05T15-11-01.edf'
+subject_to_analyze = 'data/2022-11-16T13-16-00.edf'
 # We don't want (at least yet) to have P300 in our data
 event_beginning_offset_in_seconds = 1
-event_length_in_seconds = 2
-experiment_frequency_range = (2, 15)
+event_length_in_seconds = 4
+experiment_frequency_range = (2, 20)
 
 channels1 = ['C3', 'C4']
-channels2 = ['C5', 'C3', 'C1', 'C2', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
+channels2 = ['C5', 'C3',  'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
 channels3 = []  # All channels
 configurations = [
     {'channels': channels2, 'band_width': 1},
@@ -40,9 +42,18 @@ configurations = [
 ]
 
 ''' REAL TIME '''
-real_time_train_data = 'data/2022-11-05T15-11-01.edf'
-bandpass_filter_start_frequency = 10
-bandpass_filter_end_frequency = 14
+real_time_train_data = 'data/2022-11-16T13-16-00.edf'
+bandpass_filter_start_frequency = 18
+bandpass_filter_end_frequency = 21
 
 ''' VISUALIZATION '''
-accuracy_over_bands_show_standard_deviation = True
+accuracy_over_bands_show_standard_deviation = False
+# subject_to_visualize = 'data/2022-11-05T15-54-46.edf'
+# subject_to_visualize = 'data/2022-11-09T11-58-50.edf'
+subject_to_visualize = 'data/2022-11-16T13-16-00.edf'
+
+'''VR'''
+ipaddress = '192.168.182.6'
+port = 25002
+send_to_vr = True
+# sender = SenderLib.Sender(ipaddress, port)

@@ -3,31 +3,8 @@ from mne.io import RawArray
 
 import pygds
 from classifiers.flat import process
-from config import configurations, real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency
-
-
-def get_individual_accuracy(predicions, correct):
-    all = [0, 0, 0]
-    cor = [0, 0, 0]
-    for i in range(len(predicions)):
-        all[correct[i]] += 1
-        if predicions[i] == correct[i]:
-            cor[predicions[i]] += 1
-    results = [2, 2, 2]
-    if all[0] > 0: results[0] = cor[0] / all[0]
-    if all[1] > 0: results[1] = cor[1] / all[1]
-    if all[2] > 0: results[2] = cor[2] / all[2]
-    return results
-
-
-def create_confusion_matrix(n_classes, predictions_sets, corrects_sets):
-    confusion_matrix = np.zeros((n_classes, n_classes))
-    for fold_index in range(len(predictions_sets)):
-        predictions = predictions_sets[fold_index]
-        corrects = corrects_sets[fold_index]
-        for index in range(len(predictions)):
-            confusion_matrix[predictions[index]][corrects[index]] += 1
-    return confusion_matrix
+from config import real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency, \
+    channels2, electrode_names, sender
 
 
 def calculate_recall(predictions, corrects, hand):
@@ -54,33 +31,11 @@ def calculate_precision(predictions, corrects, hand):
     return numerator, denominator
 
 
-def calculate_combined_recall(predictions, corrects):
-    recall_data = []
-    for i in range(3):
-        recall_data.append(calculate_recall(predictions, corrects, i))
-    numerator = 0
-    denominator = 0
-    for i in recall_data:
-        numerator += i[0]
-        denominator += i[1]
-    if denominator == 0: return 0
-    return numerator / denominator
 
 
-def calculate_combined_precision(predictions, corrects):
-    recall_data = []
-    for i in range(3):
-        recall_data.append(calculate_precision(predictions, corrects, i))
-    numerator = 0
-    denominator = 0
-    for i in recall_data:
-        numerator += i[0]
-        denominator += i[1]
-    if denominator == 0: return 0
-    return numerator / denominator
 
 
-def main(bands, channels, randomness):
+def main(bands, channels):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
@@ -89,7 +44,6 @@ def main(bands, channels, randomness):
     window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(
         real_time_train_data, bands,
         channels,
-        randomness,
         n_splits=1)
 
     # update_predictions = []
@@ -144,22 +98,12 @@ def main(bands, channels, randomness):
     return csp_filters, classifier, mne_info
 
 
-def configuration_to_label(config):
-    channels = config['channels']
-    if len(channels) == 0:
-        channels = 'all'
-    else:
-        channels = len(channels)
-    return '{}Hz width {} channels {} randomness'.format(
-        config['band_width'],
-        channels,
-        config['randomness'])
+
 
 
 csp, lda, mne_info = main(
     [(bandpass_filter_start_frequency, bandpass_filter_end_frequency)],
-    configurations[0]['channels'],
-    configurations[0]['randomness']
+    channels2
 )
 print(csp, lda)
 
@@ -183,19 +127,26 @@ def processCallback(samples):
                 if index < 32:
                     ret[index].append(channel)
         raw = RawArray(ret, mne_info, verbose='CRITICAL')
+
+        for channel in electrode_names:
+            if channel not in channels2:
+                raw.drop_channels([channel])
         raw.filter(bandpass_filter_start_frequency, bandpass_filter_end_frequency, l_trans_bandwidth=2,
                    h_trans_bandwidth=2, filter_length=500, fir_design='firwin',
                    skip_by_annotation='edge', verbose='CRITICAL')
         flt = raw.get_data()
         res = lda.predict(csp.transform(np.array([flt])))
-        if res[0] == 0:
+        print(res[0])
+        if res[0] == 1:
+            sender.send_data(True, True)
             print('Movement')
         else:
             print('Rest')
+            sender.send_data(False, False)
     except Exception as e:
         print(e)
 
-    if i < 10: return True
+    if i < 20: return True
     return False
 
 
