@@ -1,20 +1,21 @@
-import socket
-import time
+from time import sleep
+import SenderLib
 
 host, port = "127.0.0.1", 25002
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect((host, port))
+# host, port = "192.168.132.6", 25002
 
-startPos = [1, 0, 0]
+sender = SenderLib.Sender(host, port)
 turn = False
-while True:
-    time.sleep(5)
-    posString = ','.join(map(str, startPos))
-    print(posString)
 
-    sock.sendall(posString.encode("UTF-8"))
-    receivedData = sock.recv(1024).decode("UTF-8")
-    print(receivedData)
-    # startPos[1] = 1 if turn else 0
-    startPos[2] = 0 if turn else 1
+gameControl = SenderLib.GameControl()
+gameControl.applyMode = True
+gameControl.mode = 4
+gameControl.dataAcquisition = True
+
+while True:
+    print("Movement" if turn else "Rest")
+    gameControl.left = turn
+    x = sender.send_data(gameControl)
+    #print(str())
     turn = not turn
+    sleep(6)

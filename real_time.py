@@ -4,7 +4,7 @@ from mne.io import RawArray
 import pygds
 from classifiers.flat import process
 from config import real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency, \
-    channels2, electrode_names, sender
+    channels2, electrode_names, sender, send_to_vr, control
 
 
 def calculate_recall(predictions, corrects, hand):
@@ -138,11 +138,17 @@ def processCallback(samples):
         res = lda.predict(csp.transform(np.array([flt])))
         print(res[0])
         if res[0] == 1:
-            sender.send_data(True, True)
             print('Movement')
+            control.left = True
+            control.right = True
         else:
             print('Rest')
-            sender.send_data(False, False)
+            control.left = False
+            control.right = False
+
+        if send_to_vr:
+            state = sender.send_data(control)
+
     except Exception as e:
         print(e)
 
