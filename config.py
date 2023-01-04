@@ -11,10 +11,10 @@ sampling_frequency = 250
 
 ''' DATA ACQUISITION '''
 batches_per_second = 2
-trial_count = 15
+trial_count = 2
 trial_timeout_in_seconds = 3
 trial_timeout_random_addition_in_seconds = 1
-trial_length_in_seconds = 5
+trial_length_in_seconds = 10
 trial_length_random_addition_in_seconds = 1
 signal_configurations = [
     {'label': 'movement', 'id': 0},
@@ -53,7 +53,11 @@ accuracy_over_bands_show_standard_deviation = False
 subject_to_visualize = 'data/2022-11-16T13-16-00.edf'
 
 '''VR'''
-ipaddress = '192.168.182.6'
+#ipaddress = '172.20.10.4'
+#port = 25002
+#ipaddress = '172.20.10.4'
+ipaddress = '192.168.150.6'
 port = 25002
 send_to_vr = True
-# sender = SenderLib.Sender(ipaddress, port)
+sender = SenderLib.Sender(ipaddress, port)
+control = SenderLib.GameControl()

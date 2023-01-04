@@ -9,7 +9,7 @@ from datetime import datetime
 import SenderLib
 from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
     trial_length_random_addition_in_seconds, trial_length_in_seconds, trial_timeout_random_addition_in_seconds, \
-    electrode_names, sampling_frequency, ipaddress, port, sender, send_to_vr
+    electrode_names, sampling_frequency, ipaddress, port, sender, send_to_vr, control
 
 import pygds
 
@@ -90,7 +90,9 @@ def collect_data():
             print(instructions_dict[current_label])
             if send_to_vr:
                 movement = instructions_dict[current_label] == "movement"
-                sender.send_data(movement, movement)
+                control.left = movement
+                control.right = movement
+                state = sender.send_data(control)
             return True
         except Exception as e:
             print('ERROR:', e)
