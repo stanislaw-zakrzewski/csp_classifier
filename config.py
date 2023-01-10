@@ -53,6 +53,12 @@ accuracy_over_bands_show_standard_deviation = False
 subject_to_visualize = 'data/2022-11-16T13-16-00.edf'
 
 '''VR'''
+
+#EEGLAB:
+# EEGlaptop: 192.168.50.100
+# Gogle VR 1: 192.168.50.101
+# Gogle VR 2: 192.168.50.102
+
 #ipaddress = '172.20.10.4'
 #port = 25002
 #ipaddress = '172.20.10.4'

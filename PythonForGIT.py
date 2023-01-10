@@ -1,6 +1,11 @@
 from time import sleep
 import SenderLib
 
+#EEGLAB:
+# EEGlaptop: 192.168.50.100
+# Gogle VR 1: 192.168.50.101
+# Gogle VR 2: 192.168.50.102
+
 host, port = "127.0.0.1", 25002
 # host, port = "192.168.132.6", 25002
 
