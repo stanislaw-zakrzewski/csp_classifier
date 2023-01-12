@@ -11,7 +11,7 @@ sampling_frequency = 250
 
 ''' DATA ACQUISITION '''
 batches_per_second = 2
-trial_count = 2
+trial_count = 4
 trial_timeout_in_seconds = 3
 trial_timeout_random_addition_in_seconds = 1
 trial_length_in_seconds = 10
@@ -22,7 +22,7 @@ signal_configurations = [
 ]
 
 ''' DATA ANALYSIS '''
-subject_to_analyze = 'data/2022-11-16T13-16-00.edf'
+subject_to_analyze = 'data/2023-01-12T12-03-50.edf'
 # We don't want (at least yet) to have P300 in our data
 event_beginning_offset_in_seconds = 1
 event_length_in_seconds = 4
@@ -42,15 +42,15 @@ configurations = [
 ]
 
 ''' REAL TIME '''
-real_time_train_data = 'data/2022-11-16T13-16-00.edf'
-bandpass_filter_start_frequency = 18
-bandpass_filter_end_frequency = 21
+real_time_train_data = 'data/2023-01-12T12-03-50.edf'
+bandpass_filter_start_frequency = 14
+bandpass_filter_end_frequency = 20
 
 ''' VISUALIZATION '''
 accuracy_over_bands_show_standard_deviation = False
 # subject_to_visualize = 'data/2022-11-05T15-54-46.edf'
 # subject_to_visualize = 'data/2022-11-09T11-58-50.edf'
-subject_to_visualize = 'data/2022-11-16T13-16-00.edf'
+subject_to_visualize = 'data/2023-01-12T10-24-56.edf'
 
 '''VR'''
 
@@ -64,6 +64,11 @@ subject_to_visualize = 'data/2022-11-16T13-16-00.edf'
 #ipaddress = '172.20.10.4'
 ipaddress = '192.168.150.6'
 port = 25002
-send_to_vr = True
-sender = SenderLib.Sender(ipaddress, port)
-control = SenderLib.GameControl()
+
+#send_to_vr = True
+send_to_vr = False
+sender = 0
+control = 0
+if send_to_vr:
+    sender = SenderLib.Sender(ipaddress, port)
+    control = SenderLib.GameControl()

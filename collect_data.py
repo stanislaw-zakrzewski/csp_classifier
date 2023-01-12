@@ -5,6 +5,8 @@ import numpy as np
 from pyedflib import highlevel
 import time
 from datetime import datetime
+#import playsound
+import winsound
 
 import SenderLib
 from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
@@ -31,6 +33,8 @@ def collect_data():
     global last
 
     print("Initializing")
+    winsound.Beep(1200, 500)
+    winsound.Beep(600, 500)
     d = pygds.GDS()
     pygds.configure_demo(d)
     d.SetConfiguration()
@@ -73,6 +77,15 @@ def collect_data():
             if current_trial_remaining_length == 0:
                 if current_label == -1:
                     current_label = trial_order.pop(0)
+                    # if instructions_dict[current_label] == "movement":
+                    if current_label == 0:
+                        winsound.Beep(1200, 500)
+                    #       playsound('audio_commands/move.wav')
+                    # if instructions_dict[current_label] == "rest":
+                    if current_label == 1:
+                        winsound.Beep(600, 500)
+                        #       playsound('audio_commands/rest.wav')
+
                     current_trial_remaining_length = \
                         np.random.randint(
                             trial_length_random_addition_in_seconds * batches_per_second + 1) + trial_length_in_seconds * batches_per_second
@@ -88,6 +101,7 @@ def collect_data():
                             trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
 
             print(instructions_dict[current_label])
+
             if send_to_vr:
                 movement = instructions_dict[current_label] == "movement"
                 control.left = movement
