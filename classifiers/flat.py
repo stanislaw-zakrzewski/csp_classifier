@@ -9,9 +9,8 @@ from sklearn.neural_network import MLPClassifier
 from data_classes.subject import Subject
 
 
-def process(subject_edf_path, bands, selected_channels, n_splits=10, reg=None):
+def process(subject, bands, selected_channels, n_splits=10, reg=None):
     tmin, tmax = 1., 3.
-    subject = Subject(subject_edf_path)
 
     raw_signals = []
     for i in range(len(bands)):

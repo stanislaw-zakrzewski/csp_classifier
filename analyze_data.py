@@ -4,6 +4,8 @@ import pandas as pd
 
 from classifiers.flat import process
 from config import configurations, experiment_frequency_range, subject_to_analyze
+from data_classes.subject import Subject
+from preprocessing.validate_available_electrodes import validate_available_electrodes
 from visualization.accuracy_over_bands import visualize_accuracy_over_bands
 
 
@@ -81,13 +83,16 @@ def calculate_combined_precision(predictions, corrects):
     return numerator / denominator
 
 
-def analyze_data(bands, channels):
+def analyze_data(bands, selected_electrodes):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = process(subject_to_analyze,
+    subject = Subject(subject_to_analyze)
+    channels = validate_available_electrodes(subject, selected_electrodes)
+
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = process(subject,
                                                                                                  bands, channels)
 
     for i in range(len(predictions)):
