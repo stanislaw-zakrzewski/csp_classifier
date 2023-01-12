@@ -6,6 +6,13 @@ from config import electrode_names, sampling_frequency, event_beginning_offset_i
 
 
 class Subject:
+    """Subject class used to contain data for single subject
+
+    Parameters
+    ----------
+    subject_edf_path : string
+        Path to EDF file that contains EEG recording for given subject.
+    """
     def __init__(self, subject_edf_path):
         self.raw = read_raw_edf(subject_edf_path, preload=True, verbose='ERROR')
         raw_events, self.id_dict = events_from_annotations(self.raw)
@@ -24,4 +31,5 @@ class Subject:
         self.info = mne_info
 
     def get_raw_copy(self):
+        """Return a copy of a raw data for subject."""
         return self.raw.copy()
