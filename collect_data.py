@@ -5,15 +5,21 @@ import numpy as np
 from pyedflib import highlevel
 import time
 from datetime import datetime
-#import playsound
+# import playsound
 import winsound
 
 import SenderLib
+from commands.audio_commands import AudioCommands
+from commands.text_commands import TextCommands
 from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
     trial_length_random_addition_in_seconds, trial_length_in_seconds, trial_timeout_random_addition_in_seconds, \
-    electrode_names, sampling_frequency, ipaddress, port, sender, send_to_vr, control
+    electrode_names, sampling_frequency, ipaddress, port, send_to_vr, command_type
 
 import pygds
+
+commands = TextCommands()
+if command_type == 'audio':
+    commands = AudioCommands()
 
 signal = []
 trial_order = []
@@ -22,6 +28,7 @@ current_trial_remaining_length = 0
 current_length_in_seconds = 0
 annotations = []
 last = 0
+
 
 def collect_data():
     global current_trial_remaining_length
@@ -66,8 +73,8 @@ def collect_data():
             global annotations
             global last
             dt = datetime.now()
-            print("samples",len(samples), dt-last)
-            last=dt
+            print("samples", len(samples), dt - last)
+            last = dt
 
             for channel in range(32):
                 signal[channel] = np.concatenate((signal[channel], list(samples[:, channel])))
@@ -100,13 +107,8 @@ def collect_data():
                         np.random.randint(
                             trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
 
-            print(instructions_dict[current_label])
+            commands.perform_command(instructions_dict[current_label])
 
-            if send_to_vr:
-                movement = instructions_dict[current_label] == "movement"
-                control.left = movement
-                control.right = movement
-                state = sender.send_data(control)
             return True
         except Exception as e:
             print('ERROR:', e)

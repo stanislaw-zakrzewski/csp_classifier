@@ -1,4 +1,7 @@
 """ GLOBAL DATA"""
+from commands.audio_commands import AudioCommands
+from commands.text_commands import TextCommands
+
 preprocessed_data_path = 'preprocessed_data/subjects'
 use_common_average_reference = False  # this is not working at this time
 electrode_names = ['FP1', 'FP2', 'FZ', 'FT7', 'FC5', 'FC3', 'FC1', 'FCZ',
@@ -64,3 +67,6 @@ port = 25002
 
 # send_to_vr = True
 send_to_vr = False
+
+'''COMMANDS'''
+command_type = 'audio'
