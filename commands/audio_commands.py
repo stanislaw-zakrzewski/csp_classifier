@@ -37,19 +37,19 @@ class AudioCommands(Commands):
             print(command_code)
 
     def left(self):
-        playsound('commands//sound_commands//lewo.mp3')
+        playsound('commands//sound_commands//lewo.wav')
 
     def right(self):
-        playsound('commands//sound_commands//prawo.mp3')
+        playsound('commands//sound_commands//prawo.wav')
 
     def rest(self):
-        playsound('commands//sound_commands//brak.mp3')
+        playsound('commands//sound_commands//brak.wav')
 
     def movement(self):
-        playsound('commands//sound_commands//ruch.mp3')
+        playsound('commands//sound_commands//ruch.wav')
 
     def pause(self):
-        playsound('commands//sound_commands//pauza.mp3')
+        playsound('commands//sound_commands//pauza.wav')
 
     def end(self):
-        playsound('commands//sound_commands//koniec.mp3')
+        playsound('commands//sound_commands//koniec.wav')
