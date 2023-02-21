@@ -1,26 +1,17 @@
-import random
-
-from matplotlib import pyplot as plt
 import numpy as np
-from pyedflib import highlevel
+import pygds
+import random
 import time
-from datetime import datetime
-# import playsound
-import winsound
 
-import SenderLib
-from commands.audio_commands import AudioCommands
-from commands.text_commands import TextCommands
+from datetime import datetime
+from pyedflib import highlevel
+
+from commands.get_commands import get_commands
 from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
     trial_length_random_addition_in_seconds, trial_length_in_seconds, trial_timeout_random_addition_in_seconds, \
-    electrode_names, sampling_frequency, ipaddress, port, send_to_vr, command_type
+    electrode_names, sampling_frequency
 
-import pygds
-
-commands = TextCommands()
-if command_type == 'audio':
-    commands = AudioCommands()
-
+commands = get_commands()
 signal = []
 trial_order = []
 current_label = -1
@@ -38,10 +29,9 @@ def collect_data():
     global current_length_in_seconds
     global annotations
     global last
+    global commands
 
     print("Initializing")
-    winsound.Beep(1200, 500)
-    winsound.Beep(600, 500)
     d = pygds.GDS()
     pygds.configure_demo(d)
     d.SetConfiguration()
@@ -54,7 +44,7 @@ def collect_data():
     for _ in range(32):
         signal.append([])
 
-    instructions_dict = {-1: '---+---'}
+    instructions_dict = {-1: 'pause'}
     for signal_configuration in signal_configurations:
         instructions_dict[signal_configuration['id']] = signal_configuration['label']
 
@@ -72,8 +62,8 @@ def collect_data():
             global current_length_in_seconds
             global annotations
             global last
+            global commands
             dt = datetime.now()
-            print("samples", len(samples), dt - last)
             last = dt
 
             for channel in range(32):
@@ -84,14 +74,6 @@ def collect_data():
             if current_trial_remaining_length == 0:
                 if current_label == -1:
                     current_label = trial_order.pop(0)
-                    # if instructions_dict[current_label] == "movement":
-                    if current_label == 0:
-                        winsound.Beep(1200, 500)
-                    #       playsound('audio_commands/move.wav')
-                    # if instructions_dict[current_label] == "rest":
-                    if current_label == 1:
-                        winsound.Beep(600, 500)
-                        #       playsound('audio_commands/rest.wav')
 
                     current_trial_remaining_length = \
                         np.random.randint(
@@ -112,8 +94,6 @@ def collect_data():
             return True
         except Exception as e:
             print('ERROR:', e)
-
-    print(instructions_dict[current_label], 0)
 
     last = datetime.now()
     all = datetime.now()
@@ -138,8 +118,9 @@ def collect_data():
     signal, signalheaders, header = highlevel.read_edf(filename)
     annot = header['annotations']
     print(annot)
-
-    print('DATA COLLECTION FINISHED')
+    # commands = get_commands()
+    commands.perform_command('end')
+    # input()
 
 
 collect_data()

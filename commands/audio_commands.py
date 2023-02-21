@@ -19,15 +19,22 @@ class AudioCommands(Commands):
             self.rest()
         elif command_code == 'movement':
             self.movement()
+        elif command_code == 'pause':
+            self.pause()
+        elif command_code == 'end':
+            self.end()
         self.blocked = False
         self.previous_command = command_code
 
     def perform_command(self, command_code):
-        if not self.blocked and command_code != self.previous_command:
-            self.blocked = True
-            self.previous_command = command_code
-            audio_thread = Thread(target=self.play_audio_command, args=(command_code,))  # create thread
-            audio_thread.start()
+        try:
+            if not self.blocked and command_code != self.previous_command:
+                self.blocked = True
+                self.previous_command = command_code
+                audio_thread = Thread(target=self.play_audio_command, args=(command_code,))  # create thread
+                audio_thread.start()
+        except Exception:
+            print(command_code)
 
     def left(self):
         playsound('commands//sound_commands//lewo.mp3')
@@ -40,3 +47,9 @@ class AudioCommands(Commands):
 
     def movement(self):
         playsound('commands//sound_commands//ruch.mp3')
+
+    def pause(self):
+        playsound('commands//sound_commands//pauza.mp3')
+
+    def end(self):
+        playsound('commands//sound_commands//koniec.mp3')

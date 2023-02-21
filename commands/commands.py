@@ -13,3 +13,9 @@ class Commands:
 
     def movement(self):
         pass
+
+    def pause(self):
+        pass
+
+    def end(self):
+        pass

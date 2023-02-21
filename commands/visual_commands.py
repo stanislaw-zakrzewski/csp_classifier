@@ -5,7 +5,7 @@ from tkinter import ttk
 from PIL import ImageTk, Image
 
 
-class VisualState():
+class VisualState:
     def __init__(self, initial_state):
         self.state = initial_state
 
@@ -25,7 +25,6 @@ class VisualCommands(Commands):
 
     @staticmethod
     def get_image_for_label(label):
-        print('path', label)
         if label == 'left':
             return Image.open("commands//visual_commands//left.jpg")
         elif label == 'right':
@@ -41,7 +40,7 @@ class VisualCommands(Commands):
         return False
 
     def window(self, vs):
-        image1 = self.get_image_for_label('rest')
+        image1 = self.get_image_for_label('pause') # TODO make sure this is not set always to pause in the beginning
 
         root = tkinter.Tk()
         big_frame = ttk.Frame(root)
@@ -60,12 +59,12 @@ class VisualCommands(Commands):
                 image = self.get_image_for_label(current_label_in_state)
                 if image:
                     label.destroy()
-                    print(image)
                     photo_image = ImageTk.PhotoImage(image)
                     new_label = tkinter.Label(image=photo_image)
                     new_label.image = photo_image
                     new_label.place(relx=0.5, rely=0.5, anchor='center')
             root.after(10, change_text, new_label, current_label_in_state)
+
         change_text(label, vs.get_state())
         root.geometry('1000x1000')
         root.mainloop()

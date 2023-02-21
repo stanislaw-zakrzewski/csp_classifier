@@ -15,6 +15,10 @@ class TextCommands(Commands):
                 self.rest()
             elif command_code == 'movement':
                 self.movement()
+            elif command_code == 'pause':
+                self.pause()
+            elif command_code == 'end':
+                self.end()
             self.previous_command = command_code
 
     def left(self):
@@ -28,3 +32,9 @@ class TextCommands(Commands):
 
     def movement(self):
         print('movement')
+
+    def pause(self):
+        print('pause')
+
+    def end(self):
+        print('end')
