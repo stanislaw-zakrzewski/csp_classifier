@@ -7,11 +7,22 @@ import tkinter
 from tkinter import ttk
 
 # Create Object
-from commands.audio_commands import AudioCommands
+from commands.visual_commands import VisualCommands
 
-vc = AudioCommands()
+
+vc = VisualCommands()
 vc.perform_command('rest')
+time.sleep(5)
+vc.perform_command('movement')
 time.sleep(2)
+vc.perform_command('left')
+time.sleep(2)
+vc.perform_command('right')
+time.sleep(2)
+vc.perform_command('pause')
+time.sleep(2)
+vc.perform_command('rest')
+time.sleep(5)
 vc.perform_command('movement')
 time.sleep(2)
 vc.perform_command('left')
