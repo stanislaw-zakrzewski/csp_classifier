@@ -13,7 +13,7 @@ valid_channel_threshold = 1e-15
 
 ''' DATA ACQUISITION '''
 batches_per_second = 2
-trial_count = 10
+trial_count = 1 #10
 trial_timeout_in_seconds = 3
 trial_timeout_random_addition_in_seconds = 1
 trial_length_in_seconds = 10
@@ -50,8 +50,9 @@ bandpass_filter_end_frequency = 20
 
 ''' VISUALIZATION '''
 accuracy_over_bands_show_standard_deviation = False
-subject_to_visualize = 'data/2022-11-05T15-11-01.edf'
-
+#subject_to_visualize = 'data/2022-11-05T15-11-01.edf'
+subject_to_visualize = 'data_comparison/2023-02-21T12-01-33 audio niepelne.edf'
+#subject_to_visualize = 'data_comparison/2023-02-21T11-42-40 text.edf'
 '''VR'''
 
 # EEGLAB:

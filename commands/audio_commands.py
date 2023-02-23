@@ -27,29 +27,26 @@ class AudioCommands(Commands):
         self.previous_command = command_code
 
     def perform_command(self, command_code):
-        try:
-            if not self.blocked and command_code != self.previous_command:
-                self.blocked = True
-                self.previous_command = command_code
-                audio_thread = Thread(target=self.play_audio_command, args=(command_code,))  # create thread
-                audio_thread.start()
-        except Exception:
-            print(command_code)
+        if not self.blocked and command_code != self.previous_command:
+            self.blocked = True
+            self.previous_command = command_code
+            audio_thread = Thread(target=self.play_audio_command, args=(command_code,))  # create thread
+            audio_thread.start()
 
     def left(self):
-        playsound('commands//sound_commands//lewo.mp3')
+        playsound('commands//sound_commands//lewo.wav')
 
     def right(self):
-        playsound('commands//sound_commands//prawo.mp3')
+        playsound('commands//sound_commands//prawo.wav')
 
     def rest(self):
-        playsound('commands//sound_commands//brak.mp3')
+        playsound('commands//sound_commands//brak.wav')
 
     def movement(self):
-        playsound('commands//sound_commands//ruch.mp3')
+        playsound('commands//sound_commands//ruch.wav')
 
     def pause(self):
-        playsound('commands//sound_commands//pauza.mp3')
+        playsound('commands//sound_commands//pauza.wav')
 
     def end(self):
-        playsound('commands//sound_commands//koniec.mp3')
+        playsound('commands//sound_commands//koniec.wav')

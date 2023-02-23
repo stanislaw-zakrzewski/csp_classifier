@@ -20,6 +20,9 @@ current_length_in_seconds = 0
 annotations = []
 last = 0
 
+#commands.perform_command('end')
+#import sys
+#sys.exit(0)
 
 def collect_data():
     global current_trial_remaining_length
@@ -68,6 +71,13 @@ def collect_data():
 
             for channel in range(32):
                 signal[channel] = np.concatenate((signal[channel], list(samples[:, channel])))
+
+            # Podglad aktywnosci kanalow:
+            np.set_printoptions(suppress=True, linewidth=10000, precision=2)
+            # print(np.std(samples, axis=0)) # wszystkie kanały
+            #print(np.std(samples[:, [32, 33, 34]], axis=0)) # akcelerometry - dla kontroli ;-)
+            print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
+
             current_trial_remaining_length -= 1
             current_length_in_seconds += 1 / batches_per_second
 
@@ -99,6 +109,7 @@ def collect_data():
     all = datetime.now()
     d.GetData(d.SamplingRate // batches_per_second, processCallback)
     d.Close()
+
     all = datetime.now() - all
     print(current_length_in_seconds, all)
     del d
@@ -113,14 +124,16 @@ def collect_data():
     header = highlevel.make_header(patientname='patient_x', gender='Male')
     header.update({'annotations': annotations})
 
+    # commands = get_commands()
+    commands.perform_command('end')
+    # time.sleep(4)
+    # input("Press any key")
+
     highlevel.write_edf(filename, signal, sig_headers, header)
 
     signal, signalheaders, header = highlevel.read_edf(filename)
     annot = header['annotations']
     print(annot)
-    # commands = get_commands()
-    commands.perform_command('end')
-    # input()
 
 
 collect_data()

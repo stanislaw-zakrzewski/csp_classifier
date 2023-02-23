@@ -1,4 +1,7 @@
-from commands.audio_commands import AudioCommands
+
+#from commands.audio_commands import AudioCommands # version based on playsound library
+from commands.audio_commands_pyaudio import AudioCommands # version based on pyaudio library
+
 from commands.text_commands import TextCommands
 from commands.visual_commands import VisualCommands
 from config import command_type
