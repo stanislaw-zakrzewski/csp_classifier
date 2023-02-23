@@ -135,5 +135,5 @@ def collect_data():
     annot = header['annotations']
     print(annot)
 
-
+time.sleep(10)
 collect_data()

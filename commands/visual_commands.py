@@ -43,8 +43,8 @@ class VisualCommands(Commands):
         return False
 
     def window(self, vs):
-        image1 = self.get_image_for_label('left') # TODO make sure this is not set always to pause in the beginning
-        self.visual_state.set_state('left')
+        image1 = self.get_image_for_label('pause') # TODO make sure this is not set always to pause in the beginning
+        self.visual_state.set_state('pause')
         root = tkinter.Tk()
         big_frame = ttk.Frame(root)
         big_frame.pack(fill='both', expand=True)
@@ -90,7 +90,7 @@ class VisualCommands(Commands):
                         img = ImageTk.PhotoImage(resized)
                         label.config(image=img)
                         label.image = img
-                        time.sleep(1/20) # powinno być 1/30, tak jest, żeby wolniej było
+                        # time.sleep(1/100) # powinno być 1/30, tak jest, żeby wolniej było
                         # root.update()
                 # else:
                 #     image = self.get_image_for_label(current_label_in_state)

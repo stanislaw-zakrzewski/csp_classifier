@@ -13,7 +13,7 @@ valid_channel_threshold = 1e-15
 
 ''' DATA ACQUISITION '''
 batches_per_second = 2
-trial_count = 1 #10
+trial_count = 1
 trial_timeout_in_seconds = 3
 trial_timeout_random_addition_in_seconds = 1
 trial_length_in_seconds = 10
@@ -25,10 +25,13 @@ signal_configurations = [
 
 ''' DATA ANALYSIS '''
 subject_to_analyze = 'data/2022-11-05T15-11-01.edf'
+subject_to_analyze = 'data_comparison/2023-02-21T11-53-23 visual.edf'
+subject_to_analyze = 'data_comparison/2023-02-21T11-42-40 text.edf'
+subject_to_analyze = 'data_comparison/2023-02-21T12-01-33 audio niepelne.edf'
 # We don't want (at least yet) to have P300 in our data
 event_beginning_offset_in_seconds = 1
 event_length_in_seconds = 4
-experiment_frequency_range = (2, 20)
+experiment_frequency_range = (2, 30)
 
 channels1 = ['C3', 'C4']
 channels2 = ['C1', 'C2', 'C5', 'C3', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
@@ -51,7 +54,10 @@ bandpass_filter_end_frequency = 20
 ''' VISUALIZATION '''
 accuracy_over_bands_show_standard_deviation = False
 #subject_to_visualize = 'data/2022-11-05T15-11-01.edf'
-subject_to_visualize = 'data_comparison/2023-02-21T12-01-33 audio niepelne.edf'
+subject_to_visualize = 'data_comparison/2023-02-21T12-01-33 visual.edf'
+subject_to_visualize = 'data_comparison/2023-02-21T11-53-23 visual.edf'
+subject_to_visualize = 'data/2023-02-23T09-39-53.edf'
+# subject_to_visualize = 'data/2022-11-05T15-48-33.edf'
 #subject_to_visualize = 'data_comparison/2023-02-21T11-42-40 text.edf'
 '''VR'''
 
