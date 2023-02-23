@@ -1,8 +1,10 @@
+import time
+
 from commands.commands import Commands
 from threading import *
 import tkinter
 from tkinter import ttk
-from PIL import ImageTk, Image
+from PIL import ImageTk, Image, ImageSequence
 
 
 class VisualState:
@@ -22,17 +24,18 @@ class VisualCommands(Commands):
         self.visual_state = VisualState('okos')
         t = Thread(target=self.window, args=(self.visual_state,))
         t.start()
+        self.gif_states = ['left', 'right', 'movement']
 
     @staticmethod
     def get_image_for_label(label):
         if label == 'left':
-            return Image.open("commands//visual_commands//left.jpg")
+            return Image.open("commands//visual_commands//left.gif")
         elif label == 'right':
-            return Image.open("commands//visual_commands//right.png")
+            return Image.open("commands//visual_commands//right.gif")
         elif label == 'rest':
             return Image.open("commands//visual_commands//rest.png")
         elif label == 'movement':
-            return Image.open("commands//visual_commands//movement.png")
+            return Image.open("commands//visual_commands//movement.gif")
         elif label == 'pause':
             return Image.open("commands//visual_commands//pause.jpg")
         elif label == 'end':
@@ -40,33 +43,79 @@ class VisualCommands(Commands):
         return False
 
     def window(self, vs):
-        image1 = self.get_image_for_label('pause') # TODO make sure this is not set always to pause in the beginning
-
+        image1 = self.get_image_for_label('left') # TODO make sure this is not set always to pause in the beginning
+        self.visual_state.set_state('left')
         root = tkinter.Tk()
         big_frame = ttk.Frame(root)
         big_frame.pack(fill='both', expand=True)
 
-        test = ImageTk.PhotoImage(image1)
+        photo_image = ImageTk.PhotoImage(image1)
 
-        label = tkinter.Label(image=test)
-        label.image = test
+        global label
+        label= tkinter.Label(image=photo_image)
+        label.image = photo_image
         label.place(relx=0.5, rely=0.5, anchor='center')
 
-        def change_text(label, previous_state):
-            current_label_in_state = vs.get_state()
-            new_label = label
-            if current_label_in_state != previous_state:
-                image = self.get_image_for_label(current_label_in_state)
-                if image:
-                    label.destroy()
-                    photo_image = ImageTk.PhotoImage(image)
-                    new_label = tkinter.Label(image=photo_image)
-                    new_label.image = photo_image
-                    new_label.place(relx=0.5, rely=0.5, anchor='center')
-            root.after(10, change_text, new_label, current_label_in_state)
 
-        change_text(label, vs.get_state())
-        root.geometry('1000x1000')
+
+        def change_text(label, image):
+            previous_state = False
+            while True:
+                current_label_in_state = vs.get_state()
+
+                if current_label_in_state != previous_state:
+                    image = self.get_image_for_label(current_label_in_state)
+                    if image:
+                        # # label.destroy()
+                        # photo_image = ImageTk.PhotoImage(image)
+                        # # new_label = tkinter.Label(image=photo_image)
+                        # # new_label.image = photo_image
+                        # # new_label.place(relx=0.5, rely=0.5, anchor='center')
+                        # label.config(image=ImageTk.PhotoImage(self.get_image_for_label(current_label_in_state)))
+                        # root.update()
+                        i = self.get_image_for_label(current_label_in_state)
+                        i = i.resize((i.width * 3, i.height * 3), Image.LANCZOS)
+                        photo_image = ImageTk.PhotoImage(i)
+
+                        label.config(image=photo_image)
+                        label.image = photo_image
+                        # root.update()
+                        previous_state = current_label_in_state
+
+                if current_label_in_state in self.gif_states:
+                    for img in ImageSequence.Iterator(image):
+                        if current_label_in_state != vs.get_state():
+                            break
+                        resized = img.resize((img.width * 3, img.height * 3), Image.LANCZOS)
+                        img = ImageTk.PhotoImage(resized)
+                        label.config(image=img)
+                        label.image = img
+                        time.sleep(1/20) # powinno być 1/30, tak jest, żeby wolniej było
+                        # root.update()
+                # else:
+                #     image = self.get_image_for_label(current_label_in_state)
+                #     print(image)
+                #     if image:
+                #         # label.destroy()
+                #         photo_image = ImageTk.PhotoImage(image)
+                #         # new_label = tkinter.Label(image=photo_image)
+                #         # new_label.image = photo_image
+                #         # new_label.place(relx=0.5, rely=0.5, anchor='center')
+                #         label.config(image=ImageTk.PhotoImage(self.get_image_for_label(current_label_in_state)))
+                #         root.update()
+                #         label.config(image=ImageTk.PhotoImage(self.get_image_for_label(current_label_in_state)))
+                #         root.update()
+
+            # root.after(10, change_text, label, current_label_in_state, image)
+
+
+        # change_text(label, vs.get_state(), image1)
+        root.geometry('1800x1014')
+        root.configure(background="red")
+        # play_gif(label)
+        audio_thread = Thread(target=change_text, args=(label, image1,))  # create thread
+        audio_thread.start()
+        # root.update()
         root.mainloop()
 
     def perform_command(self, command_code):
