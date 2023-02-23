@@ -24,10 +24,8 @@ signal_configurations = [
 ]
 
 ''' DATA ANALYSIS '''
-subject_to_analyze = 'data/2022-11-05T15-11-01.edf'
-subject_to_analyze = 'data_comparison/2023-02-21T11-53-23 visual.edf'
-subject_to_analyze = 'data_comparison/2023-02-21T11-42-40 text.edf'
-subject_to_analyze = 'data_comparison/2023-02-21T12-01-33 audio niepelne.edf'
+# subject_to_analyze = 'data/2022-11-05T15-11-01.edf'
+subject_to_analyze = 'data_s/2023-02-23T11-57-30 video nothing.edf'
 # We don't want (at least yet) to have P300 in our data
 event_beginning_offset_in_seconds = 1
 event_length_in_seconds = 4
