@@ -76,7 +76,7 @@ def collect_data():
             np.set_printoptions(suppress=True, linewidth=10000, precision=2)
             # print(np.std(samples, axis=0)) # wszystkie kanały
             #print(np.std(samples[:, [32, 33, 34]], axis=0)) # akcelerometry - dla kontroli ;-)
-            print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
+            # print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
 
             current_trial_remaining_length -= 1
             current_length_in_seconds += 1 / batches_per_second
@@ -135,5 +135,5 @@ def collect_data():
     annot = header['annotations']
     print(annot)
 
-time.sleep(10)
+time.sleep(30)
 collect_data()

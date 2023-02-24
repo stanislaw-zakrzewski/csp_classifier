@@ -14,6 +14,7 @@ valid_channel_threshold = 1e-15
 ''' DATA ACQUISITION '''
 batches_per_second = 2
 trial_count = 1
+trial_count = 10
 trial_timeout_in_seconds = 3
 trial_timeout_random_addition_in_seconds = 1
 trial_length_in_seconds = 10
@@ -76,4 +77,6 @@ port = 25002
 send_to_vr = False
 
 '''COMMANDS'''
+command_type = 'text'
 command_type = 'audio'
+command_type = 'visual'
