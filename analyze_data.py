@@ -5,8 +5,9 @@ import pandas as pd
 from classifiers.flat import process
 from config import configurations, experiment_frequency_range, subject_to_analyze
 from data_classes.subject import Subject
+from logger import log
 from preprocessing.validate_available_electrodes import validate_available_electrodes
-from visualization.accuracy_over_bands import visualize_accuracy_over_bands
+from visualization.accuracy_over_bands import visualize_accuracy_over_bands, save_visualized_accuracy_over_bands
 
 
 def get_individual_accuracy(predicions, correct):
@@ -83,17 +84,19 @@ def calculate_combined_precision(predictions, corrects):
     return numerator / denominator
 
 
-def analyze_data(bands, selected_electrodes):
+def analyze_data(bands, selected_electrodes, filepath=subject_to_analyze, classifier=process, verbose='DEBUG'):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
 
-    subject = Subject(subject_to_analyze)
+    subject = Subject(filepath)
+
     channels = validate_available_electrodes(subject, selected_electrodes)
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = process(subject,
-                                                                                                 bands, channels)
+    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = classifier(subject,
+                                                                                                    bands, channels,
+                                                                                                    verbose=verbose)
 
     for i in range(len(predictions)):
         for j in range(2):
@@ -114,11 +117,11 @@ def analyze_data(bands, selected_electrodes):
             accuracy_denumerator += 1
             if predictions[i][j] == corrects[i][j]:
                 accuracy_nominator += 1
-        accuracies.append(accuracy_nominator/accuracy_denumerator)
+        accuracies.append(accuracy_nominator / accuracy_denumerator)
         combined_accuracy_nominator += accuracy_nominator
         combined_accuracy_denumerator += accuracy_denumerator
 
-    print('Accuracy: {}'.format(combined_accuracy_nominator / combined_accuracy_denumerator))
+    log(verbose, 'INFO', 'Accuracy: {}'.format(combined_accuracy_nominator / combined_accuracy_denumerator))
 
     final_precision = [0, 0]
     final_recall = [0, 0]
@@ -134,11 +137,11 @@ def analyze_data(bands, selected_electrodes):
         else:
             final_recall[i] = recall_numerator[i] / recall_denominator[i]
 
-    print('Combined precision for movement class: {}'.format(final_precision[0]))
-    print('Combined precision for rest class: {}'.format(final_precision[1]))
+    log(verbose, 'INFO', 'Combined precision for movement class: {}'.format(final_precision[0]))
+    log(verbose, 'INFO', 'Combined precision for rest class: {}'.format(final_precision[1]))
 
-    print('Combined recall for movement class: {}'.format(final_recall[0]))
-    print('Combined recall for rest class: {}'.format(final_recall[1]))
+    log(verbose, 'INFO', 'Combined recall for movement class: {}'.format(final_recall[0]))
+    log(verbose, 'INFO', 'Combined recall for rest class: {}'.format(final_recall[1]))
 
     return accuracies
 
@@ -154,20 +157,28 @@ def configuration_to_label(config):
         channels)
 
 
-labels = list(map(configuration_to_label, configurations))
+def analyze_edf(filepath=subject_to_analyze, classifier=process, verbose='DEBUG'):
+    labels = list(map(configuration_to_label, configurations))
+    accuracy_data = {'accuracy': [], 'frequency': [], 'configuration': [], 'frequency_start': [], 'frequency_end': []}
+    for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1]):
+        for index, configuration in enumerate(configurations):
+            try:
+                accuracies = analyze_data(
+                    [(frequency, frequency + configuration['band_width'])],
+                    configuration['channels'],
+                    filepath,
+                    classifier,
+                    verbose
+                )
+                for accuracy in accuracies:
+                    accuracy_data['accuracy'].append(accuracy)
+                    accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)
+                    accuracy_data['frequency_start'].append(frequency)
+                    accuracy_data['frequency_end'].append(frequency + configuration['band_width'])
+                    accuracy_data['configuration'].append(labels[index])
+            except TypeError:
+                log(verbose, 'ERROR', 'TypeError')
 
-accuracy_data = {'accuracy': [], 'frequency': [], 'configuration': []}
-for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1]):
-    for index, configuration in enumerate(configurations):
-        accuracies = analyze_data(
-            [(frequency, frequency + configuration['band_width'])],
-            configuration['channels']
-        )
-        for accuracy in accuracies:
-            accuracy_data['accuracy'].append(accuracy)
-            accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)
-            accuracy_data['configuration'].append(labels[index])
-
-mne.set_log_level('warning')
-accuracy_data = pd.DataFrame(data=accuracy_data)
-visualize_accuracy_over_bands(accuracy_data)
+    mne.set_log_level('warning')
+    accuracy_data = pd.DataFrame(data=accuracy_data)
+    return accuracy_data
