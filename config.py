@@ -26,7 +26,7 @@ signal_configurations = [
 
 ''' DATA ANALYSIS '''
 # subject_to_analyze = 'data/2022-11-05T15-11-01.edf'
-subject_to_analyze = 'data_s/2023-02-23T11-57-30 video nothing.edf'
+subject_to_analyze = 'data_s/2023-02-23T11-57-30_observed_visual.edf'
 # We don't want (at least yet) to have P300 in our data
 event_beginning_offset_in_seconds = 1
 event_length_in_seconds = 4
@@ -55,7 +55,7 @@ accuracy_over_bands_show_standard_deviation = False
 #subject_to_visualize = 'data/2022-11-05T15-11-01.edf'
 subject_to_visualize = 'data_comparison/2023-02-21T12-01-33 visual.edf'
 subject_to_visualize = 'data_comparison/2023-02-21T11-53-23 visual.edf'
-subject_to_visualize = 'data/2023-02-23T09-39-53.edf'
+subject_to_visualize = 'data_s/2023-02-23T11-10-20_real_text.edf'
 # subject_to_visualize = 'data/2022-11-05T15-48-33.edf'
 #subject_to_visualize = 'data_comparison/2023-02-21T11-42-40 text.edf'
 '''VR'''

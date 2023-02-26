@@ -15,7 +15,7 @@ class Subject:
     """
     def __init__(self, subject_edf_path):
         self.raw = read_raw_edf(subject_edf_path, preload=True, verbose='ERROR')
-        raw_events, self.id_dict = events_from_annotations(self.raw)
+        raw_events, self.id_dict = events_from_annotations(self.raw, verbose='ERROR')
         self.events = []
         for raw_event in raw_events:
             event_start = event_beginning_offset_in_seconds * sampling_frequency
