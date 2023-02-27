@@ -1,0 +1,7 @@
+,participant,type,accuracy
+0,data_b,imagery,0.721
+1,data_b,observation,0.668
+2,data_b,real,0.994
+3,data_s,imagery,0.766
+4,data_s,observation,0.617
+5,data_s,real,0.854
