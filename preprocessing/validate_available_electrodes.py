@@ -1,6 +1,6 @@
 import numpy as np
 
-from config import valid_channel_threshold
+from config_old import valid_channel_threshold
 
 
 def validate_available_electrodes(subject, selected_channels, verbose=False):

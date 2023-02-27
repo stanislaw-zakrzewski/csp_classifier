@@ -2,7 +2,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from config import accuracy_over_bands_show_standard_deviation
+from config_old import accuracy_over_bands_show_standard_deviation
 
 '''
     `accuracy_data` needs to be an dictionary with following keys:

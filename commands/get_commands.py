@@ -4,7 +4,7 @@ from commands.audio_commands_pyaudio import AudioCommands # version based on pya
 
 from commands.text_commands import TextCommands
 from commands.visual_commands import VisualCommands
-from config import command_type
+from config_old import command_type
 
 
 def get_commands():

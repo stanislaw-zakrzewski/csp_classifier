@@ -13,7 +13,7 @@ from numpy.fft import fft, ifft
 from matplotlib import pyplot as plt
 
 from classifiers.morlet import cwt_morlet
-from config import channels2
+from config_old import channels2
 from data_classes.subject import Subject
 from tensorly.decomposition import parafac
 from tensorly import unfold, cp_to_tensor

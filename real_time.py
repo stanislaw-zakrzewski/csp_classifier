@@ -3,7 +3,7 @@ from mne.io import RawArray
 
 import pygds
 from classifiers.flat import process
-from config import real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency, \
+from config_old import real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency, \
     channels2, electrode_names, sender, send_to_vr, control
 
 

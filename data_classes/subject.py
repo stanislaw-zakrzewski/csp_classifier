@@ -1,7 +1,7 @@
 from mne import create_info, events_from_annotations
 from mne.io import read_raw_edf
 
-from config import electrode_names, sampling_frequency, event_beginning_offset_in_seconds, \
+from config_old import electrode_names, sampling_frequency, event_beginning_offset_in_seconds, \
     event_length_in_seconds, trial_length_in_seconds
 
 

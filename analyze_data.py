@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from classifiers.flat import process
-from config import configurations, experiment_frequency_range, subject_to_analyze
+from config_old import configurations, experiment_frequency_range, subject_to_analyze
 from data_classes.subject import Subject
 from logger import log
 from preprocessing.validate_available_electrodes import validate_available_electrodes

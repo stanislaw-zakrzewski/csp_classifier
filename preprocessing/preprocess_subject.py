@@ -1,6 +1,6 @@
 import numpy as np
 
-from config import use_common_average_reference
+from config_old import use_common_average_reference
 
 
 def preprocess_subject(signals):

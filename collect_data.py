@@ -7,7 +7,7 @@ from datetime import datetime
 from pyedflib import highlevel
 
 from commands.get_commands import get_commands
-from config import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
+from config_old import batches_per_second, trial_count, signal_configurations, trial_timeout_in_seconds, \
     trial_length_random_addition_in_seconds, trial_length_in_seconds, trial_timeout_random_addition_in_seconds, \
     electrode_names, sampling_frequency
 
