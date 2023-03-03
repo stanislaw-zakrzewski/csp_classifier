@@ -23,13 +23,15 @@ class Settings(Toplevel):
         self.restore_configuration(self.configurations.current_configuration)
 
         self.discard_changes_button = Button(self, text='Discard changes', command=lambda: self.restore_configuration(
-            self.configurations.current_configuration)).grid(row=2, column=0)
+            self.configurations.current_configuration)).grid(row=self.grid_row_last_index, column=1)
         self.restore_default_button = Button(self, text='Restore default configuration',
                                              command=lambda: self.restore_configuration(
-                                                 self.configurations.default_configuration)).grid(row=2, column=1)
+                                                 self.configurations.default_configuration)).grid(
+            row=self.grid_row_last_index, column=2)
         self.save_configuration_button = Button(self, text='Save configuration',
-                                                command=self.save_current_configuration).grid(row=2,
-                                                                                              column=2)
+                                                command=self.save_current_configuration).grid(
+            row=self.grid_row_last_index,
+            column=3)
 
     def get_value_from_configuration(self, configuration, key):
         try:
@@ -67,21 +69,21 @@ class Settings(Toplevel):
         self.configurations.change_current_configuration(new_configuration)
 
     @staticmethod
-    def get_depth_indicator(depth):
-        depth_text_value = '|'
+    def get_text_with_depth(depth, text):
+        depth_text_value = ''
         for _ in range(depth):
-            depth_text_value += '--'
-        return depth_text_value
+            depth_text_value += '  '
+        return depth_text_value + text
 
     def create_field(self, key, depth, structure_path):
         final_key = ".".join([*structure_path, key])
-        Label(self, text=self.get_depth_indicator(depth)).grid(
-            row=self.grid_row_last_index, column=0)
-        self.labels[final_key] = Label(self, text=configuration_label_dictionary[key]).grid(
-            row=self.grid_row_last_index, column=1)
+        label_text = self.get_text_with_depth(depth, configuration_label_dictionary[key])
+
+        self.labels[final_key] = Label(self, text=label_text, anchor="e").grid(
+            row=self.grid_row_last_index, column=0, sticky='W')
         self.values[final_key] = StringVar()
         self.inputs[final_key] = Entry(self, textvariable=self.values[final_key]).grid(
-            row=self.grid_row_last_index, column=2)
+            row=self.grid_row_last_index, column=1)
         self.grid_row_last_index += 1
         pass
 
@@ -92,13 +94,18 @@ class Settings(Toplevel):
             return 1 + max(self.get_depth(a) for a in x)
         return 0
 
-    def create_group(self, group_data, structure_path=None, current_depth=0):
+    def create_group(self, group_data, structure_path=None, current_depth=-1, current_key=None):
+        if current_key is not None:
+            Label(self, text=self.get_text_with_depth(current_depth, configuration_label_dictionary[current_key]),
+                  font="SegoeUI 9 bold").grid(row=self.grid_row_last_index, column=0, sticky='W')
+            self.grid_row_last_index += 1
+
         if structure_path is None:
             structure_path = []
 
         if self.get_depth(group_data) > 2:
             for key in group_data:
-                self.create_group(group_data[key], [*structure_path, key], current_depth + 1)
+                self.create_group(group_data[key], [*structure_path, key], current_depth + 1, key)
         else:
             for key in group_data:
                 self.create_field(key, current_depth, structure_path)
