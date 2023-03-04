@@ -1,8 +1,18 @@
 from tkinter import *
+from tkinter import filedialog as fd
 
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+
+from analyze_data import analyze_edf
 from gui.colors import colors
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 
 class AnalyzeData(Frame):
@@ -14,4 +24,36 @@ class AnalyzeData(Frame):
 
         back_to_start_page_button = Button(self, text="Back to Start Page",
                                            command=lambda: controller.show_frame(StartPage))
-        back_to_start_page_button.grid(row=2, column=1, padx=10, pady=10)
+        back_to_start_page_button.grid(row=1, column=0, padx=10, pady=10)
+
+        Button(self, text='Select EDF file', command=self.select_edf_file).grid(row=2, column=0, padx=10, pady=10)
+        self.selected_edf_file = StringVar()
+        self.selected_edf_file.set('')
+        Label(self, textvariable=self.selected_edf_file).grid(row=2, column=1)
+        Button(self, text='Analyze selected EDF', command=self.analyze_edf).grid(row=3, column=0, padx=10, pady=10)
+        self.canvas = None
+
+    def select_edf_file(self):
+        filename = fd.askopenfilename(filetypes=[("European Data Format files", "*.edf")])
+        if filename:
+            self.selected_edf_file.set(filename)
+
+    def analyze_edf(self):
+        if self.selected_edf_file.get() != '':
+            accuracy_data = analyze_edf(self.selected_edf_file.get(), verbose='ERROR')
+            figure = Figure(figsize=(20, 10))
+            ax = figure.subplots()
+            sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax)
+
+            ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
+            plt.grid()
+            if self.canvas is None:
+                self.canvas = FigureCanvasTkAgg(figure, master=self)  # A tk.DrawingArea.
+            else:
+                self.canvas.get_tk_widget().destroy()
+                self.canvas = FigureCanvasTkAgg(figure, master=self)
+            self.canvas.draw()
+            self.canvas.get_tk_widget().grid(row=4, column=0, columnspan=10)
+            toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
+            toolbar.update()
+            toolbar.grid(row=5, column=0, columnspan=10)
