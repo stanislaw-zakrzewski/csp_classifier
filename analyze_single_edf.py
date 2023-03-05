@@ -4,5 +4,5 @@ from classifiers.flat import process as csp_classifier
 from visualization.accuracy_over_bands import visualize_accuracy_over_bands
 
 
-accuracy_data = analyze_edf(classifier=parafac_classifier, verbose='ERROR')
+accuracy_data = analyze_edf(classifier=csp_classifier, verbose='ERROR')
 visualize_accuracy_over_bands(accuracy_data)

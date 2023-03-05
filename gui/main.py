@@ -36,7 +36,7 @@ class App(Tk):
 
             frame.grid(row=0, column=0, sticky="nsew")
         print(self.frames)
-        self.show_frame(StartPage)
+        self.show_frame(TestElectrodes)
         # Example of adding a video
         # self.player = Screen(self)
         # self.player.place(x=0, y=0, width=500, height=300)

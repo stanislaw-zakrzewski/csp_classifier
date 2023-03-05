@@ -41,12 +41,12 @@ class AnalyzeData(Frame):
     def analyze_edf(self):
         if self.selected_edf_file.get() != '':
             accuracy_data = analyze_edf(self.selected_edf_file.get(), verbose='ERROR')
-            figure = Figure(figsize=(20, 10))
+            figure = Figure(figsize=(25, 10))
             ax = figure.subplots()
             sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax)
 
             ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
-            plt.grid()
+            ax.grid()
             if self.canvas is None:
                 self.canvas = FigureCanvasTkAgg(figure, master=self)  # A tk.DrawingArea.
             else:
