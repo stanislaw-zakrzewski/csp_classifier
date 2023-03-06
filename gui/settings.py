@@ -89,6 +89,8 @@ class Settings(Toplevel):
 
     def get_depth(self, x):
         if type(x) is dict and x:
+            if 'type' in x.keys():
+                return 1
             return 1 + max(self.get_depth(x[a]) for a in x)
         if type(x) is list and x:
             return 1 + max(self.get_depth(a) for a in x)

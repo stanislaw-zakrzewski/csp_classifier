@@ -1,6 +1,7 @@
 from tkinter import *
 from PIL import Image, ImageTk
 
+from config.config import Configurations
 from gui.pages.start_page import StartPage
 from gui.colors import colors
 from gui.fonts import fonts
@@ -21,7 +22,7 @@ ELECTRODE_COORDINATES = {
     'F5': (368, 344),
     'F3': (446, 351),
     'F1': (524, 358),
-    'Fz': (600, 363),
+    'FZ': (600, 363),
     'F2': (680, 360),
     'F4': (758, 351),
     'F6': (834, 341),
@@ -45,7 +46,7 @@ ELECTRODE_COORDINATES = {
     'C5': (311, 543),
     'C3': (412, 544),
     'C1': (506, 547),
-    'Cz': (600, 545),
+    'CZ': (600, 545),
     'C2': (689, 545),
     'C4': (792, 545),
     'C6': (886, 546),
@@ -69,7 +70,7 @@ ELECTRODE_COORDINATES = {
     'P5': (366, 752),
     'P3': (446, 743),
     'P1': (526, 738),
-    'Pz': (600, 737),
+    'PZ': (600, 737),
     'P2': (679, 738),
     'P4': (759, 742),
     'P6': (835, 751),
@@ -93,6 +94,8 @@ class TestElectrodes(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.config(bg=colors['white_smoke'])
+        self.configurations = Configurations()
+        self.selected_electrodes = self.configurations.read('all.general.selected_electrodes')
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'], bg=colors['white_smoke'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
@@ -132,7 +135,6 @@ class TestElectrodes(Frame):
             hitbox = canvas.create_rectangle(x0, y0, x1, y1, outline='blue', width=0, tags=tag,
                                              stipple='@transparent.xbm', fill='gray')
             circle = canvas.create_oval(x0, y0, x1, y1, outline='red', width=5, tags=tag)
-            print(circle)
             return {'hitbox': hitbox, 'circle': circle}
 
         #
@@ -153,10 +155,11 @@ class TestElectrodes(Frame):
                 self.l.config(text=self.selected_electrode_code)
 
         for electrode in ELECTRODE_COORDINATES:
-            electrode_x, electrode_y = ELECTRODE_COORDINATES[electrode]
-            self.electrode_indicators[electrode] = create_circle(electrode_x, electrode_y, electrodes_canvas, electrode)
+            if electrode in self.selected_electrodes:
+                electrode_x, electrode_y = ELECTRODE_COORDINATES[electrode]
+                self.electrode_indicators[electrode] = create_circle(electrode_x, electrode_y, electrodes_canvas, electrode)
 
-            electrodes_canvas.tag_bind(electrode, "<Button-1>", lambda event='', dup_el=electrode: change_color(dup_el))
+                electrodes_canvas.tag_bind(electrode, "<Button-1>", lambda event='', dup_el=electrode: change_color(dup_el))
 
             # Button(frame2, text="Change Color", command=change_color).place(x=600, y=600)
         # l.place(x=600,y=600)
