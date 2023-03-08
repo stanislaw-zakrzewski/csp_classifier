@@ -107,6 +107,7 @@ def collect_data():
 
     last = datetime.now()
     all = datetime.now()
+    start_date = datetime.now()
     d.GetData(d.SamplingRate // batches_per_second, processCallback)
     d.Close()
 
@@ -121,7 +122,7 @@ def collect_data():
     sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency, physical_max=2000000,
                                                 physical_min=-2000000)
 
-    header = highlevel.make_header(patientname='patient_x', gender='Male')
+    header = highlevel.make_header(patientname='patient_x', gender='Male', startdate=start_date)
     header.update({'annotations': annotations})
 
     # commands = get_commands()

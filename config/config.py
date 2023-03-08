@@ -1,4 +1,5 @@
 import json
+from json.decoder import JSONDecodeError
 
 
 class Singleton(type):
@@ -55,14 +56,18 @@ class Configurations(metaclass=Singleton):
     @staticmethod
     def load_configuration(path):
         with open(path) as configuration_file:
-            return json.loads(configuration_file.read())
+            try:
+                return json.loads(configuration_file.read())
+            except JSONDecodeError:
+                return {}
 
     @staticmethod
     def parse_value(element):
-        if element['type'] == 'list':
-            return element['value']
-        if element['type'] == 'int':
-            return int(element['value'])
+        if element:
+            if element['type'] == 'list':
+                return element['value']
+            if element['type'] == 'int':
+                return int(element['value'])
 
     def change_current_configuration(self, configuration_data):
         self.current_configuration = configuration_data
