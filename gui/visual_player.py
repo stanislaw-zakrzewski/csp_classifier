@@ -18,18 +18,18 @@ class Screen(tk.Frame):
         self.instance = vlc.Instance('--input-repeat=999999')
         self.player = self.instance.media_player_new()
 
-        def change(rt):
-            n = 0
-            while True:
-                print('leci', n)
-                n+=1
-                time.sleep(1/100)
-                # Media = rt.instance.media_new("commands//visual_commands//rest.png")
-                # rt.player.set_media(Media)
-                # rt.player.play()
-
-        audio_thread = Thread(target=change, args=(self,))  # create thread
-        audio_thread.start()
+        # def change(rt):
+        #     n = 0
+        #     while True:
+        #         print('leci', n)
+        #         n+=1
+        #         time.sleep(1/100)
+        #         # Media = rt.instance.media_new("commands//visual_commands//rest.png")
+        #         # rt.player.set_media(Media)
+        #         # rt.player.play()
+        #
+        # audio_thread = Thread(target=change, args=(self,))  # create thread
+        # audio_thread.start()
 
     def GetHandle(self):
         # Getting frame ID

@@ -1,9 +1,6 @@
-try:
-    import tkinter as tk
-    from tkinter import ttk
-except ImportError:
-    import Tkinter as tk
-    import ttk
+
+import tkinter as tk
+from tkinter import ttk
 
 
 class DoubleScrolledFrame:
@@ -21,6 +18,7 @@ class DoubleScrolledFrame:
     def __init__(self, master, **kwargs):
         width = kwargs.pop('width', None)
         height = kwargs.pop('height', None)
+        print(width, height)
         self.outer = tk.Frame(master, **kwargs)
 
         self.vsb = ttk.Scrollbar(self.outer, orient=tk.VERTICAL)
@@ -57,20 +55,29 @@ class DoubleScrolledFrame:
             return getattr(self.inner, item)
 
     def _on_frame_configure(self, event=None):
-        x1, y1, x2, y2 = self.canvas.bbox("all")
-        height = self.canvas.winfo_height()
-        width = self.canvas.winfo_width()
-        self.canvas.config(scrollregion=(0, 0, max(x2, width), max(y2, height)))
+        try:
+            x1, y1, x2, y2 = self.canvas.bbox("all")
+            height = self.canvas.winfo_height()
+            width = self.canvas.winfo_width()
+            self.canvas.config(scrollregion=(0, 0, max(x2, width), max(y2, height)))
+        except AttributeError:
+            pass
 
     def _bind_mouse(self, event=None):
-        self.canvas.bind_all("<4>", self._on_mousewheel)
-        self.canvas.bind_all("<5>", self._on_mousewheel)
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        try:
+            self.canvas.bind_all("<4>", self._on_mousewheel)
+            self.canvas.bind_all("<5>", self._on_mousewheel)
+            self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        except AttributeError:
+            pass
 
     def _unbind_mouse(self, event=None):
-        self.canvas.unbind_all("<4>")
-        self.canvas.unbind_all("<5>")
-        self.canvas.unbind_all("<MouseWheel>")
+        try:
+            self.canvas.unbind_all("<4>")
+            self.canvas.unbind_all("<5>")
+            self.canvas.unbind_all("<MouseWheel>")
+        except AttributeError:
+            pass
 
     def _on_mousewheel(self, event):
         """Linux uses event.num; Windows / Mac uses event.delta"""
@@ -82,25 +89,3 @@ class DoubleScrolledFrame:
 
     def __str__(self):
         return str(self.outer)
-
-
-#  **** SCROLL BAR TEST *****
-alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Scrollbar Test")
-    root.geometry('400x500')
-    lbl = tk.Label(root, text="Hold shift while using the scroll wheel to scroll horizontally")
-    lbl.pack()
-
-    # use the Scrolled Frame just like any other Frame
-    frame = DoubleScrolledFrame(root, width=300, borderwidth=2, relief=tk.SUNKEN, background="light gray")
-    # frame.grid(column=0, row=0, sticky='nsew') # fixed size
-    frame.pack(fill=tk.BOTH, expand=True)  # fill window
-
-    for i in range(30):
-        for j in range(20):
-            label = tk.Label(frame, text="{}{}".format(alphabet[j], i), relief='ridge')
-            label.grid(column=j, row=i, sticky='ew', padx=2, pady=2)
-
-    root.mainloop()

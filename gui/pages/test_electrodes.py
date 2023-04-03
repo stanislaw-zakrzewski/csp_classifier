@@ -5,6 +5,7 @@ from config.config import Configurations
 from gui.pages.start_page import StartPage
 from gui.colors import colors
 from gui.fonts import fonts
+from gui.components.double_scrolled_frame import DoubleScrolledFrame
 
 ELECTRODE_COORDINATES = {
     'Fp1': (479, 185),
@@ -89,10 +90,10 @@ ELECTRODE_COORDINATES = {
 }
 
 
-class TestElectrodes(Frame):
+class TestElectrodes(DoubleScrolledFrame):
 
     def __init__(self, parent, controller):
-        Frame.__init__(self, parent)
+        DoubleScrolledFrame.__init__(self, parent)
         self.config(bg=colors['white_smoke'])
         self.configurations = Configurations()
         self.selected_electrodes = self.configurations.read('all.general.selected_electrodes')

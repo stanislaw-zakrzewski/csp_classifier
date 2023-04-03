@@ -1,14 +1,15 @@
 from tkinter import *
 
 from gui.colors import colors
+from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 
-GRID_COLUMN_THRESHOLD = 4
+GRID_COLUMN_THRESHOLD = 3
 
 
-class StartPage(Frame):
+class StartPage(DoubleScrolledFrame):
     def __init__(self, parent, controller, pages):
-        Frame.__init__(self, parent)
+        DoubleScrolledFrame.__init__(self, parent)
         self.config(bg=colors['white_smoke'])
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'], bg=colors['white_smoke'])
@@ -27,6 +28,6 @@ class StartPage(Frame):
 
             self.buttons[page['name']].grid(row=current_grid_row, column=current_grid_column, padx=10, pady=10)
             current_grid_column += 1
-            if current_grid_column > GRID_COLUMN_THRESHOLD:
+            if current_grid_column >= GRID_COLUMN_THRESHOLD:
                 current_grid_row += 1
                 current_grid_column = 0

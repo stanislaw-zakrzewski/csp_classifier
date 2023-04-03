@@ -12,9 +12,31 @@ from gui.colors import colors
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
+from gui.visual_player import Screen
 
 
-class AnalyzeData(DoubleScrolledFrame):
+class PromptViewer(Toplevel):
+    def __init__(self, root):
+        Toplevel.__init__(self, root)
+        self.grab_set()
+        self.title("Browse annotations for")
+        self.geometry("500x500")
+
+        table = DoubleScrolledFrame(self)
+
+        Label(table, text='Start (s)').grid(row=0, column=0)
+        Label(table, text='Length (s)').grid(row=0, column=1)
+        Label(table, text='Label').grid(row=0, column=2)
+
+        # row_index = 1
+        # for annotation in annotations:
+        #     Label(table, text=annotation[0]).grid(row=row_index, column=0)
+        #     Label(table, text=annotation[1]).grid(row=row_index, column=1)
+        #     Label(table, text=annotation[2]).grid(row=row_index, column=2)
+        #     row_index += 1
+        table.pack(side="top", fill="both", expand=True)
+
+class CollectData(DoubleScrolledFrame):
     def __init__(self, parent, controller):
         DoubleScrolledFrame.__init__(self, parent)
 
@@ -29,8 +51,19 @@ class AnalyzeData(DoubleScrolledFrame):
         self.selected_edf_file = StringVar()
         self.selected_edf_file.set('')
         Label(self, textvariable=self.selected_edf_file).grid(row=2, column=1)
-        Button(self, text='Analyze selected EDF', command=self.analyze_edf).grid(row=3, column=0, padx=10, pady=10)
+        Button(self, text='Prepare data collection', command=self.open_prompt_window).grid(row=3, column=0, padx=10, pady=10)
         self.canvas = None
+        # self.player = Screen(self)
+        # self.player.place(x=0, y=0, width=500, height=300)
+        # self.player.play('commands//visual_commands//left.mov')
+
+    def open_prompt_window(self):
+
+        # Toplevel object which will
+        # be treated as a new window
+        newWindow = PromptViewer(self)
+
+
 
     def select_edf_file(self):
         filename = fd.askopenfilename(filetypes=[("European Data Format files", "*.edf")])

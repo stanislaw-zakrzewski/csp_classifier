@@ -3,6 +3,8 @@ from tkinter import *
 from gui.menu.menu import ApplicationMenu
 from gui.pages.analyze_data import AnalyzeData
 from gui.pages.browse_recordings import BrowseRecordings
+from gui.pages.collect_data import CollectData
+from gui.pages.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from gui.pages.test_electrodes import TestElectrodes
 
@@ -17,7 +19,9 @@ class App(Tk):
         pages = [
             {'name': 'Test Electrodes', 'frame': TestElectrodes},
             {'name': 'Analyze Data', 'frame': AnalyzeData},
+            {'name': 'Collect Data', 'frame': CollectData},
             {'name': 'Browse Recordings', 'frame': BrowseRecordings},
+            {'name': 'Prompt Viewer', 'frame': PromptViewer},
         ]
 
         container = Frame(self)
@@ -38,7 +42,7 @@ class App(Tk):
 
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame(BrowseRecordings)
+        self.show_frame(StartPage)
         # Example of adding a video
         # self.player = Screen(self)
         # self.player.place(x=0, y=0, width=500, height=300)
