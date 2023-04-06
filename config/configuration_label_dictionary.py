@@ -3,5 +3,6 @@ configuration_label_dictionary = {
     'valid_channel_threshold': 'Valid Channel Threshold',
     'selected_electrodes': 'Selected Electrodes',
     'all': 'All',
-    'general': 'General'
+    'general': 'General',
+    'collect_data': 'Collect Data'
 }

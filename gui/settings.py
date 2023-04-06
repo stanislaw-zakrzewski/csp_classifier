@@ -3,6 +3,7 @@ from tkinter import *
 
 from config.config import Configurations
 from config.configuration_label_dictionary import configuration_label_dictionary
+from gui.components.double_scrolled_frame import DoubleScrolledFrame
 
 
 class Settings(Toplevel):
@@ -12,6 +13,7 @@ class Settings(Toplevel):
         self.title("Settings")
         self.geometry("600x800")
         self.grab_set()
+        self.scroll_frame = DoubleScrolledFrame(self)
 
         self.grid_row_last_index = 0
         self.labels = {}
@@ -22,7 +24,7 @@ class Settings(Toplevel):
 
         self.create_group(self.configurations.default_configuration)
 
-        button_frame = Frame(self)
+        button_frame = Frame(self.scroll_frame)
         button_frame.grid(row=self.grid_row_last_index, column=0, columnspan=10)
 
         self.restore_configuration(self.configurations.current_configuration)
@@ -40,6 +42,7 @@ class Settings(Toplevel):
         self.save_configuration_button = Button(button_frame, text='Save configuration',
                                                 command=self.save_current_configuration)
         self.save_configuration_button.grid(row=self.grid_row_last_index, column=3, padx=10, pady=10)
+        self.scroll_frame.pack(side="top", fill="both", expand=True)
 
     def get_value_from_configuration(self, configuration, key):
         try:
@@ -90,11 +93,11 @@ class Settings(Toplevel):
     def create_text_entry(self, final_key):
         self.values[final_key] = None
         self.string_values[final_key] = StringVar()
-        self.inputs[final_key] = Entry(self, textvariable=self.string_values[final_key])
+        self.inputs[final_key] = Entry(self.scroll_frame, textvariable=self.string_values[final_key])
         self.inputs[final_key].grid(row=self.grid_row_last_index, column=1, sticky=W)
 
     def create_list_entry(self, final_key, values):
-        f = Frame(self)
+        f = Frame(self.scroll_frame)
         f.grid(row=self.grid_row_last_index, column=1)
 
         self.string_values[final_key] = StringVar(value=values)
@@ -125,9 +128,9 @@ class Settings(Toplevel):
 
     def create_field(self, key, depth, structure_path, val):
         final_key = ".".join([*structure_path, key])
-        label_text = self.get_text_with_depth(depth, configuration_label_dictionary[key])
+        label_text = self.get_text_with_depth(depth, self.get_label(key))
 
-        self.labels[final_key] = Label(self, text=label_text, anchor="e").grid(
+        self.labels[final_key] = Label(self.scroll_frame, text=label_text, anchor="e").grid(
             row=self.grid_row_last_index, column=0, sticky='W')
         if type(val['value']) is list:
             self.create_list_entry(final_key, val['value'])
@@ -148,9 +151,15 @@ class Settings(Toplevel):
             return 1 + max(self.get_depth(a) for a in x)
         return 0
 
+    def get_label(self, key):
+        try:
+            return configuration_label_dictionary[key]
+        except KeyError:
+            return key
+
     def create_group(self, group_data, structure_path=None, current_depth=-1, current_key=None):
         if current_key is not None:
-            Label(self, text=self.get_text_with_depth(current_depth, configuration_label_dictionary[current_key]),
+            Label(self.scroll_frame, text=self.get_text_with_depth(current_depth, self.get_label(current_key)),
                   font="SegoeUI 9 bold").grid(row=self.grid_row_last_index, column=0, sticky='W')
             self.grid_row_last_index += 1
 

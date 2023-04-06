@@ -1,1 +1,15 @@
-{"all": {"general": {"sampling_rate": {"type": "int", "value": "250"}, "valid_channel_threshold": {"type": "float", "value": "1e-15"}, "selected_electrodes": {"type": "list", "value": ["C1", "C2", "C5", "C3", "C4", "C6", "FC3", "CP3", "FC4", "CP4", "CZ"]}}}}
+{
+    "all": {
+        "general": {
+            "sampling_rate": { "type": "int", "value": "250" },
+            "valid_channel_threshold": { "type": "float", "value": "1e-15" },
+            "selected_electrodes": { "type": "list", "value": ["C1", "C2", "C5", "C3", "C4", "C6", "FC3", "CP3", "FC4", "CP4", "CZ"] }
+            },
+        "collect_data": {
+            "labels": { "type": "list", "value": ["left", "right", "movement"]},
+            "trial_count": { "type": "int", "value": "3" },
+            "pause_length": { "type": "int", "value": "2"},
+            "trial_length": { "type": "int", "value": "5"}
+        }
+    }
+}
