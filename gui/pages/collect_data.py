@@ -122,13 +122,6 @@ class CollectData(DoubleScrolledFrame):
                 self.update_experiment_timeline_plot()
             else:
                 break
-        # for queue_element in self.queue:
-        #     print(self.prompt_viewer.closed)
-        #     if not self.prompt_viewer.closed:
-        #         self.prompt_viewer.change_prompt(queue_element[0])
-        #         time.sleep(queue_element[1])
-        #         elapsed += queue_element[1]
-        #     self.show_plt(elapsed)
         if not self.prompt_viewer.closed:
             self.prompt_viewer.change_prompt('end')
         else:

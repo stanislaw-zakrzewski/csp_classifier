@@ -1,11 +1,14 @@
 from tkinter import *
 
+from commands.audio_commands_pyaudio import AudioCommands
+from config.config import Configurations
 from gui.visual_player import Screen
 
 
 class PromptViewer(Toplevel):
     def __init__(self, root, start_command, close_command):
         Toplevel.__init__(self, root)
+        self.configurations = Configurations()
         self.title("Browse annotations for")
         self.geometry("1200x720")
 
@@ -16,9 +19,21 @@ class PromptViewer(Toplevel):
         self.current_prompt_code = None
         self.closed = False
         self.queue_canvas = None
+        self.prompt_label = None
+        self.prompt_label_text = None
 
         self.close_command = close_command
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.audio_commands = AudioCommands()
+
+        self.prompt_type = self.configurations.read('all.collect_data.prompt_type')
+        print(self.prompt_type)
+        if self.prompt_type == 'visual':
+            self.change_prompt = self.set_visual_prompt
+        elif self.prompt_type == 'audio':
+            self.change_prompt = self.set_audio_prompt
+        else:  # text prompt
+            self.change_prompt = self.set_text_prompt
 
     def start_acquisition(self, start_command):
         start_command()
@@ -33,7 +48,7 @@ class PromptViewer(Toplevel):
             self.destroy()
             self.close_command()
 
-    def change_prompt(self, prompt_code):
+    def set_visual_prompt(self, prompt_code):
         if prompt_code == self.current_prompt_code:
             return
 
@@ -55,3 +70,54 @@ class PromptViewer(Toplevel):
             self.player.play('commands//visual_commands//end.jpg')
 
         self.current_prompt_code = prompt_code
+
+    def set_audio_prompt(self, prompt_code):
+        if prompt_code == self.current_prompt_code:
+            return
+
+        if self.prompt_label is None:
+            self.prompt_label_text = StringVar()
+            self.prompt_label_text.set('BREAK')
+            self.prompt_label = Label(self, textvariable=self.prompt_label_text, font=("Segoe UI", 70))
+            self.prompt_label.pack(side='top', fill='both', expand=True)
+
+        if prompt_code == 'movement':
+            self.audio_commands.perform_command('movement')
+        if prompt_code == 'left':
+            self.audio_commands.perform_command('left')
+        if prompt_code == 'right':
+            self.audio_commands.perform_command('right')
+        elif prompt_code == 'rest':
+            self.audio_commands.perform_command('rest')
+        elif prompt_code == 'break':
+            self.audio_commands.perform_command('pause')
+        elif prompt_code == 'end':
+            self.audio_commands.perform_command('end')
+
+        self.current_prompt_code = prompt_code
+
+    def set_text_prompt(self, prompt_code):
+        if prompt_code == self.current_prompt_code:
+            return
+
+        if self.prompt_label is None:
+            self.prompt_label_text = StringVar()
+            self.prompt_label_text.set('BREAK')
+            self.prompt_label = Label(self, textvariable=self.prompt_label_text, font=("Segoe UI", 70))
+            self.prompt_label.pack(side='top', fill='both', expand=True)
+
+        if prompt_code == 'movement':
+            self.prompt_label_text.set('MOVEMENT')
+        if prompt_code == 'left':
+            self.prompt_label_text.set('LEFT')
+        if prompt_code == 'right':
+            self.prompt_label_text.set('RIGHT')
+        elif prompt_code == 'rest':
+            self.prompt_label_text.set('REST')
+        elif prompt_code == 'break':
+            self.prompt_label_text.set('BREAK')
+        elif prompt_code == 'end':
+            self.prompt_label_text.set('END')
+
+        self.current_prompt_code = prompt_code
+

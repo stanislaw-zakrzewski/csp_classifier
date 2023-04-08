@@ -68,6 +68,8 @@ class Configurations(metaclass=Singleton):
                 return element['value']
             if element['type'] == 'int':
                 return int(element['value'])
+            if element['type'] == 'string':
+                return element['value']
 
     def change_current_configuration(self, configuration_data):
         self.current_configuration = configuration_data
