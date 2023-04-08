@@ -1,106 +1,58 @@
-try:
-    import tkinter as tk
-    from tkinter import ttk
-except ImportError:
-    import Tkinter as tk
-    import ttk
+# Matplotlib
+# https://www.geeksforgeeks.org/python-basic-gantt-chart-using-matplotlib/
+# https://matplotlib.org/devdocs/api/_as_gen/matplotlib.pyplot.broken_barh.html
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-class DoubleScrolledFrame:
-    """
-    A vertically scrolled Frame that can be treated like any other Frame
-    ie it needs a master and layout and it can be a master.
-    keyword arguments are passed to the underlying Frame
-    except the keyword arguments 'width' and 'height', which
-    are passed to the underlying Canvas
-    note that a widget layed out in this frame will have Canvas as self.master,
-    if you subclass this there is no built in way for the children to access it.
-    You need to provide the controller separately.
-    """
+source = pd.DataFrame([
+    {"drama": "Pride and Prejudice", "start": '1795-01-01', "end": '1810-01-01'},
+    {"drama": "Sense and Sensibility", "start": '1792-01-01', "end": '1797-01-01'},
+    {"drama": "Jane Eyre", "start": '1799-01-01', "end": '1819-01-01'},
+    {"drama": "Bridgerton", "start": '1813-01-01', "end": '1827-01-01'},
+    {"drama": "Middlemarch", "start": '1829-01-01', "end": '1832-01-01'},
+    {"drama": "Cranford", "start": '1842-01-01', "end": '1843-01-01'},
+    {"drama": "David Copperfield", "start": '1840-01-01', "end": '1860-01-01'},
+    {"drama": "Poldark", "start": '1781-01-01', "end": '1801-01-01'},
+    {"drama": "North and South", "start": '1850-01-01', "end": '1860-01-01'},
+    {"drama": "Barchester Chronicles", "start": '1855-01-01', "end": '1867-02-01'},
+    {"drama": "The Way We Live Now", "start": '1870-01-01', "end": '1880-02-01'},
+    {"drama": "Tess of the D’Urbervilles", "start": '1880-01-01', "end": '1890-02-01'},
+    {"drama": "Upstairs, Downstairs", "start": '1903-01-01', "end": '1930-02-01'},
+    {"drama": "Downton Abbey", "start": '1912-01-01', "end": '1939-02-01'},
+    {"drama": "Jewel in the Crown", "start": '1942-01-01', "end": '1947-02-01'},
+    {"drama": "Poldark", "start": '1957-01-01', "end": '1967-02-01'},
 
-    def __init__(self, master, **kwargs):
-        width = kwargs.pop('width', None)
-        height = kwargs.pop('height', None)
-        self.outer = tk.Frame(master, **kwargs)
+])
 
-        self.vsb = ttk.Scrollbar(self.outer, orient=tk.VERTICAL)
-        self.vsb.grid(row=0, column=1, sticky='ns')
-        self.hsb = ttk.Scrollbar(self.outer, orient=tk.HORIZONTAL)
-        self.hsb.grid(row=1, column=0, sticky='ew')
-        self.canvas = tk.Canvas(self.outer, highlightthickness=0, width=width, height=height)
-        self.canvas.grid(row=0, column=0, sticky='nsew')
-        self.outer.rowconfigure(0, weight=1)
-        self.outer.columnconfigure(0, weight=1)
-        self.canvas['yscrollcommand'] = self.vsb.set
-        self.canvas['xscrollcommand'] = self.hsb.set
-        # mouse scroll does not seem to work with just "bind"; You have
-        # to use "bind_all". Therefore to use multiple windows you have
-        # to bind_all in the current widget
-        self.canvas.bind("<Enter>", self._bind_mouse)
-        self.canvas.bind("<Leave>", self._unbind_mouse)
-        self.vsb['command'] = self.canvas.yview
-        self.hsb['command'] = self.canvas.xview
+source['start'] = pd.to_datetime(source['start'])
+source['end'] = pd.to_datetime(source['end'])
+source['diff'] = source['end'] - source['start']
 
-        self.inner = tk.Frame(self.canvas)
-        # pack the inner Frame into the Canvas with the topleft corner 4 pixels offset
-        self.canvas.create_window(4, 4, window=self.inner, anchor='nw')
-        self.inner.bind("<Configure>", self._on_frame_configure)
+# Declaring a figure "gnt"
+fig, gnt = plt.subplots(figsize=(8, 6))
 
-        self.outer_attr = set(dir(tk.Widget))
+# Need to fix hidden tick labels
+# https://stackoverflow.com/questions/43673659/matplotlib-not-showing-first-label-on-x-axis-for-the-bar-plot
 
-    def __getattr__(self, item):
-        if item in self.outer_attr:
-            # geometry attributes etc (eg pack, destroy, tkraise) are passed on to self.outer
-            return getattr(self.outer, item)
-        else:
-            # all other attributes (_w, children, etc) are passed to self.inner
-            return getattr(self.inner, item)
+y_tick_labels = source.drama.values
+y_pos = np.arange(len(y_tick_labels))
 
-    def _on_frame_configure(self, event=None):
-        x1, y1, x2, y2 = self.canvas.bbox("all")
-        height = self.canvas.winfo_height()
-        width = self.canvas.winfo_width()
-        self.canvas.config(scrollregion=(0, 0, max(x2, width), max(y2, height)))
+gnt.set_yticks(y_pos)
+gnt.set_yticklabels(y_tick_labels)
 
-    def _bind_mouse(self, event=None):
-        self.canvas.bind_all("<4>", self._on_mousewheel)
-        self.canvas.bind_all("<5>", self._on_mousewheel)
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-
-    def _unbind_mouse(self, event=None):
-        self.canvas.unbind_all("<4>")
-        self.canvas.unbind_all("<5>")
-        self.canvas.unbind_all("<MouseWheel>")
-
-    def _on_mousewheel(self, event):
-        """Linux uses event.num; Windows / Mac uses event.delta"""
-        func = self.canvas.xview_scroll if event.state & 1 else self.canvas.yview_scroll
-        if event.num == 4 or event.delta > 0:
-            func(-1, "units")
-        elif event.num == 5 or event.delta < 0:
-            func(1, "units")
-
-    def __str__(self):
-        return str(self.outer)
-
-
-#  **** SCROLL BAR TEST *****
-alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Scrollbar Test")
-    root.geometry('400x500')
-    lbl = tk.Label(root, text="Hold shift while using the scroll wheel to scroll horizontally")
-    lbl.pack()
-
-    # use the Scrolled Frame just like any other Frame
-    frame = DoubleScrolledFrame(root, width=300, borderwidth=2, relief=tk.SUNKEN, background="light gray")
-    # frame.grid(column=0, row=0, sticky='nsew') # fixed size
-    frame.pack(fill=tk.BOTH, expand=True)  # fill window
-
-    for i in range(30):
-        for j in range(20):
-            label = tk.Label(frame, text="{}{}".format(alphabet[j], i), relief='ridge')
-            label.grid(column=j, row=i, sticky='ew', padx=2, pady=2)
-
-    root.mainloop()
+# https://sparkbyexamples.com/python/iterate-over-rows-in-pandas-dataframe/
+# https://www.tutorialspoint.com/plotting-dates-on-the-x-axis-with-python-s-matplotlib
+# https://matplotlib.org/stable/gallery/color/named_colors.html
+# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.sort_values.html
+# https://www.geeksforgeeks.org/how-to-annotate-matplotlib-scatter-plots
+for index, row in source.sort_values(by='start').reset_index().iterrows():
+    start_year = int(row.start.strftime("%Y"))
+    duration = row['diff'].days / 365
+    gnt.broken_barh([(start_year, duration)],
+                    (index - 0.5, 0.8),
+                    facecolors=('tan'),
+                    label=row.drama)
+    gnt.text(start_year + 0.5, index - 0.2, row.drama)
+plt.show()

@@ -18,7 +18,6 @@ class DoubleScrolledFrame:
     def __init__(self, master, **kwargs):
         width = kwargs.pop('width', None)
         height = kwargs.pop('height', None)
-        print(width, height)
         self.outer = tk.Frame(master, **kwargs)
 
         self.vsb = ttk.Scrollbar(self.outer, orient=tk.VERTICAL)

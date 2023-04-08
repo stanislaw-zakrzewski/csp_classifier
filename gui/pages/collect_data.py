@@ -1,94 +1,27 @@
-import time
+import copy
 import random
+import time
 from threading import Thread
 from tkinter import *
-from tkinter import filedialog as fd
 
-import matplotlib.ticker as ticker
-import seaborn as sns
-from matplotlib.backends._backend_tk import NavigationToolbar2Tk
+import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from analyze_data import analyze_edf
 from config.config import Configurations
 from gui.colors import colors
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
+from gui.pages.collect_data_components.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
-from gui.visual_player import Screen
-from tkinter import messagebox
-import numpy as np
-
-
-class VisualState:
-    def __init__(self, initial_state):
-        self.state = initial_state
-
-    def set_state(self, new_state):
-        self.state = new_state
-
-    def get_state(self):
-        return self.state
-
-
-class PromptViewer(Toplevel):
-    def __init__(self, root, start_command):
-        Toplevel.__init__(self, root)
-        self.grab_set()
-        self.title("Browse annotations for")
-        self.geometry("1200x720")
-
-        self.start_button = Button(self, text='START ACQUISITION',
-                                   command=lambda: self.start_acquisition(start_command))
-        self.start_button.place(relx=.5, rely=.5, anchor=CENTER)
-        self.player = None
-        self.current_prompt_code = None
-        self.closed = False
-
-        def on_closing():
-            if self.player:
-                self.player.stop()
-                self.closed = True
-                self.destroy()
-
-
-        self.protocol("WM_DELETE_WINDOW", on_closing)
-
-    def start_acquisition(self, start_command):
-        start_command()
-        self.start_button.destroy()
-
-    def change_prompt(self, prompt_code):
-        if prompt_code == self.current_prompt_code:
-            return
-
-        if self.player is None:
-            self.player = Screen(self)
-            self.player.pack(side='top', fill='both', expand=True)
-
-        if prompt_code == 'movement':
-            self.player.play('commands//visual_commands//movement.mov')
-        if prompt_code == 'left':
-            self.player.play('commands//visual_commands//left.mov')
-        if prompt_code == 'right':
-            self.player.play('commands//visual_commands//right.mov')
-        elif prompt_code == 'rest':
-            self.player.play('commands//visual_commands//rest.png')
-        elif prompt_code == 'break':
-            self.player.play('commands//visual_commands//pause.jpg')
-        elif prompt_code == 'end':
-            self.player.play('commands//visual_commands//end.jpg')
-
-        self.current_prompt_code = prompt_code
 
 
 class CollectData(DoubleScrolledFrame):
     def __init__(self, parent, controller):
         DoubleScrolledFrame.__init__(self, parent)
-        self.visual_state = VisualState('rest')
         self.configurations = Configurations()
-        self.create_queue()
+        self.queue = None
+        self.current_queue = None
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'], bg=colors['white_smoke'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
@@ -97,31 +30,109 @@ class CollectData(DoubleScrolledFrame):
                                            command=lambda: controller.show_frame(StartPage))
         back_to_start_page_button.grid(row=1, column=0, padx=10, pady=10)
 
-        Button(self, text='Prepare data collection', command=self.open_prompt_window).grid(row=3, column=0, padx=10,
-                                                                                           pady=10)
-        self.canvas = None
+        self.prepare_experiment = Button(self, text='Prepare experiment', command=self.open_prompt_window)
+        self.prepare_experiment.grid(row=3, column=0, padx=10, pady=10)
+
+        self.acquisition_thread = None
+        self.queue_canvas = None
+
+        self.plot_canvas = None
         self.prompt_viewer = None
-        self.queue = None
-        # self.player = Screen(self)
-        # self.player.place(x=0, y=0, width=500, height=300)
-        # self.player.play('commands//visual_commands//left.mov')
+
+        self.fig = None
+        self.gnt = None
+        self.labels = None
 
     def open_prompt_window(self):
-        self.prompt_viewer = PromptViewer(self, self.start_acquisition)
+        self.create_queue()
+        self.prompt_viewer = PromptViewer(self, self.start_acquisition, self.on_prompt_viewer_close)
+        self.update_experiment_timeline_plot()
+        self.prepare_experiment['state'] = DISABLED
+
+    def on_prompt_viewer_close(self):
+        self.prepare_experiment['state'] = NORMAL
+        self.queue = None
+        self.current_queue = None
+        self.plot_canvas.get_tk_widget().destroy()
+        self.plot_canvas = None
+        self.fig = None
+        self.gnt = None
+
+    def update_experiment_timeline_plot(self):
+        if self.current_queue is None:
+            return
+
+        if self.fig is None:
+            self.fig = Figure(figsize=(25, 10))
+        if self.gnt is None:
+            self.gnt = self.fig.subplots()
+            self.gnt.set_xlabel('seconds since start')
+            self.gnt.set_ylabel('Prompt')
+        else:
+            self.gnt.clear()
+
+        # Prepare data for plot
+        data = {}
+        previous_time_end = 0
+        for item in self.current_queue:
+            if item[0] not in data:
+                data[item[0]] = []
+            data[item[0]].append((previous_time_end, item[1]))
+            previous_time_end += item[1]
+        if self.labels is None:
+            self.labels = data.keys()
+
+        yticks = []
+        for i in range(len(self.labels)):
+            yticks.append(5 + i * 10)
+        self.gnt.set_yticks(yticks)
+
+        # Set limits
+        self.gnt.set_ylim(0, yticks[-1] + 5)
+        self.gnt.set_xlim(0, 40)
+
+        self.gnt.set_yticklabels(self.labels)
+        self.gnt.grid(True)
+
+        for index, item in enumerate(self.labels):
+            if item in data:
+                self.gnt.broken_barh(data[item], (index * 10, 9))
+
+        if self.plot_canvas is None:
+            self.plot_canvas = FigureCanvasTkAgg(self.fig, master=self)
+            self.plot_canvas.get_tk_widget().grid(row=4, column=0, columnspan=10)
+        else:
+            self.plot_canvas.draw()
 
     def start_acquisition(self):
-        self.create_queue()
-        acquisition_thread = Thread(target=self.run_acquisition)
-        acquisition_thread.start()
+        self.acquisition_thread = Thread(target=self.run_acquisition)
+        self.acquisition_thread.start()
+        self.queue_canvas = Canvas(self)
+        self.update_experiment_timeline_plot()
 
     def run_acquisition(self):
-        for queue_element in self.queue:
-            print(self.prompt_viewer.closed)
+        while self.current_queue is not None and len(self.current_queue) > 0:
+            item = self.current_queue[0]
             if not self.prompt_viewer.closed:
-                self.prompt_viewer.change_prompt(queue_element[0])
-                time.sleep(queue_element[1])
+                self.prompt_viewer.change_prompt(item[0])
+                time.sleep(.5)
+                item[1] -= .5
+                if item[1] < .5 and self.current_queue is not None:
+                    self.current_queue.pop(0)
+                self.update_experiment_timeline_plot()
+            else:
+                break
+        # for queue_element in self.queue:
+        #     print(self.prompt_viewer.closed)
+        #     if not self.prompt_viewer.closed:
+        #         self.prompt_viewer.change_prompt(queue_element[0])
+        #         time.sleep(queue_element[1])
+        #         elapsed += queue_element[1]
+        #     self.show_plt(elapsed)
         if not self.prompt_viewer.closed:
             self.prompt_viewer.change_prompt('end')
+        else:
+            self.prompt_viewer.destroy()
 
     def create_queue(self):
         trial_count = self.configurations.read('all.collect_data.trial_count')
@@ -135,3 +146,4 @@ class CollectData(DoubleScrolledFrame):
             queue.append(['break', pause_length])
             queue.append([trial_label, trial_length])
         self.queue = queue
+        self.current_queue = copy.deepcopy(queue)

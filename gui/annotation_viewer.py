@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter.ttk import *
 
-from test import DoubleScrolledFrame
+from gui.components.double_scrolled_frame import DoubleScrolledFrame
 
 
 def open_annotation_viewer(root, edf_path, annotations):

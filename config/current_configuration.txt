@@ -7,9 +7,9 @@
             },
         "collect_data": {
             "labels": { "type": "list", "value": ["left", "right", "movement"]},
-            "trial_count": { "type": "int", "value": "3" },
-            "pause_length": { "type": "int", "value": "2"},
-            "trial_length": { "type": "int", "value": "5"}
+            "trial_count": { "type": "int", "value": "1" },
+            "pause_length": { "type": "int", "value": "1"},
+            "trial_length": { "type": "int", "value": "2"}
         }
     }
 }
