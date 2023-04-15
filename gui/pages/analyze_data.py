@@ -40,7 +40,7 @@ class AnalyzeData(DoubleScrolledFrame):
     def analyze_edf(self):
         if self.selected_edf_file.get() != '':
             accuracy_data = analyze_edf(self.selected_edf_file.get(), verbose='ERROR')
-            figure = Figure(figsize=(25, 10))
+            figure = Figure(figsize=(15, 6))
             ax = figure.subplots()
             sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax)
 

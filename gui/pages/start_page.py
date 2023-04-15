@@ -4,7 +4,7 @@ from gui.colors import colors
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 
-GRID_COLUMN_THRESHOLD = 3
+GRID_COLUMN_THRESHOLD = 2
 
 
 class StartPage(DoubleScrolledFrame):

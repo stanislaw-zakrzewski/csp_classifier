@@ -1,6 +1,10 @@
+from threading import Thread
 from tkinter import *
+
+import numpy as np
 from PIL import Image, ImageTk
 
+import pygds
 from config.config import Configurations
 from gui.pages.start_page import StartPage
 from gui.colors import colors
@@ -112,11 +116,13 @@ class TestElectrodes(DoubleScrolledFrame):
         electrodes_canvas = Canvas(frame2, width=test.width(), height=test.height(), bg='blue')
         electrodes_canvas.pack(expand=YES, fill=BOTH)
         electrodes_canvas.create_image(2, 2, image=test, anchor=NW)
+        self.start_stop_button = Button(self, text='Start', command=self.toggle_data)
+        self.start_stop_button.grid(row=3,column=1)
         self.selected_electrode_code = None
         self.l1 = Label(self, text='Selected electrode:', font=fonts['large_bold_font'])
-        self.l1.grid(row=3, column=1)
+        self.l1.grid(row=4, column=1)
         self.l = Label(self, text='', font=fonts['large_font'])
-        self.l.grid(row=4, column=1)
+        self.l.grid(row=5, column=1)
 
         # # label1 = Label(myCanvas, image=test)
         # # label1.image = test
@@ -164,5 +170,160 @@ class TestElectrodes(DoubleScrolledFrame):
 
             # Button(frame2, text="Change Color", command=change_color).place(x=600, y=600)
         # l.place(x=600,y=600)
+        self.acquisition_thread = None
+        self.acquisition_in_progress = False
+        self.acquisition_initialized = False
+        self.acquisition_stopped = False
 
+    def toggle_data(self):
+        if not self.acquisition_initialized:
+            self.acquisition_thread = Thread(target=self.run_acquisition)
+            self.acquisition_thread.start()
+            self.start_stop_button['state'] = 'disable'
+        if self.acquisition_in_progress:
+            self.acquisition_stopped = True
+            self.start_stop_button['state'] = 'disable'
+
+
+    def run_acquisition(self):
+        # global current_trial_remaining_length
+        # global current_label
+        # global trial_order
+        # global signal
+        # global current_length_in_seconds
+        # global annotations
+        # global last
+        # global commands
+
+        d = pygds.GDS()
+        pygds.configure_demo(d)
+        d.SetConfiguration()
+
+        batches_per_second = 2
+        trial_length_random_addition_in_seconds = 0
+        instructions_dict = {-1: 'pause', 0: 'rest', 1: 'movement'}
+        electrode_names = self.configurations.read('all.general.all_electrodes')
+        sampling_frequency = self.configurations.read('all.general.sampling_rate')
+
+        # for _ in range(32):
+        #     signal.append([])
+
+        def processCallback(samples):
+            if self.acquisition_stopped:
+                self.start_stop_button['state'] = 'normal'
+                self.start_stop_button['text'] = 'start'
+                self.acquisition_in_progress = False
+                self.acquisition_initialized = False
+                self.acquisition_stopped = False
+                return False
+            if not self.acquisition_in_progress:
+                self.start_stop_button['text'] = 'Stop'
+                self.start_stop_button['state'] = 'normal'
+            try:
+                print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0))
+                # global current_trial_remaining_length
+                # global current_label
+                # global trial_order
+                # global signal
+                # global current_length_in_seconds
+                # global annotations
+                # global last
+                # global commands
+                # dt = datetime.now()
+                # last = dt
+                #
+                # for channel in range(32):
+                #     signal[channel] = np.concatenate((signal[channel], list(samples[:, channel])))
+                #
+                # # Podglad aktywnosci kanalow:
+                # np.set_printoptions(suppress=True, linewidth=10000, precision=2)
+                # # print(np.std(samples, axis=0)) # wszystkie kanały
+                # # print(np.std(samples[:, [32, 33, 34]], axis=0)) # akcelerometry - dla kontroli ;-)
+                # # print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
+                #
+                # if self.current_queue is None or len(self.current_queue) == 0:
+                #     return False
+                # item = self.current_queue[0]
+                # if not self.prompt_viewer.closed:
+                #     self.prompt_viewer.change_prompt(item[0])
+                #     time.sleep(.5)
+                #     item[1] -= .5
+                #     if item[1] < .5 and self.current_queue is not None:
+                #         self.current_queue.pop(0)
+                #     self.update_experiment_timeline_plot()
+                # else:
+                #     return False
+                #
+                #
+                #
+                #
+                # # current_trial_remaining_length -= 1
+                # # current_length_in_seconds += 1 / batches_per_second
+                # #
+                # # if current_trial_remaining_length == 0:
+                # #     if current_label == -1:
+                # #         current_label = trial_order.pop(0)
+                # #
+                # #         current_trial_remaining_length = \
+                # #             np.random.randint(
+                # #                 trial_length_random_addition_in_seconds * batches_per_second + 1) + trial_length_in_seconds * batches_per_second
+                # #         annotations.append(
+                # #             [current_length_in_seconds, current_trial_remaining_length / 2,
+                # #              instructions_dict[current_label]])
+                # #     else:
+                # #         if len(trial_order) == 0:
+                # #             return False
+                # #         current_label = -1
+                # #         current_trial_remaining_length = \
+                # #             np.random.randint(
+                # #                 trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
+                # #
+                # # commands.perform_command(instructions_dict[current_label])
+
+                return True
+            except Exception as e:
+                print('ERROR:', e)
+
+        # while self.current_queue is not None and len(self.current_queue) > 0:
+        #     item = self.current_queue[0]
+        #     if not self.prompt_viewer.closed:
+        #         self.prompt_viewer.change_prompt(item[0])
+        #         time.sleep(.5)
+        #         item[1] -= .5
+        #         if item[1] < .5 and self.current_queue is not None:
+        #             self.current_queue.pop(0)
+        #         self.update_experiment_timeline_plot()
+        #     else:
+        #         break
+        # last = datetime.now()
+        # all = datetime.now()
+        # start_date = datetime.now()
+        d.GetData(d.SamplingRate // batches_per_second, processCallback)
+        d.Close()
+        #
+        del d
+        # t = time.localtime()
+        # timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
+        # filename = 'data/{}.edf'.format(timestamp)
+        #
+        # sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency,
+        #                                             physical_max=2000000,
+        #                                             physical_min=-2000000)
+        #
+        # annotations = []
+        # len_for_annot = 0
+        # for index, queue_element in enumerate(self.queue):
+        #     if queue_element[0] != 'break':
+        #         annotations.append([len_for_annot,queue_element[1], queue_element[0]])
+        #     len_for_annot += queue_element[1]
+        #
+        # header = highlevel.make_header(patientname='patient_x', gender='Male', startdate=start_date)
+        # header.update({'annotations': annotations})
+        #
+        # if not self.prompt_viewer.closed:
+        #     self.prompt_viewer.change_prompt('end')
+        # else:
+        #     self.prompt_viewer.destroy()
+        # print(sig_headers)
+        # highlevel.write_edf(filename, signal, sig_headers, header)
 

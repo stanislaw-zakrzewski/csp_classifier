@@ -1,5 +1,6 @@
 from tkinter import *
 
+import SenderLib
 from commands.audio_commands_pyaudio import AudioCommands
 from config.config import Configurations
 from gui.visual_player import Screen
@@ -25,13 +26,20 @@ class PromptViewer(Toplevel):
         self.close_command = close_command
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.audio_commands = AudioCommands()
+        self.sender = None
+        self.control = None
+        self.ipaddress = self.configurations.read('all.collect_data.ipaddress')
+        self.port = self.configurations.read('all.collect_data.port')
 
         self.prompt_type = self.configurations.read('all.collect_data.prompt_type')
-        print(self.prompt_type)
         if self.prompt_type == 'visual':
             self.change_prompt = self.set_visual_prompt
         elif self.prompt_type == 'audio':
             self.change_prompt = self.set_audio_prompt
+        elif self.prompt_type == 'vr':
+            self.sender = SenderLib.Sender(self.ipaddress, self.port)
+            self.control = SenderLib.GameControl()
+            self.change_prompt = self.set_vr_prompt
         else:  # text prompt
             self.change_prompt = self.set_text_prompt
 
@@ -93,6 +101,49 @@ class PromptViewer(Toplevel):
             self.audio_commands.perform_command('pause')
         elif prompt_code == 'end':
             self.audio_commands.perform_command('end')
+
+        self.current_prompt_code = prompt_code
+
+    def set_vr_prompt(self, prompt_code):
+        if prompt_code == self.current_prompt_code:
+            return
+
+        if self.prompt_label is None:
+            self.prompt_label_text = StringVar()
+            self.prompt_label_text.set('BREAK')
+            self.prompt_label = Label(self, textvariable=self.prompt_label_text, font=("Segoe UI", 70))
+            self.prompt_label.pack(side='top', fill='both', expand=True)
+
+        if prompt_code == 'movement':
+            self.control.left = True
+            self.control.right = True
+            state = self.sender.send_data(self.control)
+            self.prompt_label_text.set('MOVEMENT')
+        if prompt_code == 'left':
+            self.control.left = True
+            self.control.right = False
+            state = self.sender.send_data(self.control)
+            self.prompt_label_text.set('LEFT')
+        if prompt_code == 'right':
+            self.control.left = False
+            self.control.right = True
+            state = self.sender.send_data(self.control)
+            self.prompt_label_text.set('RIGHT')
+        elif prompt_code == 'rest':
+            self.control.left = False
+            self.control.right = False
+            state = self.sender.send_data(self.control)
+            self.prompt_label_text.set('REST')
+        elif prompt_code == 'break':
+            self.control.left = False
+            self.control.right = False
+            state = self.sender.send_data(self.control)
+            self.prompt_label_text.set('BREAK')
+        elif prompt_code == 'end':
+            self.control.left = False
+            self.control.right = False
+            state = self.sender.send_data(self.control)
+            self.prompt_label_text.set('END')
 
         self.current_prompt_code = prompt_code
 
