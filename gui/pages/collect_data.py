@@ -18,7 +18,6 @@ from gui.pages.collect_data_components.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from datetime import datetime
 
-
 # commands = get_commands()
 signal = []
 trial_order = []
@@ -27,6 +26,7 @@ current_trial_remaining_length = 0
 current_length_in_seconds = 0
 annotations = []
 last = 0
+
 
 class CollectData(DoubleScrolledFrame):
     def __init__(self, parent, controller):
@@ -42,8 +42,22 @@ class CollectData(DoubleScrolledFrame):
                                            command=lambda: controller.show_frame(StartPage))
         back_to_start_page_button.grid(row=1, column=0, padx=10, pady=10)
 
+        self.patient_name_label = Label(self, text='Patient Name:')
+        self.patient_name_label.grid(row=3, column=0)
+        self.patient_name_value = StringVar()
+        self.patient_name_value.set(self.configurations.read('all.collect_data.patient_name'))
+        self.patient_name_input = Entry(self, text=self.patient_name_value)
+        self.patient_name_input.grid(row=3, column=1)
+
+        self.gender_label = Label(self, text='Patient Gender:')
+        self.gender_label.grid(row=4, column=0)
+        self.gender_value = StringVar()
+        self.gender_value.set(self.configurations.read('all.collect_data.patient_gender'))
+        self.gender_input = Entry(self, text=self.gender_value)
+        self.gender_input.grid(row=4, column=1)
+
         self.prepare_experiment = Button(self, text='Prepare experiment', command=self.open_prompt_window)
-        self.prepare_experiment.grid(row=3, column=0, padx=10, pady=10)
+        self.prepare_experiment.grid(row=5, column=0, padx=10, pady=10)
 
         self.acquisition_thread = None
         self.queue_canvas = None
@@ -56,13 +70,17 @@ class CollectData(DoubleScrolledFrame):
         self.labels = None
 
     def open_prompt_window(self):
+        self.prepare_experiment['state'] = DISABLED
+        self.patient_name_input['state'] = DISABLED
+        self.gender_input['state'] = DISABLED
         self.create_queue()
         self.prompt_viewer = PromptViewer(self, self.start_acquisition, self.on_prompt_viewer_close)
         self.update_experiment_timeline_plot()
-        self.prepare_experiment['state'] = DISABLED
 
     def on_prompt_viewer_close(self):
         self.prepare_experiment['state'] = NORMAL
+        self.patient_name_input['state'] = NORMAL
+        self.gender_input['state'] = NORMAL
         self.queue = None
         self.current_queue = None
         self.plot_canvas.get_tk_widget().destroy()
@@ -112,7 +130,7 @@ class CollectData(DoubleScrolledFrame):
 
         if self.plot_canvas is None:
             self.plot_canvas = FigureCanvasTkAgg(self.fig, master=self)
-            self.plot_canvas.get_tk_widget().grid(row=4, column=0, columnspan=10)
+            self.plot_canvas.get_tk_widget().grid(row=6, column=0, columnspan=10)
         else:
             self.plot_canvas.draw()
 
@@ -180,9 +198,6 @@ class CollectData(DoubleScrolledFrame):
                 else:
                     return False
 
-
-
-
                 # current_trial_remaining_length -= 1
                 # current_length_in_seconds += 1 / batches_per_second
                 #
@@ -240,10 +255,11 @@ class CollectData(DoubleScrolledFrame):
         len_for_annot = 0
         for index, queue_element in enumerate(self.queue):
             if queue_element[0] != 'break':
-                annotations.append([len_for_annot,queue_element[1], queue_element[0]])
+                annotations.append([len_for_annot, queue_element[1], queue_element[0]])
             len_for_annot += queue_element[1]
 
-        header = highlevel.make_header(patientname='patient_x', gender='Male', startdate=start_date)
+        header = highlevel.make_header(patientname=self.patient_name_value.get(), gender=self.gender_value.get(),
+                                       startdate=start_date)
         header.update({'annotations': annotations})
 
         if not self.prompt_viewer.closed:

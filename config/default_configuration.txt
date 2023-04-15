@@ -12,8 +12,10 @@
             "port": { "type": "int", "value": "25002" },
             "labels": { "type": "list", "value": ["rest", "movement"]},
             "trial_count": { "type": "int", "value": "1" },
-            "pause_length": { "type": "int", "value": "1"},
-            "trial_length": { "type": "int", "value": "2"}
+            "pause_length": { "type": "int", "value": "1" },
+            "trial_length": { "type": "int", "value": "2" },
+            "patient_name": { "type": "string", "value": "Subject X" },
+            "patient_gender": { "type": "string", "value": "male" }
         }
     }
 }

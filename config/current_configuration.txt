@@ -10,10 +10,12 @@
             "prompt_type": { "type": "string", "value": "vr" },
             "ipaddress": { "type": "string", "value": "192.168.50.101" },
             "port": { "type": "int", "value": "25002" },
-            "labels": { "type": "list", "value": ["rest", "movement", "left", "right"]},
-            "trial_count": { "type": "int", "value": "2" },
-            "pause_length": { "type": "int", "value": "2"},
-            "trial_length": { "type": "int", "value": "4"}
+            "labels": { "type": "list", "value": ["rest", "movement"]},
+            "trial_count": { "type": "int", "value": "1" },
+            "pause_length": { "type": "int", "value": "1" },
+            "trial_length": { "type": "int", "value": "2" },
+            "patient_name": { "type": "string", "value": "Subject X" },
+            "patient_gender": { "type": "string", "value": "male" }
         }
     }
 }
