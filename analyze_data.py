@@ -3,11 +3,13 @@ import numpy as np
 import pandas as pd
 
 from classifiers.flat import process
-from config_old import configurations, experiment_frequency_range, subject_to_analyze
+from config_old import configurations as default_configurations, \
+    experiment_frequency_range as default_experiment_frequency_range, subject_to_analyze
 from data_classes.subject import Subject
 from logger import log
 from preprocessing.validate_available_electrodes import validate_available_electrodes
 from visualization.accuracy_over_bands import visualize_accuracy_over_bands, save_visualized_accuracy_over_bands
+from classifiers.parafac import process as parafacProcess
 
 
 def get_individual_accuracy(predicions, correct):
@@ -84,19 +86,23 @@ def calculate_combined_precision(predictions, corrects):
     return numerator / denominator
 
 
-def analyze_data(bands, selected_electrodes, filepath=subject_to_analyze, classifier=process, verbose='DEBUG'):
+def analyze_data(bands, selected_electrodes, filepath=subject_to_analyze, classifier=process, verbose='DEBUG',
+                 options={}):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
-
-    subject = Subject(filepath)
+    memory = options['memory']
+    if memory and memory['name'] == filepath:
+        subject = memory['value']
+    else:
+        subject = Subject(filepath)
+        memory['name'] = filepath
+        memory['value'] = subject
 
     channels = validate_available_electrodes(subject, selected_electrodes)
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, _, _ = classifier(subject,
-                                                                                                    bands, channels,
-                                                                                                    verbose=verbose)
+    _, _, _, _, predictions, corrects, _, _ = classifier(subject, bands, channels, verbose=verbose)
 
     for i in range(len(predictions)):
         for j in range(2):
@@ -157,18 +163,22 @@ def configuration_to_label(config):
         channels)
 
 
-def analyze_edf(filepath=subject_to_analyze, classifier=process, verbose='DEBUG'):
+def analyze_edf(filepath=subject_to_analyze, classifier=process, verbose='DEBUG',
+                options={'memory': None}):
+    configurations = options['configurations'] or default_configurations
+    experiment_frequency_range = options['experiment_frequency_range'] or default_experiment_frequency_range
     labels = list(map(configuration_to_label, configurations))
     accuracy_data = {'accuracy': [], 'frequency': [], 'configuration': [], 'frequency_start': [], 'frequency_end': []}
-    for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1]):
-        for index, configuration in enumerate(configurations):
+    for index, configuration in enumerate(configurations):
+        for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1], configuration['step']):
             try:
                 accuracies = analyze_data(
                     [(frequency, frequency + configuration['band_width'])],
                     configuration['channels'],
                     filepath,
                     classifier,
-                    verbose
+                    verbose,
+                    options=options
                 )
                 for accuracy in accuracies:
                     accuracy_data['accuracy'].append(accuracy)

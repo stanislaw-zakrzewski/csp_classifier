@@ -1,7 +1,7 @@
 {
     "all": {
         "general": {
-            "sampling_rate": { "type": "int", "value": "250" },
+            "sampling_rate": { "type": "int", "value": "512" },
             "valid_channel_threshold": { "type": "float", "value": "1e-15" },
             "selected_electrodes": { "type": "list", "value": ["C1", "C2", "C5", "C3", "C4", "C6", "FC3", "CP3", "FC4", "CP4", "CZ"] },
             "all_electrodes": { "type": "list", "value": ["FP1", "FP2", "FZ", "FT7", "FC5", "FC3", "FC1", "FCZ", "FC2", "FC4", "FC6", "FT8", "T7", "C5", "C3", "C1", "CZ", "C2", "C4", "C6", "T8", "TP7", "CP5", "CP3", "CP1", "CPZ", "CP2", "CP4", "CP6", "TP8", "PZ", "POZ"] }

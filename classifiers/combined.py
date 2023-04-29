@@ -1,3 +1,5 @@
+import copy
+
 import mne
 import numpy as np
 from mne import Epochs, pick_types
@@ -26,12 +28,9 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
     tmin, tmax = 1., 3.
     frequencies = 50
 
-
     raw_signals = []
     for i in range(len(bands)):
         raw_signals.append(subject.get_raw_copy())
-
-
 
     if len(selected_channels) > 0:
         for raw_signal in raw_signals:
@@ -44,7 +43,6 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
     epochs_train = []
     epochs_data = []
     epochs_data_train = []
-
 
     # Apply band-pass filter
     for index, band in enumerate(bands):
@@ -66,8 +64,14 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
         epochs_data_train.append(epochs_train[index].get_data())
     labels = np.array(epochs[0].events[:, -1])
 
+
+    '''CSP'''
+
+
+    '''PARAFAC'''
     yf_train = rfft(epochs_data_train[0])
-    epochs_data_train[0] = np.abs(yf_train[:, :, 0:frequencies])
+    epochs_data_train2 = copy.deepcopy(epochs_data_train)
+    epochs_data_train2[0] = np.abs(yf_train[:, :, 0:frequencies])
     # xf = rfftfreq(epochs_data_train[0].shape[-1], 1 / 512)
     # plt.plot(xf[0:frequencies], np.abs(yf[1,0,0:frequencies]), marker="o")
     # plt.show()
@@ -75,18 +79,20 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
     # epochs_data_trainpochs_data[0] = time_frequency_analysis(epochs_data[0])
 
     yf = rfft(epochs_data[0])
-    epochs_data[0] = np.abs(yf[:, :, 0:frequencies])
+    epochs_data2 = copy.deepcopy(epochs_data)
+    epochs_data2[0] = np.abs(yf[:, :, 0:frequencies])
 
     cv = ShuffleSplit(n_splits=n_splits, test_size=0.2, random_state=42)
     cv_split = cv.split(epochs_data_train[0])
     # Assemble a classifier
-    # classifier = MLPClassifier(hidden_layer_sizes=(10), random_state=1, n_iter_no_change=100,
-    #                             learning_rate_init=0.01, max_iter=10000, )  # Originally: LinearDiscriminantAnalysis()
     classifier = MLPClassifier(hidden_layer_sizes=(128,32,8), random_state=1, n_iter_no_change=100,
                                 learning_rate_init=0.01, max_iter=10000, )  # Originally: LinearDiscriminantAnalysis()
     # classifier = LinearDiscriminantAnalysis()
     # classifier = RandomForestClassifier(max_depth=20, n_estimators=10, max_features=10)
+
+    csp_n_components = 32 if len(selected_channels) == 0 else min(len(selected_channels), 32)
     mne.set_log_level('warning')
+    csp = CSP(n_components=csp_n_components, reg=reg, log=True, norm_trace=False)
 
     # Initialize the TruncatedSVD model
     svd = TruncatedSVD(n_components=10)
@@ -106,21 +112,32 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
         x_test_csp = []
         for edt in epochs_data_train:
             if len(x_train_csp) > 0:
-                x_train_csp = np.concatenate((x_train_csp, get_atoms(edt[train_idx])), axis=1)
-                x_test_csp = np.concatenate((x_test_csp, get_atoms(edt[test_idx])), axis=1)
+                x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train, verbose='ERROR')),
+                                             axis=1)
+                x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
             else:
-                x_train_csp = get_atoms(edt[train_idx])
-                x_test_csp = get_atoms(edt[test_idx])
+                x_train_csp = csp.fit_transform(edt[train_idx], y_train)
+                x_test_csp = csp.transform(edt[test_idx])
+
+        x_train_parafac = []
+        x_test_parafac = []
+        for edt in epochs_data_train2:
+            if len(x_train_parafac) > 0:
+                x_train_csp = np.concatenate((x_train_parafac, get_atoms(edt[train_idx])), axis=1)
+                x_test_csp = np.concatenate((x_test_parafac, get_atoms(edt[test_idx])), axis=1)
+            else:
+                x_train_parafac = get_atoms(edt[train_idx])
+                x_test_parafac = get_atoms(edt[test_idx])
 
         # Fit the model to the data
-        svd.fit(x_train_csp, y_train)
+        svd.fit(x_train_parafac, y_train)
 
         # Print the factors
         # print("U:", svd.components_)
           # print("S:", svd.singular_values_)
-        x_train_csp = svd.transform(x_train_csp)
-        x_test_csp = svd.transform(x_test_csp)
-        classifier.fit(x_train_csp, y_train)
+        x_train_parafac = svd.transform(x_train_parafac)
+        x_test_parafac = svd.transform(x_test_parafac)
+        classifier.fit(np.concatenate((x_train_csp, x_train_parafac), axis=1), y_train)
 
         # plt.plot(classifier.loss_curve_)
         # plt.title("Loss Curve", fontsize=14)
@@ -128,13 +145,13 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
         # plt.ylabel('Cost')
         # plt.show()
 
-        predictions = classifier.predict(x_test_csp)
+        predictions = classifier.predict(np.concatenate((x_test_csp, x_test_parafac), axis=1))
         all_predictions.append(predictions)
         all_correct.append(y_test)
 
         # running classifier: test classifier on sliding window
+        score_this_window = []
         if score_window_flag:
-            score_this_window = []
             for n in w_start:
                 x_test_csp = []
                 for edt in epochs_data:
@@ -146,6 +163,7 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
                         x_test_csp = get_atoms(edt[test_idx][:, :, n:(n + w_length)])
                 score_this_window.append(classifier.score(x_test_csp, y_test))
             scores_windows.append(score_this_window)
+
     w_times = []
     if score_window_flag:
         w_times = (w_start + w_length / 2.) / sfreq + epochs[0].tmin
