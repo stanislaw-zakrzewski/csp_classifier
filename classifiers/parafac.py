@@ -23,7 +23,7 @@ from scipy.signal import morlet
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
-    tmin, tmax = 1., 3.
+    tmin, tmax = 1., 5.
     frequencies = 50
 
 
