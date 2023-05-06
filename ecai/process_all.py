@@ -17,32 +17,32 @@ for i in range(43):
 # subjects = ['s14']
 # experiment_frequency_range = (3, 4)
 
-# print('CSP')
-# for subject_index, subject in enumerate(subjects):
-#     print(subject)
-#     options = {
-#         'configurations': [
-#             {'channels': channels2, 'band_width': 1, 'step': 1},
-#             {'channels': channels2, 'band_width': 3, 'step': 2},
-#             {'channels': channels2, 'band_width': 6, 'step': 4}
-#         ],
-#         'memory': {'name': None, 'value': None},
-#         'experiment_frequency_range': (4, 16)
-#     }
-#     filename = 'preprocessed_subjects/{}.edf'.format(subject)
-#
-#     accuracy_data = analyze_edf(filename, verbose='ERROR', options=options)
-#     accuracy_data.to_csv('ecai/data/csp/{}.csv'.format(subject), index=False)
-#
-#     a = pd.read_csv('ecai/data/csp/{}.csv'.format(subject))
-#     figure = Figure(figsize=(25, 10))
-#     ax = figure.subplots()
-#     sns.lineplot(data=a, x="frequency", y="accuracy", hue="configuration", style='configuration', errorbar=None, ax=ax,
-#                  markers=True)
-#
-#     ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
-#     ax.grid()
-#     figure.savefig('ecai/figures/csp/{}.png'.format(subject))
+print('CSP')
+for subject_index, subject in enumerate(subjects):
+    print(subject)
+    options = {
+        'configurations': [
+            {'channels': channels2, 'band_width': 1, 'step': 1},
+            {'channels': channels2, 'band_width': 3, 'step': 2},
+            {'channels': channels2, 'band_width': 6, 'step': 4}
+        ],
+        'memory': {'name': None, 'value': None},
+        'experiment_frequency_range': (4, 16)
+    }
+    filename = 'preprocessed_subjects/{}.edf'.format(subject)
+
+    accuracy_data = analyze_edf(filename, verbose='ERROR', options=options)
+    accuracy_data.to_csv('ecai/data/csp/{}.csv'.format(subject), index=False)
+
+    a = pd.read_csv('ecai/data/csp/{}.csv'.format(subject))
+    figure = Figure(figsize=(25, 10))
+    ax = figure.subplots()
+    sns.lineplot(data=a, x="frequency", y="accuracy", hue="configuration", style='configuration', errorbar=None, ax=ax,
+                 markers=True)
+
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
+    ax.grid()
+    figure.savefig('ecai/figures/csp/{}.png'.format(subject))
 
 print('PARAFAC')
 for subject_index, subject in enumerate(subjects):
