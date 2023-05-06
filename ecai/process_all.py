@@ -44,57 +44,57 @@ for subject_index, subject in enumerate(subjects):
     ax.grid()
     figure.savefig('ecai/figures/csp/{}.png'.format(subject))
 
-print('PARAFAC')
-for subject_index, subject in enumerate(subjects):
-    print(subject)
-    options = {
-        'configurations': [
-            {'channels': channels2, 'band_width': 1, 'step': 1},
-            {'channels': channels2, 'band_width': 3, 'step': 2},
-            {'channels': channels2, 'band_width': 6, 'step': 4}
-        ],
-        'memory': {'name': None, 'value': None},
-        'experiment_frequency_range': (4, 16)
-    }
-    filename = 'preprocessed_subjects/{}.edf'.format(subject)
-
-    accuracy_data = analyze_edf(filename, classifier=parafacProcess, verbose='ERROR', options=options)
-    accuracy_data.to_csv('ecai/data/parafac/{}.csv'.format(subject), index=False)
-
-    a = pd.read_csv('ecai/data/parafac/{}.csv'.format(subject))
-    figure = Figure(figsize=(25, 10))
-    ax = figure.subplots()
-    sns.lineplot(data=a, x="frequency", y="accuracy", hue="configuration", style='configuration', errorbar=None, ax=ax,
-                 markers=True)
-
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
-    ax.grid()
-    figure.savefig('ecai/figures/parafac/{}.png'.format(subject))
-
-print('COMBINED')
-for subject_index, subject in enumerate(subjects):
-    print(subject)
-    options = {
-        'configurations': [
-            {'channels': channels2, 'band_width': 1, 'step': 1},
-            {'channels': channels2, 'band_width': 3, 'step': 2},
-            {'channels': channels2, 'band_width': 6, 'step': 4}
-        ],
-        'memory': {'name': None, 'value': None},
-        'experiment_frequency_range': (4, 16)
-    }
-    filename = 'preprocessed_subjects/{}.edf'.format(subject)
-
-    accuracy_data = analyze_edf(filename, classifier=combinedProcess, verbose='ERROR', options=options)
-    accuracy_data.to_csv('ecai/data/combined/{}.csv'.format(subject), index=False)
-
-    a = pd.read_csv('ecai/data/combined/{}.csv'.format(subject))
-    figure = Figure(figsize=(25, 10))
-    ax = figure.subplots()
-    sns.lineplot(data=a, x="frequency", y="accuracy", hue="configuration", style='configuration', errorbar=None, ax=ax,
-                 markers=True)
-
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
-    ax.grid()
-    figure.savefig('ecai/figures/combined/{}.png'.format(subject))
+# print('PARAFAC')
+# for subject_index, subject in enumerate(subjects):
+#     print(subject)
+#     options = {
+#         'configurations': [
+#             {'channels': channels2, 'band_width': 1, 'step': 1},
+#             {'channels': channels2, 'band_width': 3, 'step': 2},
+#             {'channels': channels2, 'band_width': 6, 'step': 4}
+#         ],
+#         'memory': {'name': None, 'value': None},
+#         'experiment_frequency_range': (4, 16)
+#     }
+#     filename = 'preprocessed_subjects/{}.edf'.format(subject)
+#
+#     accuracy_data = analyze_edf(filename, classifier=parafacProcess, verbose='ERROR', options=options)
+#     accuracy_data.to_csv('ecai/data/parafac/{}.csv'.format(subject), index=False)
+#
+#     a = pd.read_csv('ecai/data/parafac/{}.csv'.format(subject))
+#     figure = Figure(figsize=(25, 10))
+#     ax = figure.subplots()
+#     sns.lineplot(data=a, x="frequency", y="accuracy", hue="configuration", style='configuration', errorbar=None, ax=ax,
+#                  markers=True)
+#
+#     ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
+#     ax.grid()
+#     figure.savefig('ecai/figures/parafac/{}.png'.format(subject))
+#
+# print('COMBINED')
+# for subject_index, subject in enumerate(subjects):
+#     print(subject)
+#     options = {
+#         'configurations': [
+#             {'channels': channels2, 'band_width': 1, 'step': 1},
+#             {'channels': channels2, 'band_width': 3, 'step': 2},
+#             {'channels': channels2, 'band_width': 6, 'step': 4}
+#         ],
+#         'memory': {'name': None, 'value': None},
+#         'experiment_frequency_range': (4, 16)
+#     }
+#     filename = 'preprocessed_subjects/{}.edf'.format(subject)
+#
+#     accuracy_data = analyze_edf(filename, classifier=combinedProcess, verbose='ERROR', options=options)
+#     accuracy_data.to_csv('ecai/data/combined/{}.csv'.format(subject), index=False)
+#
+#     a = pd.read_csv('ecai/data/combined/{}.csv'.format(subject))
+#     figure = Figure(figsize=(25, 10))
+#     ax = figure.subplots()
+#     sns.lineplot(data=a, x="frequency", y="accuracy", hue="configuration", style='configuration', errorbar=None, ax=ax,
+#                  markers=True)
+#
+#     ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
+#     ax.grid()
+#     figure.savefig('ecai/figures/combined/{}.png'.format(subject))
 
