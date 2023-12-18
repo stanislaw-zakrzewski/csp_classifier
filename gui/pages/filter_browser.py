@@ -117,7 +117,11 @@ class FilterBrowser(DoubleScrolledFrame):
         self.add_filter_button.grid(row=5, column=1)
         self.add_filter_form = None
         self.add_input_name = None
+        self.add_variable_band = StringVar(self)
+        self.add_variable_band_specific = StringVar(self)
+        self.add_variable_band_steepness = StringVar(self)
         self.add_input_type = None
+        self.add_input_steepness = None
         self.add_input_freq1 = None
         self.add_input_freq2 = None
         self.add_input_channels = None
@@ -205,35 +209,136 @@ class FilterBrowser(DoubleScrolledFrame):
         Label(add_filter_form, text='Name', font=fonts['medium_font']).grid(row=0, column=0)
         self.add_input_name = Entry(add_filter_form)
         self.add_input_name.grid(row=0, column=1)
-        Label(add_filter_form, text='Type', font=fonts['medium_font']).grid(row=1, column=0)
-        self.add_input_type = Entry(add_filter_form)
-        self.add_input_type.grid(row=1, column=1)
-        Label(add_filter_form, text='Frequency 1', font=fonts['medium_font']).grid(row=2, column=0)
+
+        def band_change_callback(*args):
+            add_variable_band = self.add_variable_band.get()
+            add_variable_band_specific = self.add_variable_band_specific.get()
+            if add_variable_band == 'alpha':
+                if add_variable_band_specific == 'whole':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 6)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 14)
+                elif add_variable_band_specific == 'lower':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 6)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 10)
+                elif add_variable_band_specific == 'upper':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 10)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 14)
+                else:
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 8)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 12)
+            elif add_variable_band == 'beta':
+                if add_variable_band_specific == 'whole':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 15)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 29)
+                elif add_variable_band_specific == 'lower':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 15)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 22)
+                elif add_variable_band_specific == 'upper':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 22)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 29)
+                else:
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 18)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 26)
+            else:
+                if add_variable_band_specific == 'whole':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 30)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 40)
+                elif add_variable_band_specific == 'lower':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 30)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 35)
+                elif add_variable_band_specific == 'upper':
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 35)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 40)
+                else:
+                    self.add_input_freq1.delete(0, END)
+                    self.add_input_freq1.insert(0, 32)
+                    self.add_input_freq2.delete(0, END)
+                    self.add_input_freq2.insert(0, 38)
+
+        def band_steepness_callback(*args):
+            steepness = self.add_variable_band_steepness.get()
+            if steepness == 'steep':
+                self.add_input_steepness.delete(0, END)
+                self.add_input_steepness.insert(0, 15)
+            elif steepness == 'semi-steep':
+                self.add_input_steepness.delete(0, END)
+                self.add_input_steepness.insert(0, 30)
+            else:
+                self.add_input_steepness.delete(0, END)
+                self.add_input_steepness.insert(0, 50)
+
+        Label(add_filter_form, text='Band', font=fonts['medium_font']).grid(row=1, column=0)
+        self.add_variable_band_specific.set('whole')
+        self.add_variable_band_specific.trace('w', band_change_callback)
+        OptionMenu(add_filter_form, self.add_variable_band_specific, *['whole', 'lower', 'upper', 'middle']).grid(row=1,
+                                                                                                                  column=1)
+        self.add_variable_band.set('alpha')
+        self.add_variable_band.trace('w', band_change_callback)
+        OptionMenu(add_filter_form, self.add_variable_band, *['alpha', 'beta', 'gamma']).grid(row=1, column=2)
+
+        Label(add_filter_form, text='Steepness', font=fonts['medium_font']).grid(row=2, column=0)
+        self.add_variable_band_steepness.set('steep')
+        self.add_variable_band_steepness.trace('w', band_steepness_callback)
+        OptionMenu(add_filter_form, self.add_variable_band_steepness, *['steep', 'semi-steep', 'soft']).grid(row=2,
+                                                                                                             column=1)
+
+        Label(add_filter_form, text='Frequency 1', font=fonts['medium_font']).grid(row=3, column=0)
         self.add_input_freq1 = Entry(add_filter_form)
-        self.add_input_freq1.grid(row=2, column=1)
-        Label(add_filter_form, text='Frequency 2', font=fonts['medium_font']).grid(row=3, column=0)
+        self.add_input_freq1.grid(row=3, column=1)
+        Label(add_filter_form, text='Frequency 2', font=fonts['medium_font']).grid(row=4, column=0)
         self.add_input_freq2 = Entry(add_filter_form)
-        self.add_input_freq2.grid(row=3, column=1)
-        Label(add_filter_form, text='Channels', font=fonts['medium_font']).grid(row=4, column=0)
+        self.add_input_freq2.grid(row=4, column=1)
+        Label(add_filter_form, text='Steepness', font=fonts['medium_font']).grid(row=5, column=0)
+        self.add_input_steepness = Entry(add_filter_form)
+        self.add_input_steepness.grid(row=5, column=1)
+        Label(add_filter_form, text='%', font=fonts['medium_font']).grid(row=5, column=3)
+        Label(add_filter_form, text='Channels', font=fonts['medium_font']).grid(row=6, column=0)
         self.add_input_channels = Entry(add_filter_form)
-        self.add_input_channels.grid(row=4, column=1)
+        self.add_input_channels.grid(row=6, column=1)
 
         Button(add_filter_form, text='Cancel', bg='tan1',
-               command=self.render_add_button).grid(row=5,
+               command=self.render_add_button).grid(row=7,
                                                     column=0)
         Button(add_filter_form, text='Add', bg='seagreen2',
-               command=self.add_filter).grid(row=5,
-                                                    column=1)
+               command=self.add_filter).grid(row=7,
+                                             column=1)
         self.add_filter_form = add_filter_form
         self.add_filter_form.grid(row=5, column=1)
 
+        self.add_input_freq1.insert(0, 6)
+        self.add_input_freq2.insert(0, 14)
+        self.add_input_steepness.insert(0, 15)
+
     def add_filter(self):
         name = self.add_input_name.get()
-        type = self.add_input_type.get()
+        # type = self.add_input_type.get()
         freq1 = self.add_input_freq1.get()
         freq2 = self.add_input_freq2.get()
+        steepness = self.add_input_steepness.get()
         channels = self.add_input_channels.get()
-        self.filter_data.loc[len(self.filter_data.index)] = [name, type, freq1, freq2, channels]
+        self.filter_data.loc[len(self.filter_data.index)] = [name, 'bp', freq1, freq2, steepness, channels]
         self.filter_data.to_csv('filters.csv', index=False)
         self.render_add_button()
         self.render_filter_table()
@@ -252,7 +357,8 @@ class FilterBrowser(DoubleScrolledFrame):
         Label(filter_table, text='Type', font=fonts['medium_font']).grid(row=0, column=1)
         Label(filter_table, text='Frequency 1', font=fonts['medium_font']).grid(row=0, column=2)
         Label(filter_table, text='Frequency 2', font=fonts['medium_font']).grid(row=0, column=3)
-        Label(filter_table, text='Channels', font=fonts['medium_font']).grid(row=0, column=4)
+        Label(filter_table, text='Steepness', font=fonts['medium_font']).grid(row=0, column=4)
+        Label(filter_table, text='Channels', font=fonts['medium_font']).grid(row=0, column=5)
         for row_index, data_row in enumerate(self.filter_data.values):
             Label(filter_table, text=data_row[0], font=fonts['medium_font']).grid(row=row_index + 1, column=0)
             Label(filter_table, text=FILTER_NAMES[data_row[1]], font=fonts['medium_font']).grid(row=row_index + 1,
@@ -260,18 +366,19 @@ class FilterBrowser(DoubleScrolledFrame):
             Label(filter_table, text=data_row[2], font=fonts['medium_font']).grid(row=row_index + 1, column=2)
             Label(filter_table, text=data_row[3], font=fonts['medium_font']).grid(row=row_index + 1, column=3)
             Label(filter_table, text=data_row[4], font=fonts['medium_font']).grid(row=row_index + 1, column=4)
+            Label(filter_table, text=data_row[5], font=fonts['medium_font']).grid(row=row_index + 1, column=5)
             Button(filter_table, text='Show Electrodes', bg='blue',
                    command=lambda bound_row_index=row_index: self.select_row(bound_row_index)).grid(row=row_index + 1,
-                                                                                                    column=5)
+                                                                                                    column=6)
             Button(filter_table, text='DELETE', bg='red',
                    command=lambda bound_row_index=row_index: self.remove_row(bound_row_index)).grid(row=row_index + 1,
-                                                                                                    column=6)
+                                                                                                    column=7)
         self.filter_table = filter_table
         self.filter_table.grid(row=4, column=1)
 
     def select_row(self, row_index):
         selected_row = self.filter_data.iloc[[row_index]].values[0]
-        self.update_electrode_colors(selected_row[4].split(' '))
+        self.update_electrode_colors(selected_row[5].split(' '))
 
     def remove_row(self, row_index):
         if not self.filter_data.empty:
