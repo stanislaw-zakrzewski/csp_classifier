@@ -93,12 +93,12 @@ def analyze_data(bands, selected_electrodes, filepath=subject_to_analyze, classi
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
     memory = options['memory']
-    if memory and memory['name'] == filepath:
+    if memory and 'name' in memory and memory['name'] == filepath:
         subject = memory['value']
     else:
         subject = Subject(filepath)
-        memory['name'] = filepath
-        memory['value'] = subject
+        # memory['name'] = filepath
+        # memory['value'] = subject
 
     channels = validate_available_electrodes(subject, selected_electrodes)
 
@@ -165,29 +165,33 @@ def configuration_to_label(config):
 
 def analyze_edf(filepath=subject_to_analyze, classifier=process, verbose='DEBUG',
                 options={'memory': None}):
-    configurations = options['configurations'] or default_configurations
-    experiment_frequency_range = options['experiment_frequency_range'] or default_experiment_frequency_range
+    configurations = default_configurations
+    if 'configurations' in options:
+        configurations = options['configurations']
+    experiment_frequency_range = default_experiment_frequency_range
+    if 'experiment_frequency_range' in options:
+        experiment_frequency_range = options['experiment_frequency_range']
     labels = list(map(configuration_to_label, configurations))
     accuracy_data = {'accuracy': [], 'frequency': [], 'configuration': [], 'frequency_start': [], 'frequency_end': []}
     for index, configuration in enumerate(configurations):
         for frequency in range(experiment_frequency_range[0], experiment_frequency_range[1], configuration['step']):
-            try:
-                accuracies = analyze_data(
-                    [(frequency, frequency + configuration['band_width'])],
-                    configuration['channels'],
-                    filepath,
-                    classifier,
-                    verbose,
-                    options=options
-                )
-                for accuracy in accuracies:
-                    accuracy_data['accuracy'].append(accuracy)
-                    accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)
-                    accuracy_data['frequency_start'].append(frequency)
-                    accuracy_data['frequency_end'].append(frequency + configuration['band_width'])
-                    accuracy_data['configuration'].append(labels[index])
-            except TypeError:
-                log(verbose, 'ERROR', 'TypeError')
+            # try:
+            accuracies = analyze_data(
+                [(frequency, frequency + configuration['band_width'])],
+                configuration['channels'],
+                filepath,
+                classifier,
+                verbose,
+                options=options
+            )
+            for accuracy in accuracies:
+                accuracy_data['accuracy'].append(accuracy)
+                accuracy_data['frequency'].append((frequency + frequency + configuration['band_width']) / 2)
+                accuracy_data['frequency_start'].append(frequency)
+                accuracy_data['frequency_end'].append(frequency + configuration['band_width'])
+                accuracy_data['configuration'].append(labels[index])
+            # except TypeError:
+            #     log(verbose, 'ERROR', 'TypeError')
 
     mne.set_log_level('warning')
     accuracy_data = pd.DataFrame(data=accuracy_data)

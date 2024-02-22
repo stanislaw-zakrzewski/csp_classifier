@@ -37,6 +37,11 @@ def collect_data():
     print("Initializing")
     d = pygds.GDS()
     pygds.configure_demo(d)
+    supported_sensitivities = d.GetSupportedSensitivities()
+    sensitivity_id = 0
+    for ch in d.Channels:
+        ch.Sensitivity = supported_sensitivities[0][sensitivity_id]
+        ch.BandpassFilterIndex = 16  # 2-30Hz bandpass
     d.SetConfiguration()
 
     print("Acquisition started")

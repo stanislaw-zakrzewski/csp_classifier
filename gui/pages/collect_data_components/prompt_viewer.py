@@ -107,6 +107,7 @@ class PromptViewer(Toplevel):
     def set_vr_prompt(self, prompt_code):
         if prompt_code == self.current_prompt_code:
             return
+        print(prompt_code)
 
         if self.prompt_label is None:
             self.prompt_label_text = StringVar()
@@ -117,6 +118,7 @@ class PromptViewer(Toplevel):
         if prompt_code == 'movement':
             self.control.left = True
             self.control.right = True
+            self.control.mode = self.configurations.read('all.collect_data.vr_mode')
             state = self.sender.send_data(self.control)
             self.prompt_label_text.set('MOVEMENT')
         if prompt_code == 'left':
@@ -132,11 +134,13 @@ class PromptViewer(Toplevel):
         elif prompt_code == 'rest':
             self.control.left = False
             self.control.right = False
+            self.control.mode = self.configurations.read('all.collect_data.vr_mode')
             state = self.sender.send_data(self.control)
             self.prompt_label_text.set('REST')
         elif prompt_code == 'break':
             self.control.left = False
             self.control.right = False
+            self.control.mode = self.configurations.read('all.collect_data.vr_mode')
             state = self.sender.send_data(self.control)
             self.prompt_label_text.set('BREAK')
         elif prompt_code == 'end':

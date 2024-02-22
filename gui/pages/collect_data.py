@@ -6,6 +6,7 @@ from tkinter import *
 
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from pyedflib import highlevel
 
@@ -152,6 +153,11 @@ class CollectData(DoubleScrolledFrame):
 
         d = pygds.GDS()
         pygds.configure_demo(d)
+        supported_sensitivities = d.GetSupportedSensitivities()
+        sensitivity_id = 5
+        for ch in d.Channels:
+            ch.Sensitivity = supported_sensitivities[0][sensitivity_id]
+            ch.BandpassFilterIndex = 16 # 2-30Hz bandpass
         d.SetConfiguration()
 
         batches_per_second = 2
@@ -183,7 +189,7 @@ class CollectData(DoubleScrolledFrame):
                 np.set_printoptions(suppress=True, linewidth=10000, precision=2)
                 # print(np.std(samples, axis=0)) # wszystkie kanały
                 # print(np.std(samples[:, [32, 33, 34]], axis=0)) # akcelerometry - dla kontroli ;-)
-                # print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
+                print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
 
                 if self.current_queue is None or len(self.current_queue) == 0:
                     return False
@@ -243,13 +249,15 @@ class CollectData(DoubleScrolledFrame):
         d.Close()
 
         del d
+        a = signal # SYGNAŁ
+
         t = time.localtime()
         timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
         filename = 'data/{}.edf'.format(timestamp)
 
         sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency,
-                                                    physical_max=2000000,
-                                                    physical_min=-2000000)
+                                                    physical_max=10000.0,
+                                                    physical_min=-10000.0)
 
         annotations = []
         len_for_annot = 0
