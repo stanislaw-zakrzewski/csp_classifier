@@ -32,7 +32,7 @@ subject_to_analyze = 'data_s/2023-02-23T11-57-30_observed_visual.edf'
 # We don't want (at least yet) to have P300 in our data
 event_beginning_offset_in_seconds = 1
 event_length_in_seconds = 4
-experiment_frequency_range = (4, 10)
+experiment_frequency_range = (6, 24)
 
 channels1 = ['C3', 'C4']
 channels2 = ['C1', 'C2', 'C5', 'C3', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
@@ -48,9 +48,9 @@ configurations = [
 ]
 
 ''' REAL TIME '''
-real_time_train_data = 'data/2023-01-12T12-03-50.edf'
-bandpass_filter_start_frequency = 14
-bandpass_filter_end_frequency = 20
+real_time_train_data = 'data_s/2023-02-23T11-10-20_real_text.edf'
+bandpass_filter_start_frequency = 10
+bandpass_filter_end_frequency = 14
 
 ''' VISUALIZATION '''
 accuracy_over_bands_show_standard_deviation = False

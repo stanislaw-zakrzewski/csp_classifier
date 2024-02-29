@@ -7,12 +7,13 @@ from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from analyze_data import analyze_edf
+from analyze_data import analyze_edf as analyze_edf_prime
 from gui.colors import colors
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
 from classifiers.parafac import process as parafacProcess
+from classifiers.flat import process as cspProcess
 
 
 class AnalyzeData(DoubleScrolledFrame):
@@ -40,8 +41,16 @@ class AnalyzeData(DoubleScrolledFrame):
 
     def analyze_edf(self):
         if self.selected_edf_file.get() != '':
-            accuracy_data = analyze_edf(self.selected_edf_file.get(), classifier=parafacProcess, verbose='ERROR')
-            figure = Figure(figsize=(15, 6))
+            accuracy_data = analyze_edf_prime(self.selected_edf_file.get(), classifier=cspProcess, verbose='ERROR')
+            # imie = 'Staszek_'
+            # imie = 'Krzysiek_'
+            imie = 'Maciek_'
+            proba = 'Proba1_'
+            # cw = 'cw1'
+            # cw = 'cw2'
+            cw = 'cw3'
+            accuracy_data.to_csv(imie+proba+cw+'.csv')
+            figure = Figure(figsize=(20, 6))
             ax = figure.subplots()
             sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax)
 

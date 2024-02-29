@@ -11,7 +11,7 @@ from data_classes.subject import Subject
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
-    tmin, tmax = 1., 3.
+    tmin, tmax = .5, 6.5
 
     raw_signals = []
     for i in range(len(bands)):

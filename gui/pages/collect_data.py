@@ -154,7 +154,7 @@ class CollectData(DoubleScrolledFrame):
         d = pygds.GDS()
         pygds.configure_demo(d)
         supported_sensitivities = d.GetSupportedSensitivities()
-        sensitivity_id = 5
+        sensitivity_id = 0
         for ch in d.Channels:
             ch.Sensitivity = supported_sensitivities[0][sensitivity_id]
             ch.BandpassFilterIndex = 16 # 2-30Hz bandpass
@@ -250,14 +250,26 @@ class CollectData(DoubleScrolledFrame):
 
         del d
         a = signal # SYGNAŁ
-
+        # plt.plot(a[16], label = "CZ")
+        # plt.plot(a[5], label = "FC3")
+        # plt.plot(a[13], label = "C5")
+        # plt.plot(a[14], label = "C3")
+        # plt.plot(a[15], label = "C1")
+        # plt.plot(a[23], label = "CP3")
+        # plt.plot(a[9], label = "FC4")
+        # plt.plot(a[17], label="C2")
+        # plt.plot(a[18], label="C4")
+        # plt.plot(a[19], label="C6")
+        # plt.plot(a[27], label="CP4")
+        # plt.legend()
+        # plt.show()
         t = time.localtime()
         timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
         filename = 'data/{}.edf'.format(timestamp)
 
         sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency,
-                                                    physical_max=10000.0,
-                                                    physical_min=-10000.0)
+                                                    physical_max=1000.0,
+                                                    physical_min=-1000.0)
 
         annotations = []
         len_for_annot = 0
