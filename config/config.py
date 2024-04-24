@@ -68,6 +68,8 @@ class Configurations(metaclass=Singleton):
                 return element['value']
             if element['type'] == 'int':
                 return int(element['value'])
+            if element['type'] == 'float':
+                return float(element['value'])
             if element['type'] == 'string':
                 return element['value']
 

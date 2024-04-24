@@ -7,17 +7,18 @@ from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from analyze_data import analyze_edf
+from analyze_data import analyze_edf as analyze_edf_prime
+from config.config import Configurations
 from gui.colors import colors
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
-from classifiers.parafac import process as parafacProcess
 
 
 class AnalyzeData(DoubleScrolledFrame):
     def __init__(self, parent, controller):
         DoubleScrolledFrame.__init__(self, parent)
+        self.configurations = Configurations()
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'], bg=colors['white_smoke'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
@@ -30,7 +31,7 @@ class AnalyzeData(DoubleScrolledFrame):
         self.selected_edf_file = StringVar()
         self.selected_edf_file.set('')
         Label(self, textvariable=self.selected_edf_file).grid(row=2, column=1)
-        Button(self, text='Analyze selected EDF', command=self.analyze_edf).grid(row=3, column=0, padx=10, pady=10)
+        Button(self, text='Analyze selected EDF', command=self.analyze_edf_gui).grid(row=3, column=0, padx=10, pady=10)
         self.canvas = None
 
     def select_edf_file(self):
@@ -38,12 +39,15 @@ class AnalyzeData(DoubleScrolledFrame):
         if filename:
             self.selected_edf_file.set(filename)
 
-    def analyze_edf(self):
+    def analyze_edf_gui(self):
         if self.selected_edf_file.get() != '':
-            accuracy_data = analyze_edf(self.selected_edf_file.get(), classifier=parafacProcess, verbose='ERROR')
-            figure = Figure(figsize=(15, 6))
+            accuracy_data = analyze_edf_prime(self.selected_edf_file.get(),
+                                        classifier_type=self.configurations.read('collect_data.classifier'),
+                                        verbose='ERROR')
+            figure = Figure(figsize=(25, 10))
             ax = figure.subplots()
-            sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax)
+            accuracy_data.to_csv('stacked_mlp_space.csv')  # TODO remove this
+            sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax, markers=True, style='configuration')
 
             ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
             ax.grid()

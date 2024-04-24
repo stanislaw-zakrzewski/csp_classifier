@@ -68,6 +68,7 @@ import numpy as np
 
 # mne imports
 import mne
+import pandas as pd
 from mne import io
 import os
 from pathlib import Path
@@ -79,6 +80,8 @@ from EEGModels import EEGNet
 from tensorflow.keras import utils as np_utils
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras import backend as K
+import tensorflow as tf
+from itertools import permutations
 
 # PyRiemann imports
 from pyriemann.estimation import XdawnCovariances
@@ -86,216 +89,393 @@ from pyriemann.tangentspace import TangentSpace
 # from pyriemann.utils.viz import plot_confusion_matrix
 from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn import metrics
 
 # tools for plotting confusion matrices
 from matplotlib import pyplot as plt
 
-from data_classes.subject import Subject
+RANDOM_SEED = 23
 
 FREQUENCY = 128  # Hz
 LOWPASS_CUTOFF = 2  # Hz
 HIGHPASS_CUTOFF = None  # Hz
 EVENT_IDS = dict(left_movement=1, right_movement=2)
 TIME_WINDOW = (.5, 2.5)  # seconds after start of the event
+EPOCHS = 200
+BATCH_SIZE = 50
+F1 = 8
+D = 2
+F2 = 16
+
+# Make it deterministic
+np.random.seed(RANDOM_SEED)
+tf.keras.utils.set_random_seed(RANDOM_SEED)
+tf.config.experimental.enable_op_determinism()
 
 # while the default tensorflow ordering is 'channels_last' we set it here
 # to be explicit in case if the user has changed the default ordering
 K.set_image_data_format('channels_last')
 
-dataset = [
-    'preprocessed_subjects_car\\s01.edf',
+dataset_1 = [
     'preprocessed_subjects_car\\s03.edf',
-    'preprocessed_subjects_car\\s04.edf',
-    'preprocessed_subjects_car\\s06.edf',
-    'preprocessed_subjects_car\\s14.edf',
+    'preprocessed_subjects_car\\s09.edf',
+    'preprocessed_subjects_car\\s11.edf',
+    'preprocessed_subjects_car\\s21.edf',
     'preprocessed_subjects_car\\s23.edf',
+    'preprocessed_subjects_car\\s26.edf',
+    'preprocessed_subjects_car\\s34.edf',
     'preprocessed_subjects_car\\s35.edf',
-    'preprocessed_subjects_car\\s41.edf',
     'preprocessed_subjects_car\\s43.edf',
+    'preprocessed_subjects_car\\s48.edf',
+]
+
+dataset_2 = [
+    'preprocessed_subjects_car\\s04.edf',
+    'preprocessed_subjects_car\\s10.edf',
+    'preprocessed_subjects_car\\s12.edf',
+    'preprocessed_subjects_car\\s14.edf',
+    'preprocessed_subjects_car\\s15.edf',
+    'preprocessed_subjects_car\\s20.edf',
+    'preprocessed_subjects_car\\s22.edf',
+    'preprocessed_subjects_car\\s25.edf',
+    'preprocessed_subjects_car\\s41.edf',
+    'preprocessed_subjects_car\\s52.edf',
+]
+
+dataset_3 = [
+    'preprocessed_subjects_car\\s05.edf',
+    'preprocessed_subjects_car\\s06.edf',
+    'preprocessed_subjects_car\\s29.edf',
+    'preprocessed_subjects_car\\s37.edf',
+    'preprocessed_subjects_car\\s47.edf',
     'preprocessed_subjects_car\\s50.edf',
 ]
 
+dataset_4 = [
+    'preprocessed_subjects_car\\s06.edf',
+    'preprocessed_subjects_car\\s10.edf',
+    'preprocessed_subjects_car\\s22.edf',
+    'preprocessed_subjects_car\\s25.edf',
+    'preprocessed_subjects_car\\s34.edf',
+    'preprocessed_subjects_car\\s41.edf',
+    'preprocessed_subjects_car\\s43.edf',
+    'preprocessed_subjects_car\\s47.edf',
+    'preprocessed_subjects_car\\s50.edf',
+    'preprocessed_subjects_car\\s52.edf',
+]
+
+dataset_5 = [
+    'preprocessed_subjects_car\\s03.edf',
+    'preprocessed_subjects_car\\s04.edf',
+    'preprocessed_subjects_car\\s05.edf',
+    'preprocessed_subjects_car\\s09.edf',
+    'preprocessed_subjects_car\\s12.edf',
+    'preprocessed_subjects_car\\s20.edf',
+    'preprocessed_subjects_car\\s21.edf',
+    'preprocessed_subjects_car\\s26.edf',
+    'preprocessed_subjects_car\\s29.edf',
+    'preprocessed_subjects_car\\s35.edf',
+]
+
+
 def read_data(data_paths):
     raw = mne.io.read_raw_edf(data_paths[0], preload=True)
-    events = mne.events_from_annotations(raw)[0]
+    events, labels = mne.events_from_annotations(raw)
+    if len(data_paths) == 1:
+        return raw, events, labels
 
     for data_path in data_paths[1:]:
         new_raw = mne.io.read_raw_edf(data_path, preload=True)
-        new_events = mne.events_from_annotations(new_raw)[0]
+        new_events, new_labels = mne.events_from_annotations(new_raw)
         events = np.concatenate([events, new_events + [len(raw), 0, 0]], axis=0)
+        labels.update(new_labels)
         raw.append(new_raw)
-    all = []
-    for i in events:
-        if i[0] in all:
-            print('=======', i[0])
-        all.append(i[0])
 
-    return raw, events
+    return raw, events, labels
 
 
-##################### Process, filter and epoch the data ######################
-raw, events = read_data(dataset)
-original_sfreq = raw.info['sfreq']
-raw.filter(LOWPASS_CUTOFF, HIGHPASS_CUTOFF, method='iir')  # replace baselining with high-pass
-raw.resample(sfreq=FREQUENCY)  # resample
-events[:, 0] = np.round(events[:, 0] * (FREQUENCY / float(original_sfreq))).astype(
-    int)  # adjust event placement to the resampling
+def load_dataset(dataset):
+    raw, events, label_names = read_data(dataset)
+    original_sfreq = raw.info['sfreq']
+    raw.filter(LOWPASS_CUTOFF, HIGHPASS_CUTOFF, method='iir')  # replace baselining with high-pass
+    raw.resample(sfreq=FREQUENCY)  # resample
+    events[:, 0] = np.round(events[:, 0] * (FREQUENCY / float(original_sfreq))).astype(
+        int)  # adjust event placement to the resampling
 
-raw.info['bads'] = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5',
-                    'FC1', 'T7', 'TP7', 'CP5', 'CP1',
-                    'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz',
-                    'POz', 'Pz', 'CPz', 'Fpz', 'Fp2', 'AF8', 'AF4', 'AFz', 'Fz', 'F2',
-                    'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC2', 'FCz',
-                    'T8', 'TP8', 'CP6', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10',
-                    'PO8', 'PO4', 'O2']
-picks = mne.pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False,
-                       exclude='bads')
+    raw.info['bads'] = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5',
+                        'FC1', 'T7', 'TP7', 'CP5', 'CP1',
+                        'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz',
+                        'POz', 'Pz', 'CPz', 'Fpz', 'Fp2', 'AF8', 'AF4', 'AFz', 'Fz', 'F2',
+                        'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC2', 'FCz',
+                        'T8', 'TP8', 'CP6', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10',
+                        'PO8', 'PO4', 'O2']
+    picks = mne.pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False,
+                           exclude='bads')
 
-# Read epochs
-epochs = mne.Epochs(raw, events, EVENT_IDS, TIME_WINDOW[0], TIME_WINDOW[1], proj=False,
-                    picks=picks, baseline=None, preload=True, verbose=False)
-labels = epochs.events[:, -1]
+    # Read epochs
+    epochs = mne.Epochs(raw, events, EVENT_IDS, TIME_WINDOW[0], TIME_WINDOW[1], proj=False,
+                        picks=picks, baseline=None, preload=True, verbose=False)
+    labels = epochs.events[:, -1]
 
-# extract raw data. scale by 1000 due to scaling sensitivity in deep learning
-X = epochs.get_data()  # * 100  # format is in (trials, channels, samples)
+    # extract raw data. scale by 1000 due to scaling sensitivity in deep learning
+    X = epochs.get_data()  # * 100  # format is in (trials, channels, samples)
 
-scaler = MinMaxScaler(feature_range=(-1, 1))
-X = scaler.fit_transform(X.reshape(-1, X.shape[-1])).reshape(
-    X.shape)  # 3D array cannot be scaled using this scaler so we turn it into 3d array
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    X = scaler.fit_transform(X.reshape(-1, X.shape[-1])).reshape(
+        X.shape)  # 3D array cannot be scaled using this scaler so we turn it into 3d array
 
-y = labels
+    y = labels
 
-permutation = np.random.RandomState(seed=23).permutation(len(X))
-X = X[permutation]
-y = y[permutation]
+    return X, y
 
-kernels, chans, samples = 1, 11, 257
 
-# take 50/25/25 percent of the data to train/validate/test
-quarter = int(len(X) / 4)
-X_train = X[0:2 * quarter, ]
-Y_train = y[0:2 * quarter]
-X_validate = X[2 * quarter:3 * quarter, ]
-Y_validate = y[2 * quarter:3 * quarter]
-X_test = X[3 * quarter:, ]
-Y_test = y[3 * quarter:]
+def split_all_patients_evenly():
+    X, y = load_dataset(dataset_train_val + dataset_test)
 
-############################# EEGNet portion ##################################
+    permutation = np.random.RandomState(seed=RANDOM_SEED).permutation(len(X))
+    X = X[permutation]
+    y = y[permutation]
 
-# convert labels to one-hot encodings.
-Y_train = np_utils.to_categorical(Y_train - 1)
-Y_validate = np_utils.to_categorical(Y_validate - 1)
-Y_test = np_utils.to_categorical(Y_test - 1)
+    # take 60/20/20 percent of the data to train/validate/test
+    fifth = int(len(X) / 5)
+    X_train = X[0:3 * fifth, ]
+    Y_train = y[0:3 * fifth]
+    X_validate = X[3 * fifth:4 * fifth, ]
+    Y_validate = y[3 * fifth:4 * fifth]
+    X_test = X[4 * fifth:, ]
+    Y_test = y[4 * fifth:]
 
-# convert data to NHWC (trials, channels, samples, kernels) format. Data
-# contains 60 channels and 151 time-points. Set the number of kernels to 1.
-X_train = X_train.reshape(X_train.shape[0], chans, samples, kernels)
-X_validate = X_validate.reshape(X_validate.shape[0], chans, samples, kernels)
-X_test = X_test.reshape(X_test.shape[0], chans, samples, kernels)
+    return X_train, Y_train, X_validate, Y_validate, X_test, Y_test
 
-# configure the EEGNet-8,2,16 model with kernel length of 32 samples (other
-# model configurations may do better, but this is a good starting point)
-model = EEGNet(nb_classes=2, Chans=chans, Samples=samples,
-               dropoutRate=0.5, kernLength=32, F1=4, D=4, F2=8,
-               dropoutType='Dropout')
 
-# compile the model and set the optimizers
-model.compile(loss='categorical_crossentropy', optimizer='adam',
-              metrics=['accuracy'])
+def split_separate_test_patients(data, data_test):
+    X, y = load_dataset(data)
+    X_test, y_test = load_dataset(data_test)
 
-# count number of parameters in the model
-numParams = model.count_params()
+    permutation = np.random.RandomState(seed=RANDOM_SEED).permutation(len(X))
+    X = X[permutation]
+    y = y[permutation]
+    permutation_test = np.random.RandomState(seed=RANDOM_SEED).permutation(len(X_test))
+    X_test = X_test[permutation_test]
+    Y_test = y_test[permutation_test]
 
-# set a valid path for your system to record model checkpoints
-checkpointer = ModelCheckpoint(filepath='/tmp/checkpoint.h5', verbose=1,
-                               save_best_only=True)
+    # take 60/20/20 percent of the data to train/validate/test
+    quarter = int(len(X) / 4)
+    X_train = X[0:3 * quarter, ]
+    Y_train = y[0:3 * quarter]
+    X_validate = X[3 * quarter:, ]
+    Y_validate = y[3 * quarter:]
 
-###############################################################################
-# if the classification task was imbalanced (significantly more trials in one
-# class versus the others) you can assign a weight to each class during
-# optimization to balance it out. This data is approximately balanced so we
-# don't need to do this, but is shown here for illustration/completeness.
-###############################################################################
+    return X_train, Y_train, X_validate, Y_validate, X_test, Y_test
 
-# the syntax is {class_1:weight_1, class_2:weight_2,...}. Here just setting
-# the weights all to be 1
-class_weights = {0: 1, 1: 1, 2: 1, 3: 1}
 
-################################################################################
-# fit the model. Due to very small sample sizes this can get
-# pretty noisy run-to-run, but most runs should be comparable to xDAWN +
-# Riemannian geometry classification (below)
-################################################################################
-fittedModel = model.fit(X_train, Y_train, batch_size=100, epochs=1000,
-                        verbose=2, validation_data=(X_validate, Y_validate),
-                        callbacks=[checkpointer], class_weight=class_weights)
+def run_classification_old(data, data_test):
+    X_train, Y_train, X_validate, Y_validate, X_test, Y_test = split_separate_test_patients(data, data_test)
 
-plt.plot(fittedModel.history['accuracy'], label='accuracy')
-plt.plot(fittedModel.history['val_accuracy'], label='val_accuracy')
-plt.legend()
-plt.show()
-plt.plot(fittedModel.history['loss'], label='loss')
-plt.plot(fittedModel.history['val_loss'], label='val_loss')
-plt.legend()
-plt.show()
+    ############################# EEGNet portion ##################################
 
-# load optimal weights
-model.load_weights('/tmp/checkpoint.h5')
+    # convert labels to one-hot encodings.
+    Y_train = np_utils.to_categorical(Y_train - 1)
+    Y_validate = np_utils.to_categorical(Y_validate - 1)
+    Y_test = np_utils.to_categorical(Y_test - 1)
 
-###############################################################################
-# can alternatively used the weights provided in the repo. If so it should get
-# you 93% accuracy. Change the WEIGHTS_PATH variable to wherever it is on your
-# system.
-###############################################################################
+    kernels, chans, samples = 1, 11, 257
+    # convert data to NHWC (trials, channels, samples, kernels) format. Data
+    # contains 60 channels and 151 time-points. Set the number of kernels to 1.
+    X_train = X_train.reshape(X_train.shape[0], chans, samples, kernels)
+    X_validate = X_validate.reshape(X_validate.shape[0], chans, samples, kernels)
+    X_test = X_test.reshape(X_test.shape[0], chans, samples, kernels)
 
-# WEIGHTS_PATH = /path/to/EEGNet-8-2-weights.h5
-# model.load_weights(WEIGHTS_PATH)
+    # configure the EEGNet-8,2,16 model with kernel length of 32 samples (other
+    # model configurations may do better, but this is a good starting point)
+    model = EEGNet(nb_classes=2, Chans=chans, Samples=samples,
+                   dropoutRate=0.5, kernLength=32, F1=F1, D=D, F2=F2,
+                   dropoutType='Dropout')
 
-###############################################################################
-# make prediction on test set.
-###############################################################################
+    # compile the model and set the optimizers
+    model.compile(loss='categorical_crossentropy', optimizer='adam',
+                  metrics=['accuracy'])
 
-probs = model.predict(X_test)
-preds = probs.argmax(axis=-1)
-acc = np.mean(preds == Y_test.argmax(axis=-1))
-print("Classification accuracy: %f " % (acc))
+    # count number of parameters in the model
+    numParams = model.count_params()
 
-# ############################# PyRiemann Portion ##############################
-#
-# # code is taken from PyRiemann's ERP sample script, which is decoding in
-# # the tangent space with a logistic regression
-#
-# n_components = 2  # pick some components
-#
-# # set up sklearn pipeline
-# clf = make_pipeline(XdawnCovariances(n_components),
-#                     TangentSpace(metric='riemann'),
-#                     LogisticRegression())
-#
-# preds_rg = np.zeros(len(Y_test))
-#
-# # reshape back to (trials, channels, samples)
-# X_train = X_train.reshape(X_train.shape[0], chans, samples)
-# X_test = X_test.reshape(X_test.shape[0], chans, samples)
-#
-# # train a classifier with xDAWN spatial filtering + Riemannian Geometry (RG)
-# # labels need to be back in single-column format
-# clf.fit(X_train, Y_train.argmax(axis=-1))
-# preds_rg = clf.predict(X_test)
-#
-# # Printing the results
-# acc2 = np.mean(preds_rg == Y_test.argmax(axis=-1))
-# print("Classification accuracy: %f " % (acc2))
+    # set a valid path for your system to record model checkpoints
+    checkpointer = ModelCheckpoint(filepath='/tmp/checkpoint.h5', verbose=1,
+                                   save_best_only=True)
 
-# plot the confusion matrices for both classifiers
-names = ['left', 'right']
-plt.figure(0)
-# plot_confusion_matrix(preds, Y_test.argmax(axis=-1), names, title='EEGNet-8,2')
-cm = confusion_matrix(Y_test.argmax(axis=-1), preds)
-ConfusionMatrixDisplay(cm, display_labels=names).plot()
-# plt.figure(1)
-# # plot_confusion_matrix(preds_rg, Y_test.argmax(axis=-1), names, title='xDAWN + RG')
-# cm = confusion_matrix(Y_test.argmax(axis=-1), preds_rg)
-# ConfusionMatrixDisplay(cm, display_labels=names).plot()
-plt.show()
+    ###############################################################################
+    # if the classification task was imbalanced (significantly more trials in one
+    # class versus the others) you can assign a weight to each class during
+    # optimization to balance it out. This data is approximately balanced so we
+    # don't need to do this, but is shown here for illustration/completeness.
+    ###############################################################################
+
+    # the syntax is {class_1:weight_1, class_2:weight_2,...}. Here just setting
+    # the weights all to be 1
+    class_weights = {0: 1, 1: 1, 2: 1, 3: 1}
+
+    ################################################################################
+    # fit the model. Due to very small sample sizes this can get
+    # pretty noisy run-to-run, but most runs should be comparable to xDAWN +
+    # Riemannian geometry classification (below)
+    ################################################################################
+    fittedModel = model.fit(X_train, Y_train, batch_size=BATCH_SIZE, epochs=EPOCHS,
+                            verbose=2, validation_data=(X_validate, Y_validate),
+                            callbacks=[checkpointer], class_weight=class_weights)
+
+    plt.plot(fittedModel.history['accuracy'], label='accuracy')
+    plt.plot(fittedModel.history['val_accuracy'], label='val_accuracy')
+    plt.legend()
+    plt.show()
+    plt.plot(fittedModel.history['loss'], label='loss')
+    plt.plot(fittedModel.history['val_loss'], label='val_loss')
+    plt.legend()
+    plt.show()
+
+    # load optimal weights
+    model.load_weights('/tmp/checkpoint.h5')
+
+    ###############################################################################
+    # can alternatively used the weights provided in the repo. If so it should get
+    # you 93% accuracy. Change the WEIGHTS_PATH variable to wherever it is on your
+    # system.
+    ###############################################################################
+
+    # WEIGHTS_PATH = /path/to/EEGNet-8-2-weights.h5
+    # model.load_weights(WEIGHTS_PATH)
+
+    ###############################################################################
+    # make prediction on test set.
+    ###############################################################################
+
+    probs = model.predict(X_test)
+    preds = probs.argmax(axis=-1)
+    acc = np.mean(preds == Y_test.argmax(axis=-1))
+    print("Classification accuracy: %f " % (acc))
+
+    # ############################# PyRiemann Portion ##############################
+    #
+    # # code is taken from PyRiemann's ERP sample script, which is decoding in
+    # # the tangent space with a logistic regression
+    #
+    # n_components = 2  # pick some components
+    #
+    # # set up sklearn pipeline
+    # clf = make_pipeline(XdawnCovariances(n_components),
+    #                     TangentSpace(metric='riemann'),
+    #                     LogisticRegression())
+    #
+    # preds_rg = np.zeros(len(Y_test))
+    #
+    # # reshape back to (trials, channels, samples)
+    # X_train = X_train.reshape(X_train.shape[0], chans, samples)
+    # X_test = X_test.reshape(X_test.shape[0], chans, samples)
+    #
+    # # train a classifier with xDAWN spatial filtering + Riemannian Geometry (RG)
+    # # labels need to be back in single-column format
+    # clf.fit(X_train, Y_train.argmax(axis=-1))
+    # preds_rg = clf.predict(X_test)
+    #
+    # # Printing the results
+    # acc2 = np.mean(preds_rg == Y_test.argmax(axis=-1))
+    # print("Classification accuracy: %f " % (acc2))
+
+    # plot the confusion matrices for both classifiers
+    names = ['left', 'right']
+    plt.figure(0)
+    # plot_confusion_matrix(preds, Y_test.argmax(axis=-1), names, title='EEGNet-8,2')
+    cm = metrics.confusion_matrix(Y_test.argmax(axis=-1), preds)
+    metrics.ConfusionMatrixDisplay(cm, display_labels=names).plot()
+    # plt.figure(1)
+    # # plot_confusion_matrix(preds_rg, Y_test.argmax(axis=-1), names, title='xDAWN + RG')
+    # cm = confusion_matrix(Y_test.argmax(axis=-1), preds_rg)
+    # ConfusionMatrixDisplay(cm, display_labels=names).plot()
+    plt.show()
+    return acc, cm
+
+
+def run_classification(data, data_test):
+    X_train, Y_train, X_validate, Y_validate, X_test, Y_test = split_separate_test_patients(data, data_test)
+
+    # convert labels to one-hot encodings.
+    Y_train = np_utils.to_categorical(Y_train - 1)
+    Y_validate = np_utils.to_categorical(Y_validate - 1)
+    Y_test = np_utils.to_categorical(Y_test - 1)
+
+    kernels, chans, samples = 1, 11, 257
+    # convert data to NHWC (trials, channels, samples, kernels) format. Data
+    # contains 60 channels and 151 time-points. Set the number of kernels to 1.
+    X_train = X_train.reshape(X_train.shape[0], chans, samples, kernels)
+    X_validate = X_validate.reshape(X_validate.shape[0], chans, samples, kernels)
+    X_test = X_test.reshape(X_test.shape[0], chans, samples, kernels)
+
+    # configure the EEGNet-8,2,16 model with kernel length of 32 samples (other
+    # model configurations may do better, but this is a good starting point)
+    model = EEGNet(nb_classes=2, Chans=chans, Samples=samples,
+                   dropoutRate=0.5, kernLength=32, F1=F1, D=D, F2=F2,
+                   dropoutType='Dropout')
+
+    # compile the model and set the optimizers
+    model.compile(loss='categorical_crossentropy', optimizer='adam',
+                  metrics=['accuracy'])
+
+    # set a valid path for your system to record model checkpoints
+    checkpointer = ModelCheckpoint(filepath='/tmp/checkpoint.h5', verbose=1,
+                                   save_best_only=True)
+
+    ###############################################################################
+    # if the classification task was imbalanced (significantly more trials in one
+    # class versus the others) you can assign a weight to each class during
+    # optimization to balance it out. This data is approximately balanced so we
+    # don't need to do this, but is shown here for illustration/completeness.
+    ###############################################################################
+
+    # the syntax is {class_1:weight_1, class_2:weight_2,...}. Here just setting
+    # the weights all to be 1
+    class_weights = {0: 1, 1: 1, 2: 1, 3: 1}
+
+    ################################################################################
+    # fit the model. Due to very small sample sizes this can get
+    # pretty noisy run-to-run, but most runs should be comparable to xDAWN +
+    # Riemannian geometry classification (below)
+    ################################################################################
+    model.fit(X_train, Y_train, batch_size=BATCH_SIZE, epochs=EPOCHS,
+              verbose=2, validation_data=(X_validate, Y_validate),
+              callbacks=[checkpointer], class_weight=class_weights)
+
+    # load optimal weights
+    model.load_weights('/tmp/checkpoint.h5')
+
+    probs = model.predict(X_test)
+    preds = probs.argmax(axis=-1)
+    acc = np.mean(preds == Y_test.argmax(axis=-1))
+
+    cm = metrics.confusion_matrix(Y_test.argmax(axis=-1), preds)
+    return acc, cm
+
+
+def create_dataset_subsets(dataset, test_count):
+    dataset_subsets = []
+    test_sets = list(permutations(dataset, test_count))
+    for test_set in test_sets:
+        train = dataset.copy()
+        train = list(set(train) - set(test_set))
+        train.sort()
+        test = (list(test_set))
+        test.sort()
+        dataset_subsets.append({'train': train, 'test': test})
+    return dataset_subsets
+
+
+def run_for_subset(dataset_subset, subset_id):
+    results = {'accuracy': [], 'confusion_matrix': []}
+    for subset in dataset_subset:
+        final_accuracy, confusion_matrix = run_classification(subset['train'], subset['test'])
+        results['accuracy'].append(final_accuracy)
+        results['confusion_matrix'].append(confusion_matrix)
+    pd.DataFrame(results).to_csv('subset_accuracy_results_{}.csv'.format(subset_id))
+
+
+run_for_subset(create_dataset_subsets(dataset_5, 2), '5_2_all')
+# final_accuracy, confusion_matrix = run_classification_old(dataset_train_val, dataset_test)
+# print(final_accuracy, confusion_matrix)

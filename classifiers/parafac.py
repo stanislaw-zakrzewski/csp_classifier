@@ -20,18 +20,16 @@ from tensorly import unfold, cp_to_tensor
 from scipy.fft import fft, fftfreq, rfft, rfftfreq
 from sklearn.decomposition import TruncatedSVD
 from scipy.signal import morlet
+import tlviz
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
-    tmin, tmax = 1., 3.
+    tmin, tmax = 0., 2.
     frequencies = 50
-
 
     raw_signals = []
     for i in range(len(bands)):
         raw_signals.append(subject.get_raw_copy())
-
-
 
     if len(selected_channels) > 0:
         for raw_signal in raw_signals:
@@ -44,7 +42,6 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
     epochs_train = []
     epochs_data = []
     epochs_data_train = []
-
 
     # Apply band-pass filter
     for index, band in enumerate(bands):
@@ -82,8 +79,8 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
     # Assemble a classifier
     # classifier = MLPClassifier(hidden_layer_sizes=(10), random_state=1, n_iter_no_change=100,
     #                             learning_rate_init=0.01, max_iter=10000, )  # Originally: LinearDiscriminantAnalysis()
-    classifier = MLPClassifier(hidden_layer_sizes=(128,32,8), random_state=1, n_iter_no_change=100,
-                                learning_rate_init=0.01, max_iter=10000, )  # Originally: LinearDiscriminantAnalysis()
+    classifier = MLPClassifier(hidden_layer_sizes=(128, 32, 8), random_state=1, n_iter_no_change=100,
+                               learning_rate_init=0.01, max_iter=10000, )  # Originally: LinearDiscriminantAnalysis()
     # classifier = LinearDiscriminantAnalysis()
     # classifier = RandomForestClassifier(max_depth=20, n_estimators=10, max_features=10)
     mne.set_log_level('warning')
@@ -109,7 +106,7 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
                 x_train_csp = np.concatenate((x_train_csp, get_atoms(edt[train_idx])), axis=1)
                 x_test_csp = np.concatenate((x_test_csp, get_atoms(edt[test_idx])), axis=1)
             else:
-                x_train_csp = get_atoms(edt[train_idx])
+                x_train_csp = get_atoms(edt[train_idx], raw_signals[0].ch_names)
                 x_test_csp = get_atoms(edt[test_idx])
 
         # Fit the model to the data
@@ -117,7 +114,7 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
 
         # Print the factors
         # print("U:", svd.components_)
-          # print("S:", svd.singular_values_)
+        # print("S:", svd.singular_values_)
         x_train_csp = svd.transform(x_train_csp)
         x_test_csp = svd.transform(x_test_csp)
         classifier.fit(x_train_csp, y_train)
@@ -159,21 +156,48 @@ def time_frequency_analysis(data):
     return np.asarray(train_data)
 
 
-def get_atoms(x_train):
-    # return x_train.reshape((x_train.shape[0], np.prod(x_train.shape[1:])))
-    res = parafac(x_train, rank=10)
-    res = cp_to_tensor(res)
-    #
-    # for i in range(len(res[0][0])):
-    #     a = []
-    #     for o in res:
-    #         a.append(o[12][i])
-    #     u = rfft(a)
-    #     u = np.abs(u)
-    #     plt.subplot(4, 4, i+1)
-    #     plt.plot(range(len(u[2:])), u[2:])
-    #
-    #
+def get_atoms(x_train, ch_names=[]):
+    # for x_1 in x_train:
+    #     for x_2 in x_1:
+    freq = np.fft.rfftfreq(500, d=1. / 250)[0:50]
+
+    weights, factors = parafac(x_train, rank=5)
+    tlviz.visualisation.components_plot((weights, factors))
+    plt.show()
+    channels = factors[1]
+    frequencies_list = factors[2]
+    plot_data = []
+    for channel_index, channel in enumerate(channels):
+        plot_data.append([])
+        for index in range(len(frequencies_list[0])):
+            plot_data[-1].append(np.array([i[index] for i in frequencies_list]) * channel[index])
+
+    fig, ax = plt.subplots(len(plot_data), 1)
+    fig.tight_layout(h_pad=3)
+    for row_index, row in enumerate(plot_data):
+        for component_index, component in enumerate(row):
+            ax[row_index].plot(freq, component, label=component_index + 1)
+        ax[row_index].set_xlabel("Hz")
+        ax[row_index].set_title(ch_names[row_index])
+        ax[row_index].legend()
+    plt.show()
+    print('oko')
+    # # return x_train.reshape((x_train.shape[0], np.prod(x_train.shape[1:])))
+    # res_p = parafac(x_train, rank=3)
+    # res = cp_to_tensor(res_p)
+    # #
+    # tlviz.visualisation.core_element_heatmap(res_p, x_train)
     # plt.show()
-    # input()
-    return res.reshape(res.shape[0], np.prod(res.shape[1:]))
+    # # for i in range(len(res[0][0])):
+    # #     a = []
+    # #     for o in res:
+    # #         a.append(o[0][i])
+    # #     u = rfft(a)
+    # #     u = np.abs(u)
+    # #     plt.subplot(4, 4, i+1)
+    # #     plt.plot(range(len(u[2:])), u[2:])
+    # #
+    # #
+    # # plt.show()
+    # # input()
+    # return res.reshape(res.shape[0], np.prod(res.shape[1:]))

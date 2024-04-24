@@ -3,15 +3,13 @@ import pandas as pd
 from progress.bar import Bar
 
 from analyze_data import analyze_edf
-from classifiers.flat import process as csp_classifier
-from classifiers.parafac import process as parafac_classifier
 from logger import ProgressBar
 from visualization.accuracy_over_bands import save_visualized_accuracy_over_bands
 
 print('BULK ANALYZE DATA STARTED')
 
 directories = ['data_b', 'data_s']
-classifiers = {'csp': csp_classifier, 'parafac': parafac_classifier}
+classifiers = ['csp', 'parafac']
 directory_paths = {}
 file_count = 0
 
@@ -31,7 +29,7 @@ for directory_path in directory_paths:
     for filepath in directory_paths[directory_path]:
         for classifier in classifiers:
 
-            edf_data = analyze_edf(filepath, classifier=classifiers[classifier], verbose='ERROR')
+            edf_data = analyze_edf(filepath, classifier_type=classifier, verbose='ERROR')
             columns = edf_data.columns
             date = filepath[7:26]
             task = filepath[27:-4]
