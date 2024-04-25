@@ -66,9 +66,13 @@ class Configurations(metaclass=Singleton):
         if element:
             if element['type'] == 'list':
                 return element['value']
+            if element['type'] == 'float':
+                return float(element['value'])
             if element['type'] == 'int':
                 return int(element['value'])
             if element['type'] == 'string':
+                return element['value']
+            if element['type'] == 'boolean':
                 return element['value']
 
     def change_current_configuration(self, configuration_data):

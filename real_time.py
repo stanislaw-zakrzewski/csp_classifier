@@ -8,6 +8,7 @@ from config.config import Configurations
 from config_old import real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency, \
     channels2, electrode_names, send_to_vr
 from data_classes.subject import Subject
+from playsound import playsound
 
 
 def calculate_recall(predictions, corrects, hand):
@@ -106,6 +107,7 @@ print(csp, lda)
 
 print("Connecting to VR device...")
 configurations = Configurations()
+print(configurations.read('real_time.vr_audio_prompts'))
 ipaddress = configurations.read('all.collect_data.ipaddress')
 port = configurations.read('all.collect_data.port')
 sender = SenderLib.Sender(ipaddress, port)
@@ -149,19 +151,23 @@ def processCallback(samples):
         print(res[0])
         if res[0] == 1:
             print('Movement')
+            if configurations.read('real_time.vr_audio_prompts'):
+                playsound('commands//sound_commands//ruch.wav')
             control.left = True
             control.right = True
             control.mode = configurations.read('all.collect_data.vr_mode')
             state = sender.send_data(control)
         else:
             print('Rest')
+            if configurations.read('real_time.vr_audio_prompts'):
+                playsound('commands//sound_commands//brak.wav')
             control.left = False
             control.right = False
             control.mode = configurations.read('all.collect_data.vr_mode')
             state = sender.send_data(control)
 
-        if send_to_vr:
-            state = sender.send_data(control)
+        # if send_to_vr:
+        #     state = sender.send_data(control)
 
     except Exception as e:
         print(e)

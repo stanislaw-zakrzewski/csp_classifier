@@ -154,7 +154,7 @@ class CollectData(DoubleScrolledFrame):
         d = pygds.GDS()
         pygds.configure_demo(d)
         supported_sensitivities = d.GetSupportedSensitivities()
-        sensitivity_id = 0
+        sensitivity_id = 0         # [[2250000.0, 1125000.0, 750000.0, 562500.0, 375000.0, 187500.0]]
         for ch in d.Channels:
             ch.Sensitivity = supported_sensitivities[0][sensitivity_id]
             ch.BandpassFilterIndex = 16 # 2-30Hz bandpass

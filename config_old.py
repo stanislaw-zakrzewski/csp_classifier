@@ -48,9 +48,9 @@ configurations = [
 ]
 
 ''' REAL TIME '''
-real_time_train_data = 'data_s/2023-02-23T11-10-20_real_text.edf'
-bandpass_filter_start_frequency = 10
-bandpass_filter_end_frequency = 14
+real_time_train_data = 'data/2024-03-04T13-11-25.edf'
+bandpass_filter_start_frequency = 12
+bandpass_filter_end_frequency = 15
 
 ''' VISUALIZATION '''
 accuracy_over_bands_show_standard_deviation = False
