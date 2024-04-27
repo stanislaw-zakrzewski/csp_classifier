@@ -33,7 +33,6 @@ class Subject:
             current_event_start = self.offset_samples
             while current_event_start < annotation_duration + self.event_len:
                 new_event = [initial_event[0] + current_event_start, 0, initial_event[2]]
-                print(new_event)
                 events.append(new_event)
                 current_event_start += self.event_len
         self.events = np.array(events)

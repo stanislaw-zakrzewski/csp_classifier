@@ -100,8 +100,8 @@ def analyze_data(bands, selected_electrodes, filepath=subject_to_analyze, classi
         subject = memory['value']
     else:
         subject = Subject(filepath)
-        memory['name'] = filepath
-        memory['value'] = subject
+        # memory['name'] = filepath
+        # memory['value'] = subject
 
     channels = validate_available_electrodes(subject, selected_electrodes)
 

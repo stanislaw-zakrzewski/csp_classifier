@@ -13,6 +13,8 @@ from gui.colors import colors
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
+from classifiers.parafac import process as parafacProcess
+from classifiers.flat import process as cspProcess
 
 
 class AnalyzeData(DoubleScrolledFrame):

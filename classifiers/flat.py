@@ -10,7 +10,7 @@ from config.config import Configurations
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
-    tmin, tmax = 1., 3.
+    tmin, tmax = .0, subject.sub_event_length_sec
 
     raw_signals = []
     for i in range(len(bands)):
@@ -40,10 +40,10 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
                        exclude='bads')
 
     for index, band in enumerate(bands):
-        epochs.append(Epochs(filtered_raw_signals[index], subject.events, subject.id_dict, 0, 2, proj=True,
-                               picks=picks,
-                               baseline=None, preload=True, verbose=verbose))
-        epochs_train.append(epochs[index].copy())  # .crop(tmin=tmin, tmax=tmax))
+        epochs.append(
+            Epochs(filtered_raw_signals[index], subject.events, subject.id_dict, tmin, tmax, proj=True, picks=picks,
+                   baseline=None, preload=True, verbose=verbose))
+        epochs_train.append(epochs[index].copy())#.crop(tmin=tmin, tmax=tmax))
 
         epochs_data.append(epochs[index].get_data())
         epochs_data_train.append(epochs_train[index].get_data())

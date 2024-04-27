@@ -39,7 +39,11 @@ class Sender:
         return json2obj(received_data)
 
     def send_data(self, control) -> GameState:
+        print(control.mode)
+        print(control.movement)
         control.movement = True
+        control.applyMode = True
+        control.dataAcquisition = True
         return self.send_to_tcp(control)
 
     def get_state(self, control) -> GameState:

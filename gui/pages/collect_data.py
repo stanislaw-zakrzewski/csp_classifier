@@ -6,6 +6,7 @@ from tkinter import *
 
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from pyedflib import highlevel
 
@@ -152,6 +153,11 @@ class CollectData(DoubleScrolledFrame):
 
         d = pygds.GDS()
         pygds.configure_demo(d)
+        supported_sensitivities = d.GetSupportedSensitivities()
+        sensitivity_id = 0         # [[2250000.0, 1125000.0, 750000.0, 562500.0, 375000.0, 187500.0]]
+        for ch in d.Channels:
+            ch.Sensitivity = supported_sensitivities[0][sensitivity_id]
+            ch.BandpassFilterIndex = 16 # 2-30Hz bandpass
         d.SetConfiguration()
 
         batches_per_second = 2
@@ -183,7 +189,7 @@ class CollectData(DoubleScrolledFrame):
                 np.set_printoptions(suppress=True, linewidth=10000, precision=2)
                 # print(np.std(samples, axis=0)) # wszystkie kanały
                 # print(np.std(samples[:, [32, 33, 34]], axis=0)) # akcelerometry - dla kontroli ;-)
-                # print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
+                print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
 
                 if self.current_queue is None or len(self.current_queue) == 0:
                     return False
@@ -243,13 +249,27 @@ class CollectData(DoubleScrolledFrame):
         d.Close()
 
         del d
+        a = signal # SYGNAŁ
+        # plt.plot(a[16], label = "CZ")
+        # plt.plot(a[5], label = "FC3")
+        # plt.plot(a[13], label = "C5")
+        # plt.plot(a[14], label = "C3")
+        # plt.plot(a[15], label = "C1")
+        # plt.plot(a[23], label = "CP3")
+        # plt.plot(a[9], label = "FC4")
+        # plt.plot(a[17], label="C2")
+        # plt.plot(a[18], label="C4")
+        # plt.plot(a[19], label="C6")
+        # plt.plot(a[27], label="CP4")
+        # plt.legend()
+        # plt.show()
         t = time.localtime()
         timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
         filename = 'data/{}.edf'.format(timestamp)
 
         sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency,
-                                                    physical_max=2000000,
-                                                    physical_min=-2000000)
+                                                    physical_max=1000.0,
+                                                    physical_min=-1000.0)
 
         annotations = []
         len_for_annot = 0

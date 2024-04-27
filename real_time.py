@@ -1,10 +1,14 @@
 import numpy as np
 from mne.io import RawArray
 
+import SenderLib
 import pygds
 from classifiers.flat import process
+from config.config import Configurations
 from config_old import real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency, \
-    channels2, electrode_names, sender, send_to_vr, control
+    channels2, electrode_names, send_to_vr
+from data_classes.subject import Subject
+from playsound import playsound
 
 
 def calculate_recall(predictions, corrects, hand):
@@ -31,18 +35,15 @@ def calculate_precision(predictions, corrects, hand):
     return numerator, denominator
 
 
-
-
-
-
 def main(bands, channels):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
+    subject = Subject(real_time_train_data)
 
     window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(
-        real_time_train_data, bands,
+        subject, bands,
         channels,
         n_splits=1)
 
@@ -98,18 +99,29 @@ def main(bands, channels):
     return csp_filters, classifier, mne_info
 
 
-
-
-
 csp, lda, mne_info = main(
     [(bandpass_filter_start_frequency, bandpass_filter_end_frequency)],
     channels2
 )
 print(csp, lda)
 
+print("Connecting to VR device...")
+configurations = Configurations()
+print(configurations.read('real_time.vr_audio_prompts'))
+ipaddress = configurations.read('all.collect_data.ipaddress')
+port = configurations.read('all.collect_data.port')
+sender = SenderLib.Sender(ipaddress, port)
+control = SenderLib.GameControl()
+print("Successfully connected to VR device")
+
 print("Inicjalizacja trochę trwa...")
 d = pygds.GDS()
-pygds.configure_demo(d)  # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
+pygds.configure_demo(d)
+supported_sensitivities = d.GetSupportedSensitivities()
+sensitivity_id = 0
+for ch in d.Channels:
+    ch.Sensitivity = supported_sensitivities[0][sensitivity_id]
+    ch.BandpassFilterIndex = 16  # 2-30Hz bandpass
 d.SetConfiguration()
 i = 0
 
@@ -139,15 +151,23 @@ def processCallback(samples):
         print(res[0])
         if res[0] == 1:
             print('Movement')
+            if configurations.read('real_time.vr_audio_prompts'):
+                playsound('commands//sound_commands//ruch.wav')
             control.left = True
             control.right = True
+            control.mode = configurations.read('all.collect_data.vr_mode')
+            state = sender.send_data(control)
         else:
             print('Rest')
+            if configurations.read('real_time.vr_audio_prompts'):
+                playsound('commands//sound_commands//brak.wav')
             control.left = False
             control.right = False
-
-        if send_to_vr:
+            control.mode = configurations.read('all.collect_data.vr_mode')
             state = sender.send_data(control)
+
+        # if send_to_vr:
+        #     state = sender.send_data(control)
 
     except Exception as e:
         print(e)
