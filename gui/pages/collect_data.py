@@ -13,6 +13,7 @@ from gui.fonts import fonts
 from gui.pages.collect_data_components.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from src.bci_integration.GtecNautilusProInterface import GtecNautilusProInterface
+from src.edf.EDFWriter import EDFWriter
 
 # commands = get_commands()
 signal = []
@@ -31,6 +32,7 @@ class CollectData(DoubleScrolledFrame):
         self.queue = None
         self.current_queue = None
         self.bci_interface = GtecNautilusProInterface()
+        self.edf_writer = EDFWriter()
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
@@ -132,10 +134,20 @@ class CollectData(DoubleScrolledFrame):
             self.plot_canvas.draw()
 
     def start_acquisition(self):
-        self.acquisition_thread = Thread(target=self.bci_interface.run_acquisition)
+        self.acquisition_thread = Thread(target=self.acquisition)
         self.acquisition_thread.start()
         self.queue_canvas = Canvas(self)
         self.update_experiment_timeline_plot()
+
+    def acquisition(self):
+        recorded_signal, start_date = self.bci_interface.run_acquisition(self.prompt_viewer, self.current_queue,
+                                                                         self.update_experiment_timeline_plot)
+        if not self.prompt_viewer.closed:
+            self.prompt_viewer.change_prompt('end')
+        else:
+            self.prompt_viewer.destroy()
+        self.edf_writer.write(recorded_signal, start_date, self.queue, self.patient_name_value.get(),
+                              self.gender_value.get())
 
     def create_queue(self):
         trial_count = self.configurations.read('all.collect_data.trial_count')
