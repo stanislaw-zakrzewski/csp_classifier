@@ -11,8 +11,8 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-DEFAULT_CONFIGURATION_PATH = 'config//default_configuration.txt'
-CURRENT_CONFIGURATION_PATH = 'config//current_configuration.txt'
+DEFAULT_CONFIGURATION_PATH = 'config//default_configuration.json'
+CURRENT_CONFIGURATION_PATH = 'config//current_configuration.json'
 
 
 
@@ -79,5 +79,5 @@ class Configurations(metaclass=Singleton):
 
     def change_current_configuration(self, configuration_data):
         self.current_configuration = configuration_data
-        with open('config//current_configuration.txt', 'w') as f:
+        with open('config//current_configuration.json', 'w') as f:
             print(json.dumps(configuration_data), file=f)
