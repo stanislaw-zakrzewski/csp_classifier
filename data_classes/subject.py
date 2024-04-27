@@ -23,7 +23,7 @@ class Subject:
         self.sampling_frequency = self.configurations.read('general.sampling_rate')
         self.sub_event_length_sec = self.configurations.read('general.sub_event_length_sec')
 
-        self.electrode_names = self.configurations.read('general.all_electrodes')
+        self.electrode_names = self.raw.ch_names #self.configurations.read('general.all_electrodes')
 
         events = []
         self.event_len = int(self.sub_event_length_sec * self.sampling_frequency)

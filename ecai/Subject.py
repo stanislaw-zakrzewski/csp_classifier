@@ -43,6 +43,27 @@ def preprocess_subject(subject_paths):
                 [data_left, data_right])
         print("Finished processing {} of {} subjects".format(index + 1, subject_count))
 
+def common_average_reference(data_left, data_right):
+    averages_left = []
+    averages_right = []
+    for i in range(64):
+        averages_left.append([])
+        averages_right.append([])
+
+    for i in range(data_left.shape[1]):
+        # TODO fix this to make it faster
+        # concatenate((averages_left, full(64, [average(data_left[:, i])])), axis=1)
+        # concatenate((averages_right, full(64, [average(data_right[:, i])])), axis=1)
+        average_left = np.average(data_left[:, i])
+        average_rigt = np.average(data_right[:, i])
+        for j in range(64):
+            averages_left[j].append(average_left)
+            averages_right[j].append(average_rigt)
+
+    data_left -= averages_left
+    data_right -= averages_right
+    return data_left, data_right
+
 
 
 class Subject:
@@ -65,8 +86,10 @@ class Subject:
         mne_info = create_info(self.electrode_names, 512, 'eeg')
 
         self.events = self.generate_events(with_rest, balanced)
-        data_left = self.subject_mat['eeg'][0][0]['imagery_left'][0:64]
-        data_right = self.subject_mat['eeg'][0][0]['imagery_right'][0:64]
+        original_data_left = self.subject_mat['eeg'][0][0]['imagery_left'][0:64]
+        original_data_right = self.subject_mat['eeg'][0][0]['imagery_right'][0:64]
+
+        data_left, data_right = common_average_reference(original_data_left, original_data_right)
 
 
         #
@@ -110,9 +133,9 @@ class Subject:
         header.update({'annotations': annotations})
         print(montage.ch_names)
         sig_headers = highlevel.make_signal_headers(montage.ch_names, sample_rate=512,
-                                                    physical_max=2000000,
-                                                    physical_min=-2000000)
-        highlevel.write_edf('preprocessed_subjects/{}.edf'.format(subject_name), self.raw.get_data(), sig_headers, header)
+                                                    physical_max=20000000,
+                                                    physical_min=-20000000)
+        highlevel.write_edf('preprocessed_subjects_car/{}.edf'.format(subject_name), self.raw.get_data(), sig_headers, header)
 
 
 

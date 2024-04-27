@@ -1,13 +1,12 @@
 import mne
 import numpy as np
-from mne import Epochs, pick_types
+from mne import Epochs, pick_types, concatenate_epochs
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import ShuffleSplit
 from sklearn.neural_network import MLPClassifier
 
-from config_old import sampling_frequency
-from data_classes.subject import Subject
+from config.config import Configurations
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
@@ -32,7 +31,8 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
     # Apply band-pass filter
     for index, band in enumerate(bands):
         filtered_raw_signals.append(
-            raw_signals[index].filter(band[0], band[1], l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=1024*2,
+            raw_signals[index].filter(band[0], band[1], l_trans_bandwidth=2, h_trans_bandwidth=2,
+                                      filter_length=1024 * 2,
                                       fir_design='firwin',
                                       skip_by_annotation='edge', verbose=verbose))
 
@@ -49,14 +49,13 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
         epochs_data_train.append(epochs_train[index].get_data())
     labels = np.array(epochs[0].events[:, -1])
 
-
     cv = ShuffleSplit(n_splits=n_splits, test_size=0.2, random_state=42)
     cv_split = cv.split(epochs_data_train[0])
 
     # Assemble a classifier
     classifier = MLPClassifier(hidden_layer_sizes=(100, 100), random_state=1,
                                max_iter=10000)  # Originally: LinearDiscriminantAnalysis()
-    classifier = LinearDiscriminantAnalysis()
+    # classifier = LinearDiscriminantAnalysis()
     csp_n_components = 32 if len(selected_channels) == 0 else min(len(selected_channels), 32)
     mne.set_log_level('warning')
     csp = CSP(n_components=csp_n_components, reg=reg, log=True, norm_trace=False)
@@ -87,6 +86,7 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
         classifier.fit(x_train_csp, y_train)
 
         predictions = classifier.predict(x_test_csp)
+        predictions_proba = classifier.predict_proba(x_test_csp)
         all_predictions.append(predictions)
         all_correct.append(y_test)
 

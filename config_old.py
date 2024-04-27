@@ -38,13 +38,9 @@ channels1 = ['C3', 'C4']
 channels2 = ['C1', 'C2', 'C5', 'C3', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
 channels3 = []  # All channels
 configurations = [
-    {'channels': channels2, 'band_width': 1, 'step': 1},
-    # {'channels': channels2, 'band_width': 2},
-    {'channels': channels2, 'band_width': 3, 'step': 3},
-    # {'channels': channels2, 'band_width': 4},
-    # {'channels': channels2, 'band_width': 5},
-    {'channels': channels2, 'band_width': 6, 'step': 6},
-    # {'channels': channels2, 'band_width': 7},
+    {'channels': channels1, 'band_width': 1, 'step': 1},
+    {'channels': channels1, 'band_width': 3, 'step': 3},
+    {'channels': channels1, 'band_width': 6, 'step': 6},
 ]
 
 ''' REAL TIME '''

@@ -1,5 +1,8 @@
 # Custom ignores
-#data/
+data/
+preprocessed_data/
+preprocessed_subjects/
+preprocessed_subjects_car/
 *.pyc
 
 
@@ -187,4 +190,5 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 # idea folder, uncomment if you don't need it
-# .idea
+.idea
+*.iml

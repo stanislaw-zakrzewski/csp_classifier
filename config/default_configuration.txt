@@ -18,5 +18,8 @@
             "patient_name": { "type": "string", "value": "Subject X" },
             "patient_gender": { "type": "string", "value": "male" }
         }
+    },
+    "collect_data": {
+        "classifier": { "type": "string", "value": "EEGNet" }
     }
 }
