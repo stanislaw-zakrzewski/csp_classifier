@@ -108,8 +108,8 @@ print(csp, lda)
 print("Connecting to VR device...")
 configurations = Configurations()
 print(configurations.read('real_time.vr_audio_prompts'))
-ipaddress = configurations.read('all.collect_data.ipaddress')
-port = configurations.read('all.collect_data.port')
+ipaddress = configurations.read('collect_data.ipaddress')
+port = configurations.read('collect_data.port')
 sender = SenderLib.Sender(ipaddress, port)
 control = SenderLib.GameControl()
 print("Successfully connected to VR device")
@@ -155,7 +155,7 @@ def processCallback(samples):
                 playsound('commands//sound_commands//ruch.wav')
             control.left = True
             control.right = True
-            control.mode = configurations.read('all.collect_data.vr_mode')
+            control.mode = configurations.read('collect_data.vr_mode')
             state = sender.send_data(control)
         else:
             print('Rest')
@@ -163,7 +163,7 @@ def processCallback(samples):
                 playsound('commands//sound_commands//brak.wav')
             control.left = False
             control.right = False
-            control.mode = configurations.read('all.collect_data.vr_mode')
+            control.mode = configurations.read('collect_data.vr_mode')
             state = sender.send_data(control)
 
         # if send_to_vr:

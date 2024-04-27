@@ -44,14 +44,14 @@ class CollectData(DoubleScrolledFrame):
         self.patient_name_label = Label(self, text='Patient Name:')
         self.patient_name_label.grid(row=3, column=0)
         self.patient_name_value = StringVar()
-        self.patient_name_value.set(self.configurations.read('all.collect_data.patient_name'))
+        self.patient_name_value.set(self.configurations.read('collect_data.patient_name'))
         self.patient_name_input = Entry(self, text=self.patient_name_value)
         self.patient_name_input.grid(row=3, column=1)
 
         self.gender_label = Label(self, text='Patient Gender:')
         self.gender_label.grid(row=4, column=0)
         self.gender_value = StringVar()
-        self.gender_value.set(self.configurations.read('all.collect_data.patient_gender'))
+        self.gender_value.set(self.configurations.read('collect_data.patient_gender'))
         self.gender_input = Entry(self, text=self.gender_value)
         self.gender_input.grid(row=4, column=1)
 
@@ -150,10 +150,10 @@ class CollectData(DoubleScrolledFrame):
                               self.gender_value.get())
 
     def create_queue(self):
-        trial_count = self.configurations.read('all.collect_data.trial_count')
-        pause_length = self.configurations.read('all.collect_data.pause_length')
-        trial_length = self.configurations.read('all.collect_data.trial_length')
-        labels = self.configurations.read('all.collect_data.labels')
+        trial_count = self.configurations.read('collect_data.trial_count')
+        pause_length = self.configurations.read('collect_data.pause_length')
+        trial_length = self.configurations.read('collect_data.trial_length')
+        labels = self.configurations.read('collect_data.labels')
         label_queue = list(np.repeat(labels, trial_count))
         random.shuffle(label_queue)
         queue = []

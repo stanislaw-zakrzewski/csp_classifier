@@ -29,10 +29,10 @@ class PromptViewer(Toplevel):
         self.audio_commands = AudioCommands()
         self.sender = None
         self.control = None
-        self.ipaddress = self.configurations.read('all.collect_data.ipaddress')
-        self.port = self.configurations.read('all.collect_data.port')
+        self.ipaddress = self.configurations.read('collect_data.ipaddress')
+        self.port = self.configurations.read('collect_data.port')
 
-        self.prompt_type = self.configurations.read('all.collect_data.prompt_type')
+        self.prompt_type = self.configurations.read('collect_data.prompt_type')
         if self.prompt_type == 'visual':
             self.change_prompt = self.set_visual_prompt
         elif self.prompt_type == 'audio':
@@ -126,7 +126,7 @@ class PromptViewer(Toplevel):
             playsound('commands//sound_commands//ruch.wav')
             self.control.left = True
             self.control.right = True
-            self.control.mode = self.configurations.read('all.collect_data.vr_mode')
+            self.control.mode = self.configurations.read('collect_data.vr_mode')
             state = self.sender.send_data(self.control)
             self.prompt_label_text.set('MOVEMENT')
         if prompt_code == 'left':
@@ -145,14 +145,14 @@ class PromptViewer(Toplevel):
             playsound('commands//sound_commands//brak.wav')
             self.control.left = False
             self.control.right = False
-            self.control.mode = self.configurations.read('all.collect_data.vr_mode')
+            self.control.mode = self.configurations.read('collect_data.vr_mode')
             state = self.sender.send_data(self.control)
             self.prompt_label_text.set('REST')
         elif prompt_code == 'break':
             playsound('commands//sound_commands//pauza.wav')
             self.control.left = False
             self.control.right = False
-            self.control.mode = self.configurations.read('all.collect_data.vr_mode')
+            self.control.mode = self.configurations.read('collect_data.vr_mode')
             state = self.sender.send_data(self.control)
             self.prompt_label_text.set('BREAK')
         elif prompt_code == 'end':

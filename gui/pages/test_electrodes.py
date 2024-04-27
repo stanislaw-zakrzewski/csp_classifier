@@ -100,7 +100,7 @@ class TestElectrodes(DoubleScrolledFrame):
         DoubleScrolledFrame.__init__(self, parent)
         self.config(bg=colors['white_smoke'])
         self.configurations = Configurations()
-        self.selected_electrodes = self.configurations.read('all.general.selected_electrodes')
+        self.selected_electrodes = self.configurations.read('general.selected_electrodes')
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
@@ -202,8 +202,8 @@ class TestElectrodes(DoubleScrolledFrame):
         batches_per_second = 2
         trial_length_random_addition_in_seconds = 0
         instructions_dict = {-1: 'pause', 0: 'rest', 1: 'movement'}
-        electrode_names = self.configurations.read('all.general.all_electrodes')
-        sampling_frequency = self.configurations.read('all.general.sampling_rate')
+        electrode_names = self.configurations.read('general.all_electrodes')
+        sampling_frequency = self.configurations.read('general.sampling_rate')
 
         # for _ in range(32):
         #     signal.append([])

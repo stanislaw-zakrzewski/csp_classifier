@@ -7,8 +7,8 @@ from config.config import Configurations
 class EDFWriter:
     def __init__(self):
         self.configurations = Configurations()
-        self.electrode_names = self.configurations.read('all.general.all_electrodes')
-        self.sampling_frequency = self.configurations.read('all.general.sampling_rate')
+        self.electrode_names = self.configurations.read('general.all_electrodes')
+        self.sampling_frequency = self.configurations.read('general.sampling_rate')
 
     def write(self, signal, start_date, queue, patient_name, gender):
         t = time.localtime()
