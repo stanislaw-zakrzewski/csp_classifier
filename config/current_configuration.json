@@ -4,6 +4,14 @@
       "type": "int",
       "value": "250"
     },
+    "use_common_average_reference": {
+      "type": "boolean",
+      "value": true
+    },
+    "accuracy_over_bands_show_standard_deviation": {
+      "type": "boolean",
+      "value": true
+    },
     "offset_seconds": {
       "type": "float",
       "value": ".5"
@@ -73,11 +81,13 @@
       ]
     }
   },
-  "collect_data": {
+  "analyze_data": {
     "classifier": {
       "type": "string",
       "value": "csp"
-    },
+    }
+  },
+  "collect_data": {
     "prompt_type": {
       "type": "string",
       "value": "visual"
@@ -130,7 +140,7 @@
     "vr_audio_prompts": {
       "type": "boolean",
       "value": true
-    }
+    },
     "prompt_type": {
       "type": "string",
       "value": "visual"
@@ -169,6 +179,14 @@
     "patient_gender": {
       "type": "string",
       "value": "male"
+    },
+    "bandpass_filter_start_frequency": {
+      "type": "int",
+      "value": "2"
+    },
+    "bandpass_filter_end_frequency": {
+      "type": "int",
+      "value": "24"
     }
   }
 }

@@ -6,7 +6,6 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import ShuffleSplit
 from sklearn.neural_network import MLPClassifier
 
-from config_old import sampling_frequency
 from data_classes.subject import Subject
 
 # import tensorflow as tf

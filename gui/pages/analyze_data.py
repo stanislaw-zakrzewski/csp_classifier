@@ -44,7 +44,7 @@ class AnalyzeData(DoubleScrolledFrame):
     def analyze_edf_gui(self):
         if self.selected_edf_file.get() != '':
             accuracy_data = analyze_edf_prime(self.selected_edf_file.get(),
-                                        classifier_type=self.configurations.read('collect_data.classifier'),
+                                        classifier_type=self.configurations.read('analyze_data.classifier'),
                                         verbose='ERROR')
             figure = Figure(figsize=(25, 10))
             ax = figure.subplots()

@@ -1,9 +1,12 @@
 import numpy as np
 
-from config_old import use_common_average_reference
+from config.config import Configurations
 
 
 def preprocess_subject(signals):
+    configurations = Configurations()
+    use_common_average_reference = configurations.read('generail.use_common_average_reference')
+
     if use_common_average_reference:
         for signal in signals:
             seamless = signal['seamless']
@@ -46,5 +49,4 @@ def preprocess_subject(signals):
     np.save('preprocessed_data/movement.npy',
             movement_npy)
     np.save('preprocessed_data/rest.npy',
-           rest_npy)
-
+            rest_npy)

@@ -15,9 +15,6 @@ DEFAULT_CONFIGURATION_PATH = 'config//default_configuration.json'
 CURRENT_CONFIGURATION_PATH = 'config//current_configuration.json'
 
 
-
-
-
 class Configurations(metaclass=Singleton):
 
     def __init__(self):

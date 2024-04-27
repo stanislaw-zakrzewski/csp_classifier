@@ -5,10 +5,18 @@ import SenderLib
 import pygds
 from classifiers.flat import process
 from config.config import Configurations
-from config_old import real_time_train_data, bandpass_filter_start_frequency, bandpass_filter_end_frequency, \
-    channels2, electrode_names, send_to_vr
+from config_old import channels2
 from data_classes.subject import Subject
 from playsound import playsound
+
+SUBJECT_TO_TRAIN = 'data/2024-03-04T13-11-25.edf'
+
+configurations = Configurations()
+electrode_names = configurations.read('general.all_electrodes')
+bandpass_filter_start_frequency = configurations.read('real_time.bandpass_filter_start_frequency')
+bandpass_filter_end_frequency = configurations.read('real_time.bandpass_filter_end_frequency')
+ipaddress = configurations.read('collect_data.ipaddress')
+port = configurations.read('collect_data.port')
 
 
 def calculate_recall(predictions, corrects, hand):
@@ -40,7 +48,7 @@ def main(bands, channels):
     precision_denominator = [0, 0]
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
-    subject = Subject(real_time_train_data)
+    subject = Subject(SUBJECT_TO_TRAIN)
 
     window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(
         subject, bands,
@@ -106,10 +114,9 @@ csp, lda, mne_info = main(
 print(csp, lda)
 
 print("Connecting to VR device...")
-configurations = Configurations()
+
 print(configurations.read('real_time.vr_audio_prompts'))
-ipaddress = configurations.read('collect_data.ipaddress')
-port = configurations.read('collect_data.port')
+
 sender = SenderLib.Sender(ipaddress, port)
 control = SenderLib.GameControl()
 print("Successfully connected to VR device")

@@ -1,6 +1,5 @@
 import numpy as np
-
-from config_old import valid_channel_threshold
+from config.config import Configurations
 
 
 def validate_available_electrodes(subject, selected_channels, verbose=False):
@@ -21,6 +20,8 @@ def validate_available_electrodes(subject, selected_channels, verbose=False):
     valid_electrodes : list of str
         List of electrodes intended to be used in analysis that were also determined to contain valid data.
     """
+    configurations = Configurations()
+    valid_channel_threshold = configurations.read('general.valid_channel_threshold')
     raw = subject.get_raw_copy()
     raw.filter(l_freq=2, h_freq=40, verbose='ERROR')
 

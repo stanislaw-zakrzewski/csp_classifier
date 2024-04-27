@@ -7,11 +7,20 @@ from classifiers.cnn import process as cnn_classifier
 from classifiers.dnn_tensorflow_2 import process as dnn_classifier
 from classifiers.parafac import process as parafac_classifier
 from classifiers.EEGNet import process as EEGNet_classifier
-from config_old import configurations as default_configurations, \
-    experiment_frequency_range as default_experiment_frequency_range, subject_to_analyze
 from data_classes.subject import Subject
 from logger import log
 from preprocessing.validate_available_electrodes import validate_available_electrodes
+
+CHANNELS1 = ['C3', 'C4']
+CHANNELS2 = ['C1', 'C2', 'C5', 'C3', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
+CHANNELS3 = []  # All channels
+CONFIGURATIONS = [
+    {'channels': CHANNELS1, 'band_width': 1, 'step': 1},
+    {'channels': CHANNELS1, 'band_width': 3, 'step': 3},
+    {'channels': CHANNELS1, 'band_width': 6, 'step': 6},
+]
+SUBJECT_TO_ANALYZE = 'data_s/2023-02-23T11-57-30_observed_visual.edf'
+EXPERIMENT_FREQUENCY_RANGE = (6, 24)
 
 
 def get_individual_accuracy(predicions, correct):
@@ -88,7 +97,7 @@ def calculate_combined_precision(predictions, corrects):
     return numerator / denominator
 
 
-def analyze_data(bands, selected_electrodes, filepath=subject_to_analyze, classifier=flat_classifier, verbose='DEBUG',
+def analyze_data(bands, selected_electrodes, filepath=SUBJECT_TO_ANALYZE, classifier=flat_classifier, verbose='DEBUG',
                  options={}):
     precision_numerator = [0, 0]
     precision_denominator = [0, 0]
@@ -179,16 +188,16 @@ def get_classifier(classifier_type):
         return parafac_classifier
 
 
-def analyze_edf(filepath=subject_to_analyze, classifier_type='csp', verbose='DEBUG',
+def analyze_edf(filepath=SUBJECT_TO_ANALYZE, classifier_type='csp', verbose='DEBUG',
                 options={'memory': None}):
     classifier = get_classifier(classifier_type)
-    configurations = default_configurations
+    configurations = CONFIGURATIONS
     try:
         configurations = options['configurations']
     except KeyError:
         pass
     cnn_based = False
-    experiment_frequency_range = default_experiment_frequency_range
+    experiment_frequency_range = EXPERIMENT_FREQUENCY_RANGE
     try:
         experiment_frequency_range = options['experiment_frequency_range']
     except KeyError:

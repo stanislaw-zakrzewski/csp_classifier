@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from config_old import sampling_frequency
+
 from data_classes.subject import Subject
 
 

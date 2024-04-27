@@ -2,7 +2,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from config_old import accuracy_over_bands_show_standard_deviation
+from config.config import Configurations
 
 '''
     `accuracy_data` needs to be an dictionary with following keys:
@@ -13,6 +13,10 @@ from config_old import accuracy_over_bands_show_standard_deviation
 
 
 def visualize_accuracy_over_bands(accuracy_data):
+    configurations = Configurations()
+    accuracy_over_bands_show_standard_deviation = configurations.read(
+        'general.accuracy_over_bands_show_standard_deviation')
+
     if accuracy_over_bands_show_standard_deviation:
         errorbar = 'sd'
     else:
@@ -25,6 +29,10 @@ def visualize_accuracy_over_bands(accuracy_data):
 
 
 def save_visualized_accuracy_over_bands(accuracy_data, filepath):
+    configurations = Configurations()
+    accuracy_over_bands_show_standard_deviation = configurations.read(
+        'general.accuracy_over_bands_show_standard_deviation')
+
     if accuracy_over_bands_show_standard_deviation:
         errorbar = 'sd'
     else:
