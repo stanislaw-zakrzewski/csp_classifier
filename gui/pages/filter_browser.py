@@ -109,7 +109,7 @@ class FilterBrowser(DoubleScrolledFrame):
         self.config(bg=colors['white_smoke'])
         self.configurations = Configurations()
         self.selected_electrodes = self.configurations.read('all.general.selected_electrodes')
-        self.filter_data = pd.read_csv('filters.csv')
+        self.filter_data = pd.read_csv('config/filters.csv')
 
         self.filter_table = None
         self.add_filter_button = Button(self, text="Add Filter", bg='green',
@@ -126,7 +126,7 @@ class FilterBrowser(DoubleScrolledFrame):
         self.add_input_freq2 = None
         self.add_input_channels = None
 
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'], bg=colors['white_smoke'])
+        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
 
         back_to_start_page_button = Button(self, text="Back to Start Page",
@@ -339,7 +339,7 @@ class FilterBrowser(DoubleScrolledFrame):
         steepness = self.add_input_steepness.get()
         channels = self.add_input_channels.get()
         self.filter_data.loc[len(self.filter_data.index)] = [name, 'bp', freq1, freq2, steepness, channels]
-        self.filter_data.to_csv('filters.csv', index=False)
+        self.filter_data.to_csv('config/filters.csv', index=False)
         self.render_add_button()
         self.render_filter_table()
 

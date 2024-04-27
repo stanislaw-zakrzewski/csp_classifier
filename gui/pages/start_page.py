@@ -12,7 +12,7 @@ class StartPage(DoubleScrolledFrame):
         DoubleScrolledFrame.__init__(self, parent)
         self.config(bg=colors['white_smoke'])
 
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'], bg=colors['white_smoke'])
+        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
 
         current_grid_row = 1

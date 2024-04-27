@@ -55,7 +55,7 @@ class BrowseRecordings(DoubleScrolledFrame):
         self.current_row = 0
         self.edf_headers = {}
 
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'], bg=colors['white_smoke'])
+        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky=W)
 
         back_to_start_page_button = Button(self, text="Back to Start Page",
@@ -66,9 +66,9 @@ class BrowseRecordings(DoubleScrolledFrame):
         load_data_from_folder_button.grid(row=2, column=0, padx=10, pady=10, sticky=W)
 
         edf_headers = {}
-        for filename in os.listdir('data_s'):
-            if filename[-4:] == '.edf':
-                edf_headers[filename] = highlevel.read_edf_header(os.path.join('data_s', filename))
+        # for filename in os.listdir('data_s'):
+        #     if filename[-4:] == '.edf':
+        #         edf_headers[filename] = highlevel.read_edf_header(os.path.join('data_s', filename))
 
         self.table = Frame(self)
         self.table.grid(row=3, column=0)

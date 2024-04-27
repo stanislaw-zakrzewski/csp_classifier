@@ -1,4 +1,5 @@
 from tkinter import *
+import sv_ttk
 
 from gui.menu.menu import ApplicationMenu
 from gui.pages.analyze_data import AnalyzeData
@@ -17,6 +18,7 @@ class App(Tk):
         self.state('zoomed')
         self.config(menu=ApplicationMenu(self))
         self.config(bg="white")
+        sv_ttk.set_theme("dark")
         pages = [
             {'name': 'Test Electrodes', 'frame': TestElectrodes},
             {'name': 'Filter Browser', 'frame': FilterBrowser},
