@@ -1,53 +1,58 @@
 import mne
 import numpy as np
 from mne import Epochs, pick_types, concatenate_epochs
-from src.feature_extractors.CSP import CSP
-from src.classifiers.LDA import LDA
+from mne.decoding import CSP as MNE_CSP
+
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import ShuffleSplit
 from sklearn.neural_network import MLPClassifier
 
 from config.config import Configurations
-from src.preprocessing.bandpass_filter import bandpass_filter
-from src.preprocessing.channel_selector import select_channels
+from src.feature_extractors.CSP import CSP
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
     tmin, tmax = .0, subject.sub_event_length_sec
 
-    # raw_signals = []
-    raw_signal = subject.get_raw_copy()
-    # for i in range(len(bands)):
-    #     raw_signals.append(subject.get_raw_copy())
-    raw_signal = bandpass_filter(raw_signal, 3, 20)
 
+    raw_signal = subject.get_raw_copy()
+
+
+    if len(selected_channels) > 0:
+        for channel in subject.electrode_names:
+            if channel not in selected_channels:
+                raw_signal.drop_channels([channel])
 
 
 
     # Apply band-pass filter
-    # for index, band in enumerate(bands):
-    #     filtered_raw_signals.append(
-    #         bandpass_filter(raw_signals[index], band[0], band[1]))
+    filtered_raw_signal = raw_signal.filter(bands[0][0], bands[0][1], l_trans_bandwidth=2, h_trans_bandwidth=2,
+                                      filter_length=1024 * 2,
+                                      fir_design='firwin',
+                                      skip_by_annotation='edge', verbose=verbose)
 
-    picks = pick_types(raw_signal.info, meg=False, eeg=True, stim=False, eog=False,
+    picks = pick_types(filtered_raw_signal.info, meg=False, eeg=True, stim=False, eog=False,
                        exclude='bads')
 
-    epochs = Epochs(raw_signal, subject.events, subject.id_dict, tmin, tmax, proj=True, picks=picks,
-                    baseline=None, preload=True, verbose=verbose)
-    epochs_train = epochs.copy()  # .crop(tmin=tmin, tmax=tmax)
 
-    epochs_data = epochs.get_data(copy=False)
-    epochs_data_train = epochs_train.get_data(copy=False)
+    epochs =  Epochs(filtered_raw_signal, subject.events, subject.id_dict, tmin, tmax, proj=True, picks=picks,
+               baseline=None, preload=True, verbose=verbose)
+    epochs_train = epochs.copy()#.crop(tmin=tmin, tmax=tmax))
+
+    epochs_data = epochs.get_data()
+    epochs_data_train = epochs_train.get_data()
     labels = np.array(epochs.events[:, -1])
 
     cv = ShuffleSplit(n_splits=n_splits, test_size=0.2, random_state=42)
     cv_split = cv.split(epochs_data_train)
 
     # Assemble a classifier
-    classifier = LDA()
+    classifier = MLPClassifier(hidden_layer_sizes=(100, 100), random_state=1,
+                               max_iter=10000)  # Originally: LinearDiscriminantAnalysis()
+    classifier = LinearDiscriminantAnalysis()
     csp_n_components = 32 if len(selected_channels) == 0 else min(len(selected_channels), 32)
     mne.set_log_level('warning')
-    csp = CSP(n_components=2, reg=reg)
+    csp = CSP(n_components=csp_n_components, reg=reg)
 
     sfreq = raw_signal.info['sfreq']
     w_length = int(sfreq)  # running classifier: window length
@@ -65,7 +70,7 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
         x_test_csp = []
         # for edt in epochs_data_train:
         #     if len(x_train_csp) > 0:
-        #         x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train)),
+        #         x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train, verbose='ERROR')),
         #                                      axis=1)
         #         x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
         #     else:
