@@ -15,12 +15,12 @@ CHANNELS1 = ['C3', 'C4']
 CHANNELS2 = ['C1', 'C2', 'C5', 'C3', 'C4', 'C6', 'FC3', 'CP3', 'FC4', 'CP4', 'CZ']
 CHANNELS3 = []  # All channels
 CONFIGURATIONS = [
-    {'channels': CHANNELS1, 'band_width': 1, 'step': 1},
-    {'channels': CHANNELS1, 'band_width': 3, 'step': 3},
-    {'channels': CHANNELS1, 'band_width': 6, 'step': 6},
+    # {'channels': CHANNELS1, 'band_width': 1, 'step': 1},
+    {'channels': CHANNELS2, 'band_width': 3, 'step': 3},
+    # {'channels': CHANNELS1, 'band_width': 6, 'step': 6},
 ]
 SUBJECT_TO_ANALYZE = 'data_s/2023-02-23T11-57-30_observed_visual.edf'
-EXPERIMENT_FREQUENCY_RANGE = (6, 24)
+EXPERIMENT_FREQUENCY_RANGE = (6, 14)
 
 
 def get_individual_accuracy(predicions, correct):

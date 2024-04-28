@@ -1,69 +1,58 @@
 import mne
 import numpy as np
 from mne import Epochs, pick_types, concatenate_epochs
-from mne.decoding import CSP
+from src.feature_extractors.CSP import CSP
+from src.classifiers.LDA import LDA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import ShuffleSplit
 from sklearn.neural_network import MLPClassifier
 
 from config.config import Configurations
+from src.preprocessing.bandpass_filter import bandpass_filter
+from src.preprocessing.channel_selector import select_channels
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
     tmin, tmax = .0, subject.sub_event_length_sec
 
-    raw_signals = []
-    for i in range(len(bands)):
-        raw_signals.append(subject.get_raw_copy())
+    # raw_signals = []
+    raw_signal = subject.get_raw_copy()
+    # for i in range(len(bands)):
+    #     raw_signals.append(subject.get_raw_copy())
+    raw_signal = bandpass_filter(raw_signal, 3, 20)
 
-    if len(selected_channels) > 0:
-        for raw_signal in raw_signals:
-            for channel in subject.electrode_names:
-                if channel not in selected_channels:
-                    raw_signal.drop_channels([channel])
 
-    filtered_raw_signals = []
-    epochs = []
-    epochs_train = []
-    epochs_data = []
-    epochs_data_train = []
+
 
     # Apply band-pass filter
-    for index, band in enumerate(bands):
-        filtered_raw_signals.append(
-            raw_signals[index].filter(band[0], band[1], l_trans_bandwidth=2, h_trans_bandwidth=2,
-                                      filter_length=1024 * 2,
-                                      fir_design='firwin',
-                                      skip_by_annotation='edge', verbose=verbose))
+    # for index, band in enumerate(bands):
+    #     filtered_raw_signals.append(
+    #         bandpass_filter(raw_signals[index], band[0], band[1]))
 
-    picks = pick_types(filtered_raw_signals[0].info, meg=False, eeg=True, stim=False, eog=False,
+    picks = pick_types(raw_signal.info, meg=False, eeg=True, stim=False, eog=False,
                        exclude='bads')
 
-    for index, band in enumerate(bands):
-        epochs.append(
-            Epochs(filtered_raw_signals[index], subject.events, subject.id_dict, tmin, tmax, proj=True, picks=picks,
-                   baseline=None, preload=True, verbose=verbose))
-        epochs_train.append(epochs[index].copy())#.crop(tmin=tmin, tmax=tmax))
+    epochs = Epochs(raw_signal, subject.events, subject.id_dict, tmin, tmax, proj=True, picks=picks,
+                    baseline=None, preload=True, verbose=verbose)
+    epochs_train = epochs.copy()  # .crop(tmin=tmin, tmax=tmax)
 
-        epochs_data.append(epochs[index].get_data())
-        epochs_data_train.append(epochs_train[index].get_data())
-    labels = np.array(epochs[0].events[:, -1])
+    epochs_data = epochs.get_data(copy=False)
+    epochs_data_train = epochs_train.get_data(copy=False)
+    labels = np.array(epochs.events[:, -1])
 
     cv = ShuffleSplit(n_splits=n_splits, test_size=0.2, random_state=42)
-    cv_split = cv.split(epochs_data_train[0])
+    cv_split = cv.split(epochs_data_train)
 
     # Assemble a classifier
-    classifier = MLPClassifier(hidden_layer_sizes=(100, 100), random_state=1,
-                               max_iter=10000)  # Originally: LinearDiscriminantAnalysis()
-    # classifier = LinearDiscriminantAnalysis()
+    classifier = LDA()
     csp_n_components = 32 if len(selected_channels) == 0 else min(len(selected_channels), 32)
     mne.set_log_level('warning')
-    csp = CSP(n_components=csp_n_components, reg=reg, log=True, norm_trace=False)
+    csp = CSP(n_components=2, reg=reg)
 
-    sfreq = raw_signals[0].info['sfreq']
+    sfreq = raw_signal.info['sfreq']
     w_length = int(sfreq)  # running classifier: window length
     w_step = int(sfreq * 0.1)  # running classifier: window step size
-    w_start = np.arange(0, epochs_data[0].shape[2] - w_length, w_step)
+    w_start = np.arange(0, epochs_data.shape[2] - w_length, w_step)
 
     scores_windows = []
     all_predictions = []
@@ -74,14 +63,14 @@ def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='D
 
         x_train_csp = []
         x_test_csp = []
-        for edt in epochs_data_train:
-            if len(x_train_csp) > 0:
-                x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train, verbose='ERROR')),
-                                             axis=1)
-                x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
-            else:
-                x_train_csp = csp.fit_transform(edt[train_idx], y_train)
-                x_test_csp = csp.transform(edt[test_idx])
+        # for edt in epochs_data_train:
+        #     if len(x_train_csp) > 0:
+        #         x_train_csp = np.concatenate((x_train_csp, csp.fit_transform(edt[train_idx], y_train)),
+        #                                      axis=1)
+        #         x_test_csp = np.concatenate((x_test_csp, csp.transform(edt[test_idx])), axis=1)
+        #     else:
+        x_train_csp = csp.fit_transform(epochs_data_train[train_idx], y_train)
+        x_test_csp = csp.transform(epochs_data_train[test_idx])
 
         classifier.fit(x_train_csp, y_train)
 

@@ -2,7 +2,7 @@
   "general": {
     "sampling_rate": {
       "type": "int",
-      "value": "250"
+      "value": "512"
     },
     "use_common_average_reference": {
       "type": "boolean",
@@ -79,12 +79,28 @@
         "PZ",
         "POZ"
       ]
+    },
+    "verbose": {
+      "type": "string",
+      "value": "ERROR"
     }
   },
   "analyze_data": {
     "classifier": {
       "type": "string",
       "value": "csp"
+    },
+    "n_splits": {
+      "type": "int",
+      "value": 5
+    },
+    "test_size": {
+      "type": "float",
+      "value": 0.2
+    },
+    "random_state": {
+      "type": "int",
+      "value": 42
     }
   },
   "collect_data": {
