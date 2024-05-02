@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import filedialog as fd
+from tkinter import ttk
 
 import matplotlib.pyplot as plt
 import mne
@@ -8,6 +9,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.colors import TwoSlopeNorm
+from mne.io import read_raw_edf
 from mne.stats import permutation_cluster_1samp_test as pcluster_test
 
 from config.config import Configurations
@@ -18,9 +20,10 @@ from gui.pages.start_page import StartPage
 
 
 class ERDSAnalysis(DoubleScrolledFrame):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, none=None):
         DoubleScrolledFrame.__init__(self, parent)
         self.configurations = Configurations()
+        self.available_electrodes = []
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
         app_title.grid(row=0, column=0, padx=10, pady=10, sticky='W')
@@ -31,7 +34,7 @@ class ERDSAnalysis(DoubleScrolledFrame):
 
         # Initialize canvas for parameters and controls
         parameters_section = Canvas(self, highlightthickness=0)
-        parameters_section.grid(row=2, column=0)
+        parameters_section.grid(row=2, column=0, sticky="W")
         Button(parameters_section, text='Select EDF file', command=self.select_edf_file).grid(row=0, column=0, padx=10,
                                                                                               pady=10)
         self.selected_edf_file = StringVar()
@@ -41,10 +44,15 @@ class ERDSAnalysis(DoubleScrolledFrame):
         Label(parameters_section, text='Picks:').grid(row=1, column=0, padx=10, pady=10)
         self.picks_value = StringVar()
         self.picks_value.set('C3,CZ,C4')
-        Entry(parameters_section, text=self.picks_value).grid(row=1, column=1, padx=10, pady=10, sticky="W")
+        self.picks_values = {}
+        self.picks_buttons = {}
+        self.picks_canvas = Canvas(parameters_section, height=10)
+        self.picks_canvas.grid(row=1, column=1)
 
-        Button(parameters_section, text='Analyze selected EDF', command=self.analyze_edf_gui).grid(row=2, column=0,
-                                                                                                   padx=10, pady=10)
+        self.analyze_button = (
+            Button(parameters_section, text='Analyze ERD/S for selected EDF', command=self.analyze_edf_gui))
+        self.analyze_button.grid(row=3, column=0, padx=10, pady=10)
+        self.analyze_button['state'] = 'disabled'
 
         # Initialize canvases for ERD/S plots
         self.figures_section = Canvas(self, highlightthickness=0)
@@ -56,18 +64,44 @@ class ERDSAnalysis(DoubleScrolledFrame):
         filename = fd.askopenfilename(filetypes=[("European Data Format files", "*.edf")])
         if filename:
             self.selected_edf_file.set(filename)
+            self.analyze_button['state'] = 'normal'
+            self.available_electrodes = read_raw_edf(filename, preload=False).info.ch_names
+            self.picks_values = {}
+            if len(self.picks_buttons.values()) != 0:
+                for picks_button in self.picks_buttons.values():
+                    picks_button.destroy()
+            self.picks_buttons = {}
+            for electrode_index, electrode_name in enumerate(self.available_electrodes):
+                electrode_button = Button(self.picks_canvas, text=electrode_name, bg='#1c1c1c',
+                                          command=lambda el_name=electrode_name: self.toggle_pick_electrode(el_name))
+                electrode_button.grid(row=0, column=electrode_index)
+
+                self.picks_buttons[electrode_name] = electrode_button
+                self.picks_values[electrode_name] = BooleanVar()
+
+    def toggle_pick_electrode(self, electrode_name):
+        self.picks_values[electrode_name].set(not self.picks_values[electrode_name].get())
+        if self.picks_values[electrode_name].get():
+            self.picks_buttons[electrode_name].configure(bg="red")
+        else:
+            self.picks_buttons[electrode_name].configure(bg="#1c1c1c")
 
     def analyze_edf_gui(self):
         if self.selected_edf_file.get() != '':
-            PICKS = self.picks_value.get().split(',')
-            ANNOTATIONS_RENAME_DICT = dict(rest="rest", movement="movement")
-            EVENT_IDS = dict(movement=2, rest=3)
-            EVENT_NAMES = ['rest', 'movement']
-            DURATION = 11
-
+            picks = []
+            for electrode_name in self.available_electrodes:
+                if self.picks_values[electrode_name].get():
+                    picks.append(electrode_name)
             subject = Subject(self.selected_edf_file.get())
 
+            # Read subject metadata
             raw = subject.get_raw_copy()
+            event_names = list(set(raw.annotations.description))
+            event_names.sort()
+            event_ids = dict()
+            for event_index, event_name in enumerate(event_names):
+                event_ids[event_name] = event_index
+            duration = raw.annotations.duration.max()
             sampling_frequency = int(raw.info['sfreq'])
 
             raw.filter(2, 36, l_trans_bandwidth=2, h_trans_bandwidth=2,
@@ -76,18 +110,15 @@ class ERDSAnalysis(DoubleScrolledFrame):
                        skip_by_annotation='edge', verbose='ERROR')
 
             raw.rename_channels(lambda x: x.strip("."))  # remove dots from channel names
-            # rename descriptions to be more easily interpretable
-            raw.annotations.rename(ANNOTATIONS_RENAME_DICT)
 
-            tmin, tmax = -1, DURATION
-            event_ids = EVENT_IDS  # map event IDs to tasks
+            tmin, tmax = -1, duration
 
             epochs = mne.Epochs(
                 raw,
-                event_id=EVENT_NAMES,
+                event_id=event_names,
                 tmin=tmin - 0.5,
                 tmax=tmax + 0.5,
-                picks=PICKS,
+                picks=picks,
                 baseline=None,
                 preload=True,
             )
@@ -115,8 +146,8 @@ class ERDSAnalysis(DoubleScrolledFrame):
             for event_index, event in enumerate(event_ids):
                 # select desired epochs for visualization
                 tfr_ev = tfr[event]
-                ncols = len(PICKS) + 1
-                ratios = [10 for _ in PICKS]
+                ncols = len(picks) + 1
+                ratios = [10 for _ in picks]
                 ratios.append(1)
                 fig, axes = plt.subplots(
                     1, ncols, figsize=(12, ncols), gridspec_kw={"width_ratios": ratios}
@@ -155,7 +186,8 @@ class ERDSAnalysis(DoubleScrolledFrame):
                 fig.suptitle(f"ERDS ({event})")
 
                 if len(self.left_canvases) <= event_index:
-                    self.left_canvases.append(FigureCanvasTkAgg(fig, master=self.figures_section))  # A tk.DrawingArea.
+                    self.left_canvases.append(
+                        FigureCanvasTkAgg(fig, master=self.figures_section))  # A tk.DrawingArea.
                 else:
                     self.left_canvases[event_index].get_tk_widget().destroy()
                     self.left_canvases[event_index] = FigureCanvasTkAgg(fig, master=self.figures_section)
@@ -179,7 +211,7 @@ class ERDSAnalysis(DoubleScrolledFrame):
             df["band"] = df["band"].cat.remove_unused_categories()
 
             # Order channels for plotting:
-            df["channel"] = df["channel"].cat.reorder_categories(PICKS, ordered=True)
+            df["channel"] = df["channel"].cat.reorder_categories(picks, ordered=True)
 
             g = sns.FacetGrid(df, row="band", col="channel", margin_titles=True)
             g.map(sns.lineplot, "time", "value", "condition", n_boot=10)
