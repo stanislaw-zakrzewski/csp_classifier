@@ -1,32 +1,20 @@
 from tkinter import *
 from tkinter import filedialog as fd
 
-import matplotlib.ticker as ticker
-import seaborn as sns
-from matplotlib.backends._backend_tk import NavigationToolbar2Tk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-
-from analyze_data import analyze_edf as analyze_edf_prime
-from config.config import Configurations
-from gui.colors import colors
-from gui.components.double_scrolled_frame import DoubleScrolledFrame
-from gui.fonts import fonts
-from gui.pages.start_page import StartPage
 import matplotlib.pyplot as plt
+import mne
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.colors import TwoSlopeNorm
-
-import mne
-from mne.datasets import eegbci
-from mne.io import concatenate_raws, read_raw_edf
 from mne.stats import permutation_cluster_1samp_test as pcluster_test
 
+from config.config import Configurations
 from data_classes.subject import Subject
-from classifiers.parafac import process as parafacProcess
-from classifiers.flat import process as cspProcess
+from gui.components.double_scrolled_frame import DoubleScrolledFrame
+from gui.fonts import fonts
+from gui.pages.start_page import StartPage
 
 
 class ERDSAnalysis(DoubleScrolledFrame):
@@ -35,19 +23,34 @@ class ERDSAnalysis(DoubleScrolledFrame):
         self.configurations = Configurations()
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
-        app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
+        app_title.grid(row=0, column=0, padx=10, pady=10, sticky='W')
 
         back_to_start_page_button = Button(self, text="Back to Start Page",
                                            command=lambda: controller.show_frame(StartPage))
-        back_to_start_page_button.grid(row=1, column=0, padx=10, pady=10)
+        back_to_start_page_button.grid(row=1, column=0, padx=10, pady=10, sticky='W')
 
-        Button(self, text='Select EDF file', command=self.select_edf_file).grid(row=2, column=0, padx=10, pady=10)
+        # Initialize canvas for parameters and controls
+        parameters_section = Canvas(self, highlightthickness=0)
+        parameters_section.grid(row=2, column=0)
+        Button(parameters_section, text='Select EDF file', command=self.select_edf_file).grid(row=0, column=0, padx=10,
+                                                                                              pady=10)
         self.selected_edf_file = StringVar()
         self.selected_edf_file.set('')
-        Label(self, textvariable=self.selected_edf_file).grid(row=2, column=1)
-        Button(self, text='Analyze selected EDF', command=self.analyze_edf_gui).grid(row=3, column=0, padx=10, pady=10)
-        self.right_canvas = None
+        Label(parameters_section, textvariable=self.selected_edf_file).grid(row=0, column=1, padx=10, pady=10)
+
+        Label(parameters_section, text='Picks:').grid(row=1, column=0, padx=10, pady=10)
+        self.picks_value = StringVar()
+        self.picks_value.set('C3,CZ,C4')
+        Entry(parameters_section, text=self.picks_value).grid(row=1, column=1, padx=10, pady=10, sticky="W")
+
+        Button(parameters_section, text='Analyze selected EDF', command=self.analyze_edf_gui).grid(row=2, column=0,
+                                                                                                   padx=10, pady=10)
+
+        # Initialize canvases for ERD/S plots
+        self.figures_section = Canvas(self, highlightthickness=0)
+        self.figures_section.grid(row=3, column=0)
         self.left_canvases = []
+        self.right_canvas = None
 
     def select_edf_file(self):
         filename = fd.askopenfilename(filetypes=[("European Data Format files", "*.edf")])
@@ -56,7 +59,7 @@ class ERDSAnalysis(DoubleScrolledFrame):
 
     def analyze_edf_gui(self):
         if self.selected_edf_file.get() != '':
-            PICKS = ('C3', 'CZ', 'C4')
+            PICKS = self.picks_value.get().split(',')
             ANNOTATIONS_RENAME_DICT = dict(rest="rest", movement="movement")
             EVENT_IDS = dict(movement=2, rest=3)
             EVENT_NAMES = ['rest', 'movement']
@@ -112,8 +115,11 @@ class ERDSAnalysis(DoubleScrolledFrame):
             for event_index, event in enumerate(event_ids):
                 # select desired epochs for visualization
                 tfr_ev = tfr[event]
+                ncols = len(PICKS) + 1
+                ratios = [10 for _ in PICKS]
+                ratios.append(1)
                 fig, axes = plt.subplots(
-                    1, 4, figsize=(12, 4), gridspec_kw={"width_ratios": [10, 10, 10, 1]}
+                    1, ncols, figsize=(12, ncols), gridspec_kw={"width_ratios": ratios}
                 )
                 for ch, ax in enumerate(axes[:-1]):  # for each channel
                     # positive clusters
@@ -149,12 +155,12 @@ class ERDSAnalysis(DoubleScrolledFrame):
                 fig.suptitle(f"ERDS ({event})")
 
                 if len(self.left_canvases) <= event_index:
-                    self.left_canvases.append(FigureCanvasTkAgg(fig, master=self))  # A tk.DrawingArea.
+                    self.left_canvases.append(FigureCanvasTkAgg(fig, master=self.figures_section))  # A tk.DrawingArea.
                 else:
                     self.left_canvases[event_index].get_tk_widget().destroy()
-                    self.left_canvases[event_index] = FigureCanvasTkAgg(fig, master=self)
+                    self.left_canvases[event_index] = FigureCanvasTkAgg(fig, master=self.figures_section)
                 self.left_canvases[event_index].draw()
-                self.left_canvases[event_index].get_tk_widget().grid(row=4 + event_index, column=0)
+                self.left_canvases[event_index].get_tk_widget().grid(row=event_index, column=0)
 
             df = tfr.to_data_frame(time_format=None)
             df.head()
@@ -180,38 +186,16 @@ class ERDSAnalysis(DoubleScrolledFrame):
             axline_kw = dict(color="black", linestyle="dashed", linewidth=0.5, alpha=0.5)
             g.map(plt.axhline, y=0, **axline_kw)
             g.map(plt.axvline, x=0, **axline_kw)
-            g.set(ylim=(None, 1.5))
+            g.set(ylim=(-1.5, 1.5))
             g.set_axis_labels("Time (s)", "ERDS")
             g.set_titles(col_template="{col_name}", row_template="{row_name}")
             g.add_legend(ncol=2, loc="lower center")
             g.fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.08)
 
             if self.right_canvas is None:
-                self.right_canvas = FigureCanvasTkAgg(g.figure, master=self)  # A tk.DrawingArea.
+                self.right_canvas = FigureCanvasTkAgg(g.figure, master=self.figures_section)  # A tk.DrawingArea.
             else:
                 self.right_canvas.get_tk_widget().destroy()
-                self.right_canvas = FigureCanvasTkAgg(g.figure, master=self)
+                self.right_canvas = FigureCanvasTkAgg(g.figure, master=self.figures_section)
             self.right_canvas.draw()
-            self.right_canvas.get_tk_widget().grid(row=4, column=1, rowspan=10)
-
-
-            # # accuracy_data = analyze_edf_prime(self.selected_edf_file.get(),
-            # #                             classifier_type=self.configurations.read('analyze_data.classifier'),
-            # #                             verbose='ERROR')
-            # # figure = Figure(figsize=(25, 10))
-            # # ax = figure.subplots()
-            # # accuracy_data.to_csv('stacked_mlp_space.csv')  # TODO remove this
-            # sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax, markers=True, style='configuration')
-            #
-            # ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
-            # ax.grid()
-            # if self.canvas is None:
-            #     self.canvas = FigureCanvasTkAgg(figure, master=self)  # A tk.DrawingArea.
-            # else:
-            #     self.canvas.get_tk_widget().destroy()
-            #     self.canvas = FigureCanvasTkAgg(figure, master=self)
-            # self.canvas.draw()
-            # self.canvas.get_tk_widget().grid(row=4, column=0, columnspan=10)
-            # toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
-            # toolbar.update()
-            # toolbar.grid(row=5, column=0, columnspan=10)
+            self.right_canvas.get_tk_widget().grid(row=0, column=1, rowspan=10, padx=5, pady=5)
