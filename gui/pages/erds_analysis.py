@@ -1,6 +1,5 @@
 from tkinter import *
 from tkinter import filedialog as fd
-from tkinter import ttk
 
 import matplotlib.pyplot as plt
 import mne
@@ -87,6 +86,7 @@ class ERDSAnalysis(DoubleScrolledFrame):
             self.picks_buttons[electrode_name].configure(bg="#1c1c1c")
 
     def analyze_edf_gui(self):
+        # see https://mne.tools/stable/auto_examples/time_frequency/time_frequency_erds.html for more info
         if self.selected_edf_file.get() != '':
             picks = []
             for electrode_name in self.available_electrodes:

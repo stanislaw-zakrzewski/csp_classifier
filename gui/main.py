@@ -5,6 +5,7 @@ from gui.menu.menu import ApplicationMenu
 from gui.pages.analyze_data import AnalyzeData
 from gui.pages.browse_recordings import BrowseRecordings
 from gui.pages.collect_data import CollectData
+from gui.pages.erds_analysis import ERDSAnalysis
 from gui.pages.filter_browser import FilterBrowser
 from gui.pages.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
@@ -24,6 +25,7 @@ class App(Tk):
             {'name': 'Filter Browser', 'frame': FilterBrowser},
             {'name': 'Analyze Data', 'frame': AnalyzeData},
             {'name': 'Collect Data', 'frame': CollectData},
+            {'name': 'ERD/S Analysis', 'frame': ERDSAnalysis},
             {'name': 'Browse Recordings', 'frame': BrowseRecordings},
             {'name': 'Prompt Viewer', 'frame': PromptViewer},
         ]
