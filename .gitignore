@@ -1,5 +1,4 @@
 # Custom ignores
-data/
 preprocessed_data/
 preprocessed_subjects/
 preprocessed_subjects_car/
