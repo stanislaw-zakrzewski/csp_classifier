@@ -6,7 +6,7 @@ import pandas as pd
 
 from tkinter import filedialog as fd
 
-filename = fd.askopenfilename(filetypes=[("European Data Format files", "*.npy")])
+filename = fd.askopenfilename(filetypes=[("NumPy data files", "*.npy")])
 
 with open(filename, 'rb') as out_file:
     data_file = np.load(out_file, allow_pickle=True)

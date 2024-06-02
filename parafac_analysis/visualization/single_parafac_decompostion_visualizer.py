@@ -34,7 +34,7 @@ def visualize_best_decomposition(factors, rank, replica, atoms, selected_channel
     plt.show()
 
 
-filename = fd.askopenfilename(filetypes=[("European Data Format files", "*.npy")])
+filename = fd.askopenfilename(filetypes=[("NumPy data files", "*.npy")])
 
 with open(filename, 'rb') as out_file:
     data_file = np.load(out_file, allow_pickle=True)

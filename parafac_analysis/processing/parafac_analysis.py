@@ -8,6 +8,7 @@ from scipy import stats
 from scipy.fft import rfft
 
 from data_classes.subject import Subject
+from tkinter import filedialog as fd
 
 
 def process(subject, band, selected_channels, label_names, max_rank, replicas, verbose='DEBUG'):
@@ -234,14 +235,49 @@ def get_labels(number_of_labels, cutoff=100, step=10):
     return labels
 
 
-def main():
-    subject = Subject('preprocessed_subjects/s14.edf')
-    subject = Subject('data/data_s/2023-02-23T11-10-20_real_text.edf')
+def adapt_selected_channels(subject, selected_channels):
+    subject_channels = subject.electrode_names
+    not_found = {}
+    for selected_channel in selected_channels:
+        if selected_channel not in subject_channels:
+            not_found[selected_channel] = None
 
+    for not_found_key in not_found:
+        uppercase_key = not_found_key.upper()
+        if uppercase_key in subject_channels:
+            selected_channels = list(map(lambda x: x.replace(not_found_key, uppercase_key), selected_channels))
+
+    return selected_channels
+
+
+def decomposition(subject_path, selected_channels, selected_frequency_band, max_rank, replicas):
+    subject = Subject(subject_path)
     label_names = {}
     for label_name in subject.id_dict:
         label_names[subject.id_dict[label_name]] = label_name
-    process(subject, (2, 24), ['C5', 'C3', 'C1', 'CZ', 'C2', 'C4', 'C6'], label_names, 60, 9)
+    selected_channels = adapt_selected_channels(subject, selected_channels)
+
+    process(subject, selected_frequency_band, selected_channels, label_names, max_rank, replicas)
+
+
+def main():
+    subject_path = fd.askopenfilename(filetypes=[("European Data Format files", "*.edf")])
+    print("Fill PARAFAC decomposition parameters")
+    max_rank = int(input('Max rank: '))
+    replicas = int(input('Replicas: '))
+    selected_frequency_band = input('Selected frequency band (default: "2,24"): ')
+    if selected_frequency_band:
+        selected_frequency_band = selected_frequency_band.split(',')
+        selected_frequency_band = (int(selected_frequency_band[0]), int(selected_frequency_band[1]))
+    else:
+        selected_frequency_band = (2, 24)
+    selected_channels = input('Selected channels (default: "C5,C3,C1,Cz,C2,C4,C6"): ')
+    if selected_channels:
+        selected_channels.split(',')
+    else:
+        selected_channels = ['C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6']
+
+    decomposition(subject_path, selected_channels, selected_frequency_band, max_rank, replicas)
 
 
 main()
