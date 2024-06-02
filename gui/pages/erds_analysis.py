@@ -82,8 +82,10 @@ class ERDSAnalysis(DoubleScrolledFrame):
         self.picks_values[electrode_name].set(not self.picks_values[electrode_name].get())
         if self.picks_values[electrode_name].get():
             self.picks_buttons[electrode_name].configure(bg="red")
+            self.picks_buttons[electrode_name].configure(highlightbackground="red")
         else:
             self.picks_buttons[electrode_name].configure(bg="#1c1c1c")
+            self.picks_buttons[electrode_name].configure(highlightbackground="#1c1c1c")
 
     def analyze_edf_gui(self):
         # see https://mne.tools/stable/auto_examples/time_frequency/time_frequency_erds.html for more info
