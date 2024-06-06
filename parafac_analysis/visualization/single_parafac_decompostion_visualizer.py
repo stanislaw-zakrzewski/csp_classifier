@@ -65,7 +65,7 @@ with open(filename, 'rb') as out_file:
     parafac_rank = int(input("Select rank: "))
 
     print("Statistically significant PARAFAC replicas for rank {}".format(parafac_rank))
-    for available_replica in structured_statistically_significant_decompositions[rank]:
+    for available_replica in structured_statistically_significant_decompositions[parafac_rank]:
         print('{}: {} atoms'.format(available_replica, len(
             structured_statistically_significant_decompositions[parafac_rank][available_replica])))
     parafac_replica = int(input("Select replica: "))
