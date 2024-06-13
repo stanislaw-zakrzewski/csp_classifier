@@ -16,6 +16,7 @@ from data_classes.subject import Subject
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
+from preprocessing.common_average_reference import common_average_reference
 
 
 class ERDSAnalysis(DoubleScrolledFrame):
@@ -82,8 +83,16 @@ class ERDSAnalysis(DoubleScrolledFrame):
         self.picks_values[electrode_name].set(not self.picks_values[electrode_name].get())
         if self.picks_values[electrode_name].get():
             self.picks_buttons[electrode_name].configure(bg="red")
+            self.picks_buttons[electrode_name].configure(highlightbackground="red")
         else:
             self.picks_buttons[electrode_name].configure(bg="#1c1c1c")
+            self.picks_buttons[electrode_name].configure(highlightbackground="#1c1c1c")
+
+    def car(self, data):
+        averaged = np.sum(data, axis=0) / data.shape[0]
+        for channel in data:
+            channel -= averaged
+        return data
 
     def analyze_edf_gui(self):
         # see https://mne.tools/stable/auto_examples/time_frequency/time_frequency_erds.html for more info
@@ -96,6 +105,9 @@ class ERDSAnalysis(DoubleScrolledFrame):
 
             # Read subject metadata
             raw = subject.get_raw_copy()
+            # raw = mne.add_reference_channels(raw, ref_channels=["Cz"])
+            # common_average_reference(raw)
+
             event_names = list(set(raw.annotations.description))
             event_names.sort()
             event_ids = dict()
