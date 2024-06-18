@@ -11,15 +11,15 @@ from playsound import playsound
 from tkinter import filedialog as fd
 
 SUBJECT_TO_TRAIN = fd.askopenfilename(filetypes=[("EDF EEG signal file", "*.edf")])
-SEND_TO_VR = False
+SEND_TO_VR = True
 
 
 configurations = Configurations()
 electrode_names = configurations.read('general.all_electrodes')
 bandpass_filter_start_frequency = configurations.read('real_time.bandpass_filter_start_frequency')
 bandpass_filter_end_frequency = configurations.read('real_time.bandpass_filter_end_frequency')
-ipaddress = configurations.read('collect_data.ipaddress')
-port = configurations.read('collect_data.port')
+ipaddress = configurations.read('real_time.ipaddress')
+port = configurations.read('real_time.port')
 trial_length = 2
 
 
@@ -122,7 +122,7 @@ if SEND_TO_VR:
     print("Connecting to VR device...")
 
     print(configurations.read('real_time.vr_audio_prompts'))
-
+    print(ipaddress, port)
     sender = SenderLib.Sender(ipaddress, port)
     control = SenderLib.GameControl()
     print("Successfully connected to VR device")
@@ -171,8 +171,9 @@ def processCallback(samples):
             if SEND_TO_VR:
                 control.left = True
                 control.right = True
-                control.leftProbability = res_proba[0]
-                control.rightProbability = res_proba[0]
+                print(res_proba)
+                control.leftProbability = res_proba[0][1]
+                control.rightProbability = res_proba[0][1]
                 control.mode = configurations.read('collect_data.vr_mode')
                 state = sender.send_data(control)
         else:
@@ -182,8 +183,8 @@ def processCallback(samples):
             if SEND_TO_VR:
                 control.left = False
                 control.right = False
-                control.leftProbability = res_proba[0]
-                control.rightProbability = res_proba[0]
+                control.leftProbability = res_proba[0][0]
+                control.rightProbability = res_proba[0][0]
                 control.mode = configurations.read('collect_data.vr_mode')
                 state = sender.send_data(control)
 
