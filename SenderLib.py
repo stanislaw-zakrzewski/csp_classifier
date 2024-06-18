@@ -13,6 +13,8 @@ class GameControl:
     movement = True
     left = False
     right = False
+    leftProbability = 0
+    rightProbability = 0
     applyMode = True
     mode = 4
 

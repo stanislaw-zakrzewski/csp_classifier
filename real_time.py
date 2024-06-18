@@ -5,11 +5,14 @@ import SenderLib
 import pygds
 from classifiers.flat import process
 from config.config import Configurations
-from config_old import channels2
+# from config_old import channels2
 from data_classes.subject import Subject
 from playsound import playsound
+from tkinter import filedialog as fd
 
-SUBJECT_TO_TRAIN = 'data/2024-03-04T13-11-25.edf'
+SUBJECT_TO_TRAIN = fd.askopenfilename(filetypes=[("EDF EEG signal file", "*.edf")])
+SEND_TO_VR = False
+
 
 configurations = Configurations()
 electrode_names = configurations.read('general.all_electrodes')
@@ -17,6 +20,7 @@ bandpass_filter_start_frequency = configurations.read('real_time.bandpass_filter
 bandpass_filter_end_frequency = configurations.read('real_time.bandpass_filter_end_frequency')
 ipaddress = configurations.read('collect_data.ipaddress')
 port = configurations.read('collect_data.port')
+trial_length = 2
 
 
 def calculate_recall(predictions, corrects, hand):
@@ -49,6 +53,7 @@ def main(bands, channels):
     recall_numerator = [0, 0]
     recall_denominator = [0, 0]
     subject = Subject(SUBJECT_TO_TRAIN)
+    print('DICTIONARY:', subject.id_dict)
 
     window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(
         subject, bands,
@@ -109,20 +114,23 @@ def main(bands, channels):
 
 csp, lda, mne_info = main(
     [(bandpass_filter_start_frequency, bandpass_filter_end_frequency)],
-    channels2
+    configurations.read('general.selected_electrodes')
 )
 print(csp, lda)
 
-print("Connecting to VR device...")
+if SEND_TO_VR:
+    print("Connecting to VR device...")
 
-print(configurations.read('real_time.vr_audio_prompts'))
+    print(configurations.read('real_time.vr_audio_prompts'))
 
-sender = SenderLib.Sender(ipaddress, port)
-control = SenderLib.GameControl()
-print("Successfully connected to VR device")
+    sender = SenderLib.Sender(ipaddress, port)
+    control = SenderLib.GameControl()
+    print("Successfully connected to VR device")
 
 print("Inicjalizacja trochę trwa...")
+
 d = pygds.GDS()
+sampling_frequency = d.SamplingRate
 pygds.configure_demo(d)
 supported_sensitivities = d.GetSupportedSensitivities()
 sensitivity_id = 0
@@ -134,7 +142,6 @@ i = 0
 
 
 def processCallback(samples):
-    # samples = raw_samples[:,0:32]
     global i
     i += 1
     try:
@@ -148,41 +155,45 @@ def processCallback(samples):
         raw = RawArray(ret, mne_info, verbose='CRITICAL')
 
         for channel in electrode_names:
-            if channel not in channels2:
+            if channel not in configurations.read('general.selected_electrodes'):
                 raw.drop_channels([channel])
-        raw.filter(bandpass_filter_start_frequency, bandpass_filter_end_frequency, l_trans_bandwidth=2,
-                   h_trans_bandwidth=2, filter_length=500, fir_design='firwin',
+        raw.filter(bandpass_filter_start_frequency, bandpass_filter_end_frequency, l_trans_bandwidth=4,
+                   h_trans_bandwidth=4, filter_length=sampling_frequency * trial_length, fir_design='firwin',
                    skip_by_annotation='edge', verbose='CRITICAL')
         flt = raw.get_data()
         res = lda.predict(csp.transform(np.array([flt])))
-        print(res[0])
+        res_proba = lda.predict_proba(csp.transform(np.array([flt])))
+        print(res[0], '(',[np.round(x,3) for x in res_proba],')')
         if res[0] == 1:
             print('Movement')
             if configurations.read('real_time.vr_audio_prompts'):
                 playsound('commands//sound_commands//ruch.wav')
-            control.left = True
-            control.right = True
-            control.mode = configurations.read('collect_data.vr_mode')
-            state = sender.send_data(control)
+            if SEND_TO_VR:
+                control.left = True
+                control.right = True
+                control.leftProbability = res_proba[0]
+                control.rightProbability = res_proba[0]
+                control.mode = configurations.read('collect_data.vr_mode')
+                state = sender.send_data(control)
         else:
             print('Rest')
             if configurations.read('real_time.vr_audio_prompts'):
                 playsound('commands//sound_commands//brak.wav')
-            control.left = False
-            control.right = False
-            control.mode = configurations.read('collect_data.vr_mode')
-            state = sender.send_data(control)
-
-        # if send_to_vr:
-        #     state = sender.send_data(control)
+            if SEND_TO_VR:
+                control.left = False
+                control.right = False
+                control.leftProbability = res_proba[0]
+                control.rightProbability = res_proba[0]
+                control.mode = configurations.read('collect_data.vr_mode')
+                state = sender.send_data(control)
 
     except Exception as e:
         print(e)
 
-    if i < 20: return True
+    if i < 2: return True
     return False
 
 
-a = d.GetData(d.SamplingRate * 2, processCallback)
+a = d.GetData(sampling_frequency * trial_length, processCallback)
 d.Close()
 del d
