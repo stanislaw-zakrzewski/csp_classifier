@@ -11,9 +11,9 @@ from data_classes.subject import Subject
 from tkinter import filedialog as fd
 
 
-def process(subject, band, selected_channels, label_names, max_rank, replicas, verbose='DEBUG'):
-    tmin, tmax = .0, 2.
-    frequencies = 50
+def process(subject, band, selected_channels, label_names, min_rank, max_rank, replicas, verbose='DEBUG'):
+    tmin, tmax = .0, 1.
+    sampling_frequency = subject.sampling_frequency
 
     raw_signal = subject.get_raw_copy()
 
@@ -34,10 +34,8 @@ def process(subject, band, selected_channels, label_names, max_rank, replicas, v
 
     epochs_data = epochs.get_data()
     labels = np.array(epochs.events[:, -1])
-    yf = rfft(epochs_data)
-    epochs_data = np.abs(yf[:, :, 0:frequencies])
 
-    return perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, max_rank, replicas)
+    return perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, min_rank, max_rank, replicas, band, sampling_frequency)
 
 
 def calculate_score_for_decomposition(rank_key, max_rank, pvalues, count):
@@ -79,9 +77,8 @@ def decompose(x, ranks, replica_count):
     ensemble.fit(x, ranks=ranks, replicates=replica_count)
     return ensemble.results
 
-
-def perform_parafac_decomposition(x, y, selected_channels, label_names, max_rank, replica_count):
-    ranks = range(1, max_rank + 1)
+def perform_parafac_decomposition(x, y, selected_channels, label_names, min_rank, max_rank, replica_count, band, sampling_frequency):
+    ranks = range(min_rank, max_rank + 1)
     label_keys = list(label_names.keys())
     label_keys.sort()
     a_label = label_keys[0]
@@ -134,7 +131,11 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, max_rank
             'replica_count': replica_count,
             'selected_channels': selected_channels,
             'a_label': a_label_name,
-            'b_label': b_label_name
+            'b_label': b_label_name,
+            'highpass_cutoff': band[0],
+            'lowpass_cutoff': band[1],
+            'sampling_frequency': sampling_frequency,
+            'length_in_samples': x.shape[-1],
         }
     }
     t = time.localtime()
@@ -250,19 +251,20 @@ def adapt_selected_channels(subject, selected_channels):
     return selected_channels
 
 
-def decomposition(subject_path, selected_channels, selected_frequency_band, max_rank, replicas):
+def decomposition(subject_path, selected_channels, selected_frequency_band, min_rank, max_rank, replicas):
     subject = Subject(subject_path)
     label_names = {}
     for label_name in subject.id_dict:
         label_names[subject.id_dict[label_name]] = label_name
     selected_channels = adapt_selected_channels(subject, selected_channels)
 
-    process(subject, selected_frequency_band, selected_channels, label_names, max_rank, replicas)
+    process(subject, selected_frequency_band, selected_channels, label_names, min_rank, max_rank, replicas)
 
 
 def main():
     subject_path = fd.askopenfilename(filetypes=[("European Data Format files", "*.edf")])
     print("Fill PARAFAC decomposition parameters")
+    min_rank = int(input('Min rank: '))
     max_rank = int(input('Max rank: '))
     replicas = int(input('Replicas: '))
     selected_frequency_band = input('Selected frequency band (default: "2,24"): ')
@@ -277,7 +279,7 @@ def main():
     else:
         selected_channels = ['C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6']
 
-    decomposition(subject_path, selected_channels, selected_frequency_band, max_rank, replicas)
+    decomposition(subject_path, selected_channels, selected_frequency_band, min_rank, max_rank, replicas)
 
 
 main()

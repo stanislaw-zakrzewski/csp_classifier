@@ -20,22 +20,26 @@ class Subject:
         annotations = read_annotations(subject_edf_path)
         initial_events, self.id_dict = events_from_annotations(self.raw, verbose='ERROR')
         self.configurations = Configurations()
-        self.sampling_frequency = self.configurations.read('general.sampling_rate')
+        self.sampling_frequency = int(self.raw.info['sfreq'])
+        self.min_event_length_sec = min(annotations.duration)
         self.sub_event_length_sec = self.configurations.read('general.sub_event_length_sec')
 
         self.electrode_names = self.raw.ch_names #self.configurations.read('general.all_electrodes')
 
         events = []
-        self.event_len = int(self.sub_event_length_sec * self.sampling_frequency)
-        self.offset_samples = int(self.configurations.read('general.offset_seconds') * self.sampling_frequency)
-        for index, initial_event in enumerate(initial_events):
-            annotation_duration = int(annotations.duration[index] * self.sampling_frequency)
-            current_event_start = self.offset_samples
-            while current_event_start < annotation_duration + self.event_len:
-                new_event = [initial_event[0] + current_event_start, 0, initial_event[2]]
-                events.append(new_event)
-                current_event_start += self.event_len
-        self.events = np.array(events)
+        self.event_len = int(self.min_event_length_sec * self.sampling_frequency)
+        # self.event_len = int(self.sub_event_length_sec * self.sampling_frequency)
+        # self.offset_samples = int(self.configurations.read('general.offset_seconds') * self.sampling_frequency)
+        # for index, initial_event in enumerate(initial_events):
+        #     annotation_duration = int(annotations.duration[index] * self.sampling_frequency)
+        #     current_event_start = self.offset_samples
+        #     while current_event_start < annotation_duration + self.event_len:
+        #         new_event = [initial_event[0] + current_event_start, 0, initial_event[2]]
+        #         events.append(new_event)
+        #         current_event_start += self.event_len
+        # self.events = np.array(events)
+        self.events = initial_events
+
 
         mne_info = create_info(self.electrode_names, self.sampling_frequency, 'eeg')
         self.info = mne_info
