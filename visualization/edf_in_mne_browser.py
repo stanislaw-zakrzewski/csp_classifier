@@ -11,5 +11,5 @@ def visualize_edf_in_mne_browser(edf_path):
         Path to EDF file that is meant to be visualized.
     """
     raw = read_raw_edf(edf_path, preload=True)
-    raw.plot(block=True, show_options=True)
+    raw.plot(block=True, show_options=True, lowpass=30, highpass=2)
     plt.show()

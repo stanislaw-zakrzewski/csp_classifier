@@ -48,7 +48,6 @@ class AnalyzeData(DoubleScrolledFrame):
                                         verbose='ERROR')
             figure = Figure(figsize=(25, 10))
             ax = figure.subplots()
-            accuracy_data.to_csv('stacked_mlp_space.csv')  # TODO remove this
             sns.lineplot(data=accuracy_data, x="frequency", y="accuracy", hue="configuration", errorbar=None, ax=ax, markers=True, style='configuration')
 
             ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
