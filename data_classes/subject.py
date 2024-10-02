@@ -1,7 +1,7 @@
 import mne
 from mne import create_info, events_from_annotations, read_annotations
 from mne.io import read_raw_edf
-import numpy as np
+from pyedflib import highlevel
 
 from config.config import Configurations
 
@@ -17,6 +17,7 @@ class Subject:
 
     def __init__(self, subject_edf_path):
         self.raw = read_raw_edf(subject_edf_path, preload=True, verbose='ERROR')
+        self.signals, self.signal_headers, self.header = highlevel.read_edf(subject_edf_path)
         annotations = read_annotations(subject_edf_path)
         initial_events, self.id_dict = events_from_annotations(self.raw, verbose='ERROR')
         self.configurations = Configurations()
