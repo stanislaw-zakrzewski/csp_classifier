@@ -87,7 +87,7 @@ class CollectData(DoubleScrolledFrame):
         self.fig = None
         self.gnt = None
 
-    def update_experiment_timeline_plot(self):
+    def update_experiment_timeline_plot(self, value):
         if self.current_queue is None:
             return
 

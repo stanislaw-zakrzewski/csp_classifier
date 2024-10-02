@@ -1,11 +1,3 @@
-# Custom ignores
-preprocessed_data/
-preprocessed_subjects/
-preprocessed_subjects_car/
-parafac_analysis/results/
-*.pyc
-
-
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template
 # Byte-compiled / optimized / DLL files
@@ -190,5 +182,11 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 # idea folder, uncomment if you don't need it
-.idea
-*.iml
+# .idea
+
+# Datasets
+preprocessed_data/
+preprocessed_dataset_3/
+parafac_analysis/results/
+preprocessed_subjects/
+preprocessed_subjects_car/

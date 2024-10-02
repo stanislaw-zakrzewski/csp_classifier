@@ -70,7 +70,7 @@ class GtecNautilusProInterface:
                     item[1] -= .5
                     if item[1] < .5 and current_queue is not None:
                         current_queue.pop(0)
-                    update_experiment_timeline_plot()
+                    update_experiment_timeline_plot(.5)
                 else:
                     return False
 

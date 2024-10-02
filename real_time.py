@@ -55,7 +55,7 @@ def main(bands, channels):
     subject = Subject(SUBJECT_TO_TRAIN)
     print('DICTIONARY:', subject.id_dict)
 
-    window_times, window_scores, csp_filters, epochs_info, predictions, corrects, classifier, mne_info = process(
+    csp_filters, predictions, corrects, classifier, mne_info = process(
         subject, bands,
         channels,
         n_splits=1)

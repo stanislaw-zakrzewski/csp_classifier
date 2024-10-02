@@ -13,7 +13,6 @@ from tkinter import filedialog as fd
 
 def process(subject, band, selected_channels, label_names, min_rank, max_rank, replicas, verbose='DEBUG'):
     tmin, tmax = .0, 2.
-    frequencies = 50
 
     raw_signal = subject.get_raw_copy()
 
@@ -37,41 +36,8 @@ def process(subject, band, selected_channels, label_names, min_rank, max_rank, r
     yf = rfft(epochs_data)
     epochs_data = np.abs(yf[:, :, band[0]:band[1]])
 
-    return perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, min_rank, max_rank, replicas, band)
-
-
-def calculate_score_for_decomposition(rank_key, max_rank, pvalues, count):
-    return rank_key / max_rank * min(pvalues) / count
-
-
-def find_best_decomposition(statistically_significant_atoms, max_rank):
-    structured_decompositions = {}
-    best_decomposition = {'rank': -1, 'replica': -1, 'score': 1}
-
-    for atom_data in statistically_significant_atoms:
-        rank = atom_data['rank']
-        replica = atom_data['replica']
-        atom_index = atom_data['atom']
-        pvalue = atom_data['pvalue']
-
-        if rank not in structured_decompositions:
-            structured_decompositions[rank] = {}
-        if replica not in structured_decompositions[rank]:
-            structured_decompositions[rank][replica] = {'count': 0, 'atoms': [], 'pvalues': []}
-        decomposition = structured_decompositions[rank][replica]
-        decomposition['count'] += 1
-        decomposition['atoms'].append(atom_index)
-        decomposition['pvalues'].append(pvalue)
-
-    for rank_key in structured_decompositions:
-        for replica_key in structured_decompositions[rank_key]:
-            decomposition = structured_decompositions[rank_key][replica_key]
-            count = decomposition['count']
-            pvalues = decomposition['pvalues']
-            score = calculate_score_for_decomposition(rank_key, max_rank, pvalues, count)
-            if score < best_decomposition['score']:
-                best_decomposition = {'rank': rank_key, 'replica': replica_key, 'score': score}
-    return best_decomposition
+    return perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, min_rank, max_rank,
+                                         replicas, band)
 
 
 def decompose(x, ranks, replica_count):
@@ -145,15 +111,8 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, min_rank
         np.save(out_file, data_file, allow_pickle=True)
 
     return
-
-    visualize_all_decompositions(statistically_significant, max_rank, replica_count)
-
-    sorted_statistically_significant = sorted(statistically_significant, key=lambda stat_sign: stat_sign['pvalue'])
-
-    best_decomposition = find_best_decomposition(statistically_significant, max_rank)
-
-    visualize_best_decomposition(parafac_decompositions, sorted_statistically_significant, best_decomposition,
-                                 selected_channels, a_label_name, b_label_name)
+    #
+    # visualize_all_decompositions(statistically_significant, max_rank, replica_count)
 
 
 def visualize_all_decompositions(statistically_significant_atoms, max_rank, replica_count):

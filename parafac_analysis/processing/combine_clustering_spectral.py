@@ -190,8 +190,13 @@ def visualize_combined_atoms_as_heatmap(combined_atoms_left, combined_atoms_righ
                              gridspec_kw=dict(width_ratios=[len(selected_channels), len(selected_channels), 0.5]))
     sns.heatmap(df_left.pivot(index='Frequency', columns='Channel', values='Amplitude'), ax=axes[0], cbar=False,
                 vmin=vmin)
-    sns.heatmap(df_right.pivot(index='Frequency', columns='Channel', values='Amplitude'), ax=axes[1], cbar=False,
+    axes[0].set_title('Left Hand Movement')
+    axes[0].invert_yaxis()
+    g2 = sns.heatmap(df_right.pivot(index='Frequency', columns='Channel', values='Amplitude'), ax=axes[1], cbar=False,
                 vmax=vmax)
+    g2.set(ylabel=None)
+    axes[1].set_title('Right Hand Movement')
+    axes[1].invert_yaxis()
     fig.colorbar(axes[1].collections[0], cax=axes[2])
     # plt.ylim(0, len(frequencies))
     plt.show()
@@ -208,7 +213,7 @@ with open(filename, 'rb') as out_file:
     lowpass_cutoff = data_file.item().get("metadata")['lowpass_cutoff']
     selected_frequencies = range(highpass_cutoff, lowpass_cutoff)
     statistically_significant_decompositions = data_file.item().get("statistically_significant_decompositions")
-    selected_rank = 50
+    selected_rank = 8
     selected_replica = 0
 
     rank_replica_decompositions = all_decompositions[selected_rank][selected_replica].factors.factors
