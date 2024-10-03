@@ -2,7 +2,7 @@ from tkinter import *
 # import sv_ttk
 
 from gui.menu.menu import ApplicationMenu
-# from gui.pages.analyze_data import AnalyzeData
+from gui.pages.analyze_data import AnalyzeData
 from gui.pages.browse_recordings import BrowseRecordings
 from gui.pages.collect_data import CollectData
 from gui.pages.erds_analysis import ERDSAnalysis
@@ -23,7 +23,7 @@ class App(Tk):
         pages = [
             {'name': 'Test Electrodes', 'frame': TestElectrodes},
             {'name': 'Filter Browser', 'frame': FilterBrowser},
-            # {'name': 'Analyze Data', 'frame': AnalyzeData},
+            {'name': 'Analyze Data', 'frame': AnalyzeData},
             {'name': 'Collect Data', 'frame': CollectData},
             {'name': 'ERD/S Analysis', 'frame': ERDSAnalysis},
             {'name': 'Browse Recordings', 'frame': BrowseRecordings},

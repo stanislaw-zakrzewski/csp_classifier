@@ -1,4 +1,8 @@
 from tkinter import *
+from tkinter import ttk
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
 import SenderLib
 from commands.audio_commands_pyaudio import AudioCommands
@@ -8,7 +12,7 @@ from playsound import playsound
 
 
 class PromptViewer(Toplevel):
-    def __init__(self, root, start_command, close_command):
+    def __init__(self, root, start_command, close_command, progressbar_value):
         Toplevel.__init__(self, root)
         self.configurations = Configurations()
         self.title("Browse annotations for")
@@ -23,6 +27,8 @@ class PromptViewer(Toplevel):
         self.queue_canvas = None
         self.prompt_label = None
         self.prompt_label_text = None
+        self.progressbar = None
+        self.progressbar_value = progressbar_value
 
         self.close_command = close_command
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -64,6 +70,9 @@ class PromptViewer(Toplevel):
         if self.player is None:
             self.player = Screen(self)
             self.player.pack(side='top', fill='both', expand=True)
+        if self.progressbar is None:
+            self.progressbar = ttk.Progressbar(self, orient='vertical', variable=self.progressbar_value)
+            self.progressbar.place(relx=.5, rely=.5, anchor=CENTER, height=160)
 
         if prompt_code == 'movement':
             self.player.play('commands//visual_commands//movement.mov')

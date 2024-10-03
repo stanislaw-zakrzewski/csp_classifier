@@ -2,7 +2,7 @@
   "general": {
     "sampling_rate": {
       "type": "int",
-      "value": "512"
+      "value": "250"
     },
     "use_common_average_reference": {
       "type": "boolean",
@@ -126,7 +126,7 @@
     },
     "trial_count": {
       "type": "int",
-      "value": "3"
+      "value": "1"
     },
     "pause_length": {
       "type": "int",
@@ -147,12 +147,24 @@
     "vr_audio_prompts": {
       "type": "boolean",
       "value": true
+    },
+    "indicator_frequency_min": {
+      "type": "int",
+      "value": 11
+    },
+    "indicator_frequency_max": {
+      "type": "int",
+      "value": 12
+    },
+    "indicator_channel": {
+      "type": "int",
+      "value": 14
     }
   },
   "real_time": {
     "vr_audio_prompts": {
       "type": "boolean",
-      "value": true
+      "value": false
     },
     "prompt_type": {
       "type": "string",
@@ -160,7 +172,7 @@
     },
     "ipaddress": {
       "type": "string",
-      "value": "192.168.50.101"
+      "value": "169.254.16.99"
     },
     "port": {
       "type": "int",
@@ -195,11 +207,11 @@
     },
     "bandpass_filter_start_frequency": {
       "type": "int",
-      "value": "2"
+      "value": "4"
     },
     "bandpass_filter_end_frequency": {
       "type": "int",
-      "value": "24"
+      "value": "26"
     }
   }
 }

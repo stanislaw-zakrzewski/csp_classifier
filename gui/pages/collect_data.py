@@ -33,6 +33,7 @@ class CollectData(DoubleScrolledFrame):
         self.current_queue = None
         self.bci_interface = GtecNautilusProInterface()
         self.edf_writer = EDFWriter()
+        self.progressbar_value = DoubleVar(self, 10)
 
         app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
         app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
@@ -73,7 +74,7 @@ class CollectData(DoubleScrolledFrame):
         self.patient_name_input['state'] = DISABLED
         self.gender_input['state'] = DISABLED
         self.create_queue()
-        self.prompt_viewer = PromptViewer(self, self.start_acquisition, self.on_prompt_viewer_close)
+        self.prompt_viewer = PromptViewer(self, self.start_acquisition, self.on_prompt_viewer_close, self.progressbar_value)
         self.update_experiment_timeline_plot()
 
     def on_prompt_viewer_close(self):
@@ -141,7 +142,7 @@ class CollectData(DoubleScrolledFrame):
 
     def acquisition(self):
         recorded_signal, start_date = self.bci_interface.run_acquisition(self.prompt_viewer, self.current_queue,
-                                                                         self.update_experiment_timeline_plot)
+                                                                         self.update_experiment_timeline_plot, self.progressbar_value)
         if not self.prompt_viewer.closed:
             self.prompt_viewer.change_prompt('end')
         else:

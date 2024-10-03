@@ -16,7 +16,7 @@ from data_classes.subject import Subject
 from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
-from preprocessing.common_average_reference import common_average_reference
+# from preprocessing.common_average_reference import common_average_reference
 
 
 class ERDSAnalysis(DoubleScrolledFrame):
@@ -127,6 +127,7 @@ class ERDSAnalysis(DoubleScrolledFrame):
 
             epochs = mne.Epochs(
                 raw,
+                events=subject.events,
                 event_id=event_names,
                 tmin=tmin - 0.5,
                 tmax=tmax + 0.5,
