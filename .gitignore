@@ -190,3 +190,5 @@ preprocessed_dataset_3/
 parafac_analysis/results/
 preprocessed_subjects/
 preprocessed_subjects_car/
+.idea/misc.xml
+.idea/csp_classifier.iml
