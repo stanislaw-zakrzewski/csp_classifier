@@ -2,6 +2,7 @@ import pygds
 from datetime import datetime
 import numpy as np
 import time
+from scipy.fft import rfft
 
 from config.config import Configurations
 
@@ -17,8 +18,12 @@ last = 0
 class GtecNautilusProInterface:
     def __init__(self):
         self.configurations = Configurations()
+        self.indicator_frequency_min = self.configurations.read("collect_data.indicator_frequency_min")
+        self.indicator_frequency_max = self.configurations.read("collect_data.indicator_frequency_max")
+        self.indicator_channel = self.configurations.read("collect_data.indicator_channel")
+        self.sampling_rate = self.configurations.read("general.sampling_rate")
 
-    def run_acquisition(self, prompt_viewer, current_queue, update_experiment_timeline_plot):
+    def run_acquisition(self, prompt_viewer, current_queue, update_experiment_timeline_plot, progressbar_value):
         global current_trial_remaining_length
         global current_label
         global trial_order
@@ -38,6 +43,7 @@ class GtecNautilusProInterface:
 
         batches_per_second = 2
 
+        signal = []
         for _ in range(32):
             signal.append([])
 
@@ -58,6 +64,11 @@ class GtecNautilusProInterface:
 
                 # Podglad aktywnosci kanalow:
                 np.set_printoptions(suppress=True, linewidth=10000, precision=2)
+                selected_channel = signal[self.indicator_channel][-self.sampling_rate:]
+                frequency_values = rfft(selected_channel)
+                frequency_values = np.abs(frequency_values)
+                indicator_value = min(frequency_values[self.indicator_frequency_min:self.indicator_frequency_max])
+                progressbar_value.set(indicator_value/100)
                 print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]],
                              axis=0))  # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
 

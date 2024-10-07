@@ -19,7 +19,7 @@ from tensorly import unfold, cp_to_tensor
 from scipy.fft import fft, fftfreq, rfft, rfftfreq
 from sklearn.decomposition import TruncatedSVD
 from scipy.signal import morlet
-import tlviz
+# import tlviz
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
@@ -161,8 +161,8 @@ def get_atoms(x_train, ch_names=[]):
     freq = np.fft.rfftfreq(500, d=1. / 250)[0:50]
 
     weights, factors = parafac(x_train, rank=5)
-    tlviz.visualisation.components_plot((weights, factors))
-    plt.show()
+    # tlviz.visualisation.components_plot((weights, factors))
+    # plt.show()
     channels = factors[1]
     frequencies_list = factors[2]
     plot_data = []

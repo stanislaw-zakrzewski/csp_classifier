@@ -5,7 +5,7 @@ import seaborn as sns
 import pandas as pd
 
 from tkinter import filedialog as fd
-from sklearn.cluster import DBSCAN, KMeans, HDBSCAN, k_means
+# from sklearn.cluster import DBSCAN, KMeans, HDBSCAN, k_means
 from scipy.signal import argrelextrema, find_peaks
 
 
@@ -131,32 +131,32 @@ def transform_to_additive(data_to_transform):
     return transformed_data
 
 
-def cluster_processed_data(processed_data):
-    clustering_data = {'noise': [], 'cluster_count': [], 'min_cluster_size': []}
+# def cluster_processed_data(processed_data):
+#     clustering_data = {'noise': [], 'cluster_count': [], 'min_cluster_size': []}
+#
+#     noise_data = []
+#     cluster_counts = []
+#     noise_range = range(2, int(len(processed_data) / 2), 1)
+#     for i in noise_range:
+#         hdb = HDBSCAN(min_cluster_size=i, store_centers='both')
+#         hdb.fit(processed_data)
+#         clustering_data['noise'].append(np.count_nonzero(hdb.labels_ == -1) / len(processed_data) * 100)
+#         clustering_data['min_cluster_size'].append(i)
+#         clustering_data['cluster_count'].append(max(hdb.labels_) + 1)
+#         if max(hdb.labels_) + 1 == 0:
+#             break
+#     local_maxima_indexes = argrelextrema(np.array(clustering_data['noise']), np.less, order=2)
+#     return clustering_data, local_maxima_indexes[0]
 
-    noise_data = []
-    cluster_counts = []
-    noise_range = range(2, int(len(processed_data) / 2), 1)
-    for i in noise_range:
-        hdb = HDBSCAN(min_cluster_size=i, store_centers='both')
-        hdb.fit(processed_data)
-        clustering_data['noise'].append(np.count_nonzero(hdb.labels_ == -1) / len(processed_data) * 100)
-        clustering_data['min_cluster_size'].append(i)
-        clustering_data['cluster_count'].append(max(hdb.labels_) + 1)
-        if max(hdb.labels_) + 1 == 0:
-            break
-    local_maxima_indexes = argrelextrema(np.array(clustering_data['noise']), np.less, order=2)
-    return clustering_data, local_maxima_indexes[0]
 
-
-def select_best_cluster(processed_data):
-    clustering_data, local_maxima_indexes = cluster_processed_data(processed_data)
-
-    print('min_cluster_size', np.array(clustering_data['min_cluster_size'])[local_maxima_indexes])
-    print('cluster_count', np.array(clustering_data['cluster_count'])[local_maxima_indexes])
-    print('noise', np.array(clustering_data['noise'])[local_maxima_indexes])
-
-    return int(input('Select min_cluster_size:'))
+# def select_best_cluster(processed_data):
+#     clustering_data, local_maxima_indexes = cluster_processed_data(processed_data)
+#
+#     print('min_cluster_size', np.array(clustering_data['min_cluster_size'])[local_maxima_indexes])
+#     print('cluster_count', np.array(clustering_data['cluster_count'])[local_maxima_indexes])
+#     print('noise', np.array(clustering_data['noise'])[local_maxima_indexes])
+#
+#     return int(input('Select min_cluster_size:'))
 
 
 def combine_atom(decompositions, atom_index, atom_aggregator):
@@ -274,60 +274,60 @@ with open(filename, 'rb') as out_file:
     processed_b_frequencies_data = transform_to_additive(statistically_significant_b_frequencies_atoms)
     processed_b_channels_data = transform_to_additive(statistically_significant_b_channels_atoms)
 
-    # for i in processed_data:
+    # # for i in processed_data:
+    # # # for i in statistically_significant_atoms:
+    # #     plt.plot(range(len(i)), i)
+    # # plt.show()
+    #
+    # # processed_data = []
+    # # max_val = np.max(statistically_significant_atoms) * .1
     # # for i in statistically_significant_atoms:
-    #     plt.plot(range(len(i)), i)
-    # plt.show()
-
-    # processed_data = []
-    # max_val = np.max(statistically_significant_atoms) * .1
-    # for i in statistically_significant_atoms:
-    #     a = []
-    #     for j in i:
-    #         if j < max_val:
-    #             a.append(0)
-    #         else:
-    #             a.append(j)
-    #     processed_data.append(a)
-    # for i in processed_data:
+    # #     a = []
+    # #     for j in i:
+    # #         if j < max_val:
+    # #             a.append(0)
+    # #         else:
+    # #             a.append(j)
+    # #     processed_data.append(a)
+    # # for i in processed_data:
+    # # # for i in statistically_significant_atoms:
+    # #     plt.plot(range(len(i)), i)
+    # # plt.show()
+    #
+    # # # clustering = DBSCAN(eps=.1, min_samples=2).fit(statistically_significant_atoms)
+    # # clustering = KMeans(n_clusters=2, random_state=0, n_init="auto").fit(statistically_significant_atoms)
+    # # print(clustering.labels_)
+    # # print(clustering.cluster_centers_)
+    # # fig, (ax1, ax2) = plt.subplots(2)
+    # # fig.suptitle(
+    # #     'PARAFAC decomposition of rank {}, replica: {})'.format(rank, replica))
+    # # fig.set_figwidth(25)
+    # # fig.set_figheight(10)
+    #
     # # for i in statistically_significant_atoms:
-    #     plt.plot(range(len(i)), i)
-    # plt.show()
-
-    # # clustering = DBSCAN(eps=.1, min_samples=2).fit(statistically_significant_atoms)
-    # clustering = KMeans(n_clusters=2, random_state=0, n_init="auto").fit(statistically_significant_atoms)
-    # print(clustering.labels_)
-    # print(clustering.cluster_centers_)
-    # fig, (ax1, ax2) = plt.subplots(2)
-    # fig.suptitle(
-    #     'PARAFAC decomposition of rank {}, replica: {})'.format(rank, replica))
-    # fig.set_figwidth(25)
-    # fig.set_figheight(10)
-
-    # for i in statistically_significant_atoms:
-    #     avg = np.average(i)
-    #     i -= avg
-
-    selected_min_cluster_size_a_fq = select_best_cluster(processed_a_frequencies_data)
-    selected_min_cluster_size_a_ch = select_best_cluster(processed_a_channels_data)
-    selected_min_cluster_size_b_fq = select_best_cluster(processed_b_frequencies_data)
-    selected_min_cluster_size_b_ch = select_best_cluster(processed_b_channels_data)
-
-    hdb_a_fq = HDBSCAN(min_cluster_size=selected_min_cluster_size_a_fq, store_centers='both')
-    hdb_a_fq.fit(processed_a_frequencies_data)
-    hdb_a_ch = HDBSCAN(min_cluster_size=selected_min_cluster_size_a_ch, store_centers='both')
-    hdb_a_ch.fit(processed_a_channels_data)
-    hdb_b_fq = HDBSCAN(min_cluster_size=selected_min_cluster_size_b_fq, store_centers='both')
-    hdb_b_fq.fit(processed_b_frequencies_data)
-    hdb_b_ch = HDBSCAN(min_cluster_size=selected_min_cluster_size_b_ch, store_centers='both')
-    hdb_b_ch.fit(processed_b_channels_data)
-
-    visualize_clustering(hdb_a_fq.centroids_, hdb_a_ch.centroids_, hdb_b_fq.centroids_, hdb_b_ch.centroids_, filename,
-                         selected_channels, selected_frequencies, a_label, b_label)
-
-    # dataframe = pd.DataFrame(data=clustering_data)
-    # visualize_best_decomposition(dataframe, filename, hdb.centroids_, selected_channels, 'channels')
-
-    # hdb.fit(statistically_significant_atoms)
-    # print(hdb.labels_)
-    # print('Noisy samples: {0:.2f}%'.format(np.count_nonzero(hdb.labels_ == -1)/len(processed_data) * 100))
+    # #     avg = np.average(i)
+    # #     i -= avg
+    #
+    # selected_min_cluster_size_a_fq = select_best_cluster(processed_a_frequencies_data)
+    # selected_min_cluster_size_a_ch = select_best_cluster(processed_a_channels_data)
+    # selected_min_cluster_size_b_fq = select_best_cluster(processed_b_frequencies_data)
+    # selected_min_cluster_size_b_ch = select_best_cluster(processed_b_channels_data)
+    #
+    # hdb_a_fq = HDBSCAN(min_cluster_size=selected_min_cluster_size_a_fq, store_centers='both')
+    # hdb_a_fq.fit(processed_a_frequencies_data)
+    # hdb_a_ch = HDBSCAN(min_cluster_size=selected_min_cluster_size_a_ch, store_centers='both')
+    # hdb_a_ch.fit(processed_a_channels_data)
+    # hdb_b_fq = HDBSCAN(min_cluster_size=selected_min_cluster_size_b_fq, store_centers='both')
+    # hdb_b_fq.fit(processed_b_frequencies_data)
+    # hdb_b_ch = HDBSCAN(min_cluster_size=selected_min_cluster_size_b_ch, store_centers='both')
+    # hdb_b_ch.fit(processed_b_channels_data)
+    #
+    # visualize_clustering(hdb_a_fq.centroids_, hdb_a_ch.centroids_, hdb_b_fq.centroids_, hdb_b_ch.centroids_, filename,
+    #                      selected_channels, selected_frequencies, a_label, b_label)
+    #
+    # # dataframe = pd.DataFrame(data=clustering_data)
+    # # visualize_best_decomposition(dataframe, filename, hdb.centroids_, selected_channels, 'channels')
+    #
+    # # hdb.fit(statistically_significant_atoms)
+    # # print(hdb.labels_)
+    # # print('Noisy samples: {0:.2f}%'.format(np.count_nonzero(hdb.labels_ == -1)/len(processed_data) * 100))

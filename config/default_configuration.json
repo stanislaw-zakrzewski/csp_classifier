@@ -155,7 +155,7 @@
   "real_time": {
     "vr_audio_prompts": {
       "type": "boolean",
-      "value": true
+      "value": false
     },
     "prompt_type": {
       "type": "string",
@@ -198,11 +198,11 @@
     },
     "bandpass_filter_start_frequency": {
       "type": "int",
-      "value": "2"
+      "value": "4"
     },
     "bandpass_filter_end_frequency": {
       "type": "int",
-      "value": "24"
+      "value": "26"
     }
   }
 }

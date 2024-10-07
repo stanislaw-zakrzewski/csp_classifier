@@ -4,9 +4,9 @@ import pandas as pd
 
 from classifiers.flat import process as flat_classifier
 from classifiers.cnn import process as cnn_classifier
-from classifiers.dnn_tensorflow_2 import process as dnn_classifier
+# from classifiers.dnn_tensorflow_2 import process as dnn_classifier
 from classifiers.parafac import process as parafac_classifier
-from classifiers.EEGNet import process as EEGNet_classifier
+# from classifiers.EEGNet import process as EEGNet_classifier
 from data_classes.subject import Subject
 from logger import log
 from preprocessing.validate_available_electrodes import validate_available_electrodes
@@ -180,10 +180,10 @@ def get_classifier(classifier_type):
         return flat_classifier
     if classifier_type == 'cnn':
         return cnn_classifier
-    if classifier_type == 'dnn':
-        return dnn_classifier
-    if classifier_type == 'EEGNet':
-        return EEGNet_classifier
+    # if classifier_type == 'dnn':
+    #     return dnn_classifier
+    # if classifier_type == 'EEGNet':
+    #     return EEGNet_classifier
     if classifier_type == 'parafac':
         return parafac_classifier
 
