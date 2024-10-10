@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from mne import Epochs, pick_types
 from scipy import stats
 from scipy.fft import rfft
+from pyedflib import highlevel
 
 from data_classes.subject import Subject
 from tkinter import filedialog as fd
@@ -35,10 +36,15 @@ def process(subject, band, selected_channels, label_names, starting_rank, verbos
 
     epochs_data = epochs.get_data()
     labels = np.array(epochs.events[:, -1])
-    yf = rfft(epochs_data)
-    epochs_data = np.abs(yf[:, :, band[0]:band[1]])
+    yf_old = rfft(epochs_data)
 
-    return perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, starting_rank, band)
+    yf2 = np.load(r'parafac_analysis/reconstructions/2024-10-06T10-02-43.npy')
+    yf = np.abs(yf_old[:, :, band[0]:band[1]])
+    epochs_data = yf
+    with open('parafac_analysis/reconstructions/initial.npy', 'wb') as out_file:
+        np.save(out_file, yf, allow_pickle=True)
+
+    perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, starting_rank, band)
 
 
 def decompose(x, ranks, replica_count):
@@ -55,7 +61,8 @@ def combine_atom(decompositions, atom_index, atom_aggregator):
         atom_aggregator[channel_factor_index] += frequency_factors * channel_factor
 
 
-def visualize_combined_atoms_as_heatmap(combined_atoms_left, combined_atoms_right, selected_channels, frequencies, a_label_name, b_label_name):
+def visualize_combined_atoms_as_heatmap(combined_atoms_left, combined_atoms_right, selected_channels, frequencies,
+                                        a_label_name, b_label_name):
     df_left_data = {'Channel': [], "Frequency": [], "Amplitude": []}
     df_right_data = {'Channel': [], "Frequency": [], "Amplitude": []}
     for channel_index, channel_name in enumerate(selected_channels):
@@ -109,6 +116,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
     def is_blabel(el):
         return el['relation'] == 'less'
 
+    last_rank = 0
     while current_rank is not None:
         if current_rank is None:
             continue
@@ -159,6 +167,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
 
         combined_atoms_left = [[0 for _ in selected_frequencies] for _ in selected_channels]
         combined_atoms_right = [[0 for _ in selected_frequencies] for _ in selected_channels]
+        combined_atoms_all = [[0 for _ in selected_frequencies] for _ in selected_channels]
         for statistically_significant_decomposition in statistically_significant:
             if statistically_significant_decomposition['rank'] == current_rank and \
                     statistically_significant_decomposition[
@@ -169,58 +178,24 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
                 else:
                     combine_atom(rank_replica_decompositions, statistically_significant_decomposition['atom'],
                                  combined_atoms_right)
+                combine_atom(rank_replica_decompositions, statistically_significant_decomposition['atom'],
+                             combined_atoms_all)
         visualize_combined_atoms_as_heatmap(combined_atoms_left, combined_atoms_right, selected_channels,
                                             selected_frequencies, a_label_name, b_label_name)
 
+        last_rank = current_rank
         current_rank = input("Select current frequency (leaving empty end search):")
         if current_rank != '':
             current_rank = int(current_rank)
         else:
             current_rank = None
 
-    # # Perform PARAFAC decomposition
-    # parafac_decompositions = decompose(x, ranks, replica_count)
-    #
-    # statistically_significant = []
-    # for rank in ranks:
-    #     for replica in range(replica_count):
-    #         trial_factors = parafac_decompositions[rank][replica].factors[0]
-    #         label_loc = {}
-    #         for label in set(y):
-    #             label_loc[label] = np.where(y == label)[0]
-    #         for atom_index in range(len(trial_factors[0])):
-    #             labelll = {}
-    #             for label_name in label_loc.keys():
-    #                 aa = list(label_loc[label_name])
-    #                 label_atoms = trial_factors[aa]
-    #                 label_atoms = label_atoms[:, atom_index]
-    #                 labelll[label_name] = label_atoms
-    #
-    #             normality1 = stats.normaltest(labelll[a_label])[1]
-    #             normality2 = stats.normaltest(labelll[b_label])[1]
-    #             if normality1 < .05 and normality2 < .05:
-    #                 pvalue_less = stats.ttest_ind(labelll[a_label], labelll[b_label], alternative='less').pvalue
-    #                 pvalue_greater = stats.ttest_ind(labelll[a_label], labelll[b_label], alternative='greater').pvalue
-    #             else:
-    #                 pvalue_less = stats.ranksums(labelll[a_label], labelll[b_label], alternative='less')[1]
-    #                 pvalue_greater = stats.ranksums(labelll[a_label], labelll[b_label], alternative='greater')[1]
-    #             if pvalue_greater <= .05:
-    #                 weight = np.average(np.abs(trial_factors[:, atom_index]))
-    #                 statistically_significant.append(
-    #                     {'rank': rank, 'replica': replica, 'atom': atom_index, 'relation': 'greater',
-    #                      'pvalue': pvalue_greater, 'weight': weight})
-    #             if pvalue_less <= .05:
-    #                 weight = np.average(np.abs(trial_factors[:, atom_index]))
-    #                 statistically_significant.append(
-    #                     {'rank': rank, 'replica': replica, 'atom': atom_index, 'relation': 'less',
-    #                      'pvalue': pvalue_less, 'weight': weight})
-
     if parafac_decompositions and statistically_significant:
         data_file = {
             'decompositions': parafac_decompositions,
             'statistically_significant_decompositions': statistically_significant,
             'metadata': {
-                'max_rank': current_rank,
+                'max_rank': last_rank,
                 'replica_count': 1,
                 'selected_channels': selected_channels,
                 'a_label': a_label_name,
@@ -229,14 +204,38 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
                 'lowpass_cutoff': band[1]
             }
         }
+        heatmap_data = {
+            'heatmap': combined_atoms_all,
+            'frequencies': selected_frequencies,
+            'channels': selected_channels
+        }
         t = time.localtime()
         timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
         with open('parafac_analysis/results/{}.npy'.format(timestamp), 'wb') as out_file:
             np.save(out_file, data_file, allow_pickle=True)
+        reconstructed = recostruct_from_atoms(parafac_decompositions[last_rank][0].factors.factors, last_rank)
+        with open('parafac_analysis/reconstructions/{}.npy'.format(timestamp), 'wb') as out_file:
+            np.save(out_file, reconstructed, allow_pickle=True)
+        with open('parafac_analysis/significant_heatmaps/{}.npy'.format(timestamp), 'wb') as out_file:
+            np.save(out_file, heatmap_data, allow_pickle=True)
 
-    return
-    #
-    # visualize_all_decompositions(statistically_significant, max_rank, replica_count)
+
+def recostruct_from_atoms(atoms, last_rank):
+    reconstructed = None
+    for atom_index in range(last_rank):
+        chn = atoms[1][:, atom_index]
+        frq = atoms[2][:, atom_index]
+        smp = atoms[0][:, atom_index]
+        chn = chn.reshape((len(chn), 1))
+        frq = frq.reshape((1, len(frq)))
+        smp = smp.reshape((len(smp), 1, 1))
+        res = np.kron(np.kron(chn, frq), smp)
+
+        if reconstructed is None:
+            reconstructed = res
+        else:
+            reconstructed = np.add(reconstructed, res)
+    return reconstructed
 
 
 def visualize_all_decompositions(statistically_significant_atoms, max_rank, replica_count):

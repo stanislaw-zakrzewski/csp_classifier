@@ -190,3 +190,5 @@ preprocessed_dataset_3/
 parafac_analysis/results/
 preprocessed_subjects/
 preprocessed_subjects_car/
+/parafac_analysis/reconstructions
+/parafac_analysis/significant_heatmaps
