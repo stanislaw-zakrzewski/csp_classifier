@@ -192,3 +192,5 @@ preprocessed_subjects/
 preprocessed_subjects_car/
 /parafac_analysis/reconstructions
 /parafac_analysis/significant_heatmaps
+.idea/misc.xml
+.idea/csp_classifier.iml
