@@ -144,17 +144,17 @@ def perform_fft(x, sampling_frequency, spectral_filter, channel_names):
 
 
 def level(subject, selected_channels, selected_event_ids, spectral_filter, t_min, t_max, frequencies,
-          all_placement, differences_placement, seed=None, reg=None,
+          all_placement, differences_placement, montage, seed=None, reg=None,
           verbose='CRITICAL'):
     sampling_frequency = subject.sampling_frequency
 
     raw_signal = subject.get_raw_copy()
-    raw_signal = raw_signal.drop_channels(['X5']) # !!!!! CHANGE
+    if montage == 'standard_1020':
+        raw_signal = raw_signal.drop_channels(['X5'], on_missing='ignore') # !!!!! CHANGE
 
     filtered_raw_signal = bandpass_filter(raw_signal, spectral_filter[0], spectral_filter[1], sampling_frequency)
 
-    # filtered_raw_signal.set_montage("biosemi64")
-    filtered_raw_signal.set_montage("standard_1020") # !!!!! CHANGE
+    filtered_raw_signal.set_montage(montage)
 
     filtered_raw_signal = preprocessing.compute_current_source_density(filtered_raw_signal)
 
@@ -278,6 +278,7 @@ def test_subject(subject_path, subject_heatmap_path, seed=None):
     b_label_name = heatmap['b_label_name']
     t_min = heatmap['t_min']
     t_max = heatmap['t_max']
+    montage = heatmap['montage']
     selected_event_ids = {
         a_label_name: subject.id_dict[a_label_name],
         b_label_name: subject.id_dict[b_label_name]
@@ -287,7 +288,7 @@ def test_subject(subject_path, subject_heatmap_path, seed=None):
     h_freq = frequencies[-1]
     y_true, y_all_knn, y_s_knn, y_a_rf, y_s_rf = level(subject, selected_channels, selected_event_ids,
                                                        [l_freq, h_freq], t_min, t_max, frequencies,
-                                                       differences_all_placement, differences_significant_placement, seed)
+                                                       differences_all_placement, differences_significant_placement, montage, seed)
     # y_pred_knn_s, y_true_significant_s, y_pred_random_forest_s = level(subject, selected_channels, selected_event_ids,
     #                                                                    [l_freq, h_freq], t_min, t_max, frequencies,
     #                                                                    differences_significant_placement, seed)
@@ -358,7 +359,7 @@ for file in os.listdir(folder_path):
         print(traceback.format_exc())
 
 df = pd.DataFrame(data=accuracies)
-df.to_csv('{}_csp_accuracies.csv'.format(folder_path.split('/')[-1]))
+df.to_csv('{}_accuracies.csv'.format(folder_path.split('/')[-1]))
 
 sns.set_theme(rc={'figure.figsize': (25, 10)})
 ax = sns.barplot(x='subject', y='accuracy', hue='method', data=df)

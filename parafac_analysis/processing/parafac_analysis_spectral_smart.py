@@ -16,16 +16,17 @@ ALPHA_NORMALITY = .05
 ALPHA_HYPOTHESIS = .1
 
 
-def process(subject, band, selected_channels, label_names, starting_rank, end_rank, replicas, iterations, t_min, t_max,
+def process(subject, band, selected_channels, label_names, starting_rank, end_rank, replicas, iterations, t_min, t_max,montage,
             verbose='DEBUG', save_file_name=None, visualize=False):
     raw_signal = subject.get_raw_copy()
-    raw_signal = raw_signal.drop_channels(['X5'])  # !!!!! CHANGE
+    if montage == 'standard_1020':
+        raw_signal = raw_signal.drop_channels(['X5'], on_missing='ignore')
 
     filtered_raw_signal = raw_signal.filter(band[0], band[
         1], l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=subject.sampling_frequency * 2, fir_design='firwin',
                                             skip_by_annotation='edge', verbose=verbose)
 
-    filtered_raw_signal.set_montage("standard_1020")  # !!!!! CHANGE
+    filtered_raw_signal.set_montage(montage)
 
     filtered_raw_signal = preprocessing.compute_current_source_density(filtered_raw_signal)
 
@@ -72,7 +73,7 @@ def process(subject, band, selected_channels, label_names, starting_rank, end_ra
     # epochs_data = yf
 
     perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, starting_rank, end_rank,
-                                  replicas, iterations, save_file_name, decomposition_frequencies, t_min, t_max,
+                                  replicas, iterations, save_file_name, decomposition_frequencies, t_min, t_max,montage,
                                   visualize)
 
 
@@ -153,7 +154,7 @@ def average_similarity(similarity_data, name):
 
 
 def perform_parafac_decomposition(x, y, selected_channels, label_names, starting_rank, end_rank, replicas,
-                                  iterations, save_file_name, selected_frequencies, t_min, t_max, visualize):
+                                  iterations, save_file_name, selected_frequencies, t_min, t_max, montage,visualize):
     label_keys = list(label_names.keys())
     label_keys.sort()
     a_label = label_keys[0]
@@ -284,7 +285,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
             return a
 
         return prot(1 - average_similarity_a) * prot(1 - average_similarity_b) * prot(
-            1 - percentage_significant) * prot((end_rank - current_rank) / end_rank)
+            1 - percentage_significant) * prot(((current_rank / end_rank) + 1) / 2.)
 
     res_gp = gp_minimize(objective, space, n_calls=iterations, random_state=0)
     best_rank = res_gp.x[0]
@@ -306,7 +307,8 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
         'a_label_name': a_label_name,
         'b_label_name': b_label_name,
         't_min': t_min,
-        't_max': t_max
+        't_max': t_max,
+        'montage': montage
     }
     t = time.localtime()
     timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)

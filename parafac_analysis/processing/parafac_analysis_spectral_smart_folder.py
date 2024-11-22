@@ -11,7 +11,7 @@ from parafac_analysis.processing.parafac_analysis_spectral_smart import adapt_se
 from filter_edf import main as create_tmp
 
 stage = 1
-
+available_montages = ['biosemi64', 'standard_1020']
 
 def main():
     folder_path = fd.askdirectory()
@@ -25,6 +25,12 @@ def main():
 
     iterations = input('Optimizer iterations >=10 (default: 10): ')
     iterations = int(iterations) if iterations != '' else 10
+
+    print('Available montages:')
+    for montage_index, available_montage in enumerate(available_montages):
+        print(f'\t{montage_index + 1}: {available_montage}')
+    montage = input('Select montage:')
+    montage = available_montages[int(montage) - 1]
 
     selected_frequency_band = input('Selected frequency band (default: "2,28"): ')
     if selected_frequency_band:
@@ -101,7 +107,7 @@ def main():
                     save_file_name = 'significant_heatmaps_stage_2/{}'.format(subject_name)
 
                 process(subject, selected_frequency_band, selected_channels, selected_labels, starting_rank, end_rank,
-                        replicas, iterations, t_min, t_max, save_file_name=save_file_name, verbose='ERROR')
+                        replicas, iterations, t_min, t_max,montage, save_file_name=save_file_name, verbose='ERROR')
         except Exception as e:
             print(traceback.format_exc())
 
