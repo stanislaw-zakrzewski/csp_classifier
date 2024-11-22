@@ -92,7 +92,7 @@ for file in os.listdir(filepath):
             subject_mat = subject_mat['o']
             subject_mat = subject_mat[0][0]
 
-            sfreq = subject_mat['sampFreq']
+            sfreq = int(subject_mat['sampFreq'][0][0])
 
             # self.subject_mat_sensor_locations = self.subject_mat['eeg'][0][0]['senloc']
             subject_mat_events = subject_mat['marker'].flatten()
@@ -175,7 +175,7 @@ for file in os.listdir(filepath):
                                            startdate=recording_date)
             header.update({'annotations': annotations})
             # print(montage.ch_names)
-            sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=512,
+            sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sfreq,
                                                         physical_max=10000,
                                                         physical_min=-10000)
             highlevel.write_edf('preprocessed_dataset_3/{}.edf'.format(subject_name), raw.get_data(), sig_headers,

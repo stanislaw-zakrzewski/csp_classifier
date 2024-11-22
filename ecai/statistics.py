@@ -148,7 +148,7 @@ if heatmap_only_1hz:
                 vmin=.5, vmax=.9)
     plt.title('Accuracy results using CSP based model.')
     plt.gcf().set_size_inches(10, 5)
-    plt.savefig('csp_accuracies.png', dpi=200, bbox_inches='tight')
+    plt.savefig('csp_accuracies.csv.png', dpi=200, bbox_inches='tight')
     plt.clf()
 
     res = all_data.drop(all_data[(all_data.subject == 29) | (all_data.subject == 34)].index)

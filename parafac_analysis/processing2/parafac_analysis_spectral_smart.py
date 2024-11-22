@@ -1,61 +1,70 @@
+import math
 import time
 import numpy as np
 import tensortools as tt
 from matplotlib import pyplot as plt
-from mne import Epochs, preprocessing
+from mne import Epochs, pick_types, preprocessing
 from scipy import stats
+from scipy.fft import rfft, rfftfreq
 import pandas as pd
 import seaborn as sns
 import itertools
 from skopt.space import Integer
 from skopt.utils import use_named_args
 from skopt import gp_minimize
-from yasa import irasa
 
 ALPHA_NORMALITY = .05
 ALPHA_HYPOTHESIS = .1
 
 
 def process(subject, band, selected_channels, label_names, starting_rank, end_rank, replicas, iterations, t_min, t_max,
-            verbose='DEBUG', save_file_name=None, visualize=False):
+            verbose='DEBUG', save_file_name=None, visualize=True):
     raw_signal = subject.get_raw_copy()
-    raw_signal = raw_signal.drop_channels(['X5'])  # !!!!! CHANGE
 
     filtered_raw_signal = raw_signal.filter(band[0], band[
         1], l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=subject.sampling_frequency * 2, fir_design='firwin',
                                             skip_by_annotation='edge', verbose=verbose)
-
-    filtered_raw_signal.set_montage("standard_1020")  # !!!!! CHANGE
 
     filtered_raw_signal = preprocessing.compute_current_source_density(filtered_raw_signal)
 
     if len(selected_channels) > 0:
         for channel in subject.electrode_names:
             if channel not in selected_channels:
-                filtered_raw_signal.drop_channels([channel], on_missing='ignore')
+                filtered_raw_signal.drop_channels([channel])
 
-    picks = list(range(len(filtered_raw_signal.info['ch_names'])))
-
-    # picks = pick_types(filtered_raw_signal.info, meg=False, eeg=True, stim=False, eog=False,
-    #                    exclude='bads')
+    picks = pick_types(filtered_raw_signal.info, meg=False, eeg=True, stim=False, eog=False,
+                       exclude='bads')
 
     epochs = Epochs(filtered_raw_signal, subject.events, subject.id_dict, t_min, t_max, proj=True, picks=picks,
                     baseline=None, preload=True, verbose=verbose)
 
     epochs_data = epochs.get_data()
+
+    split_indexes = []
+    current_index = 0
+    step = int(subject.sampling_frequency / 8)
+    window = int(subject.sampling_frequency / 4)
+    while current_index + window <= epochs_data.shape[-1]:
+        split_indexes.append((current_index, current_index + window))
+        current_index += step
+
+    def transform_data(vals):
+        split_vals = []
+        for split_index in split_indexes:
+            split_vals.append(vals[split_index[0]:split_index[1]])
+        return np.array(list(map(lambda x: np.sum(np.abs(x) ** 2), split_vals)))
+
+    parsed_epoch_data = []
+    for trial_index, trial_sample in enumerate(epochs_data):
+        parsed_epoch_data.append([])
+        for channel_index, channel_sample in enumerate(trial_sample):
+            parsed_epoch_data[-1].append(transform_data(channel_sample))
+    epochs_data = np.array(parsed_epoch_data)
+    time_indexes = np.array(list(range(epochs_data.shape[-1]))) * (step / subject.sampling_frequency)
+
     labels = np.array(epochs.events[:, -1])
-
-    osc_epochs_data = []
-    decomposition_frequencies = list(range(band[0], band[1] + 1))
-    for epoch_data in epochs_data:
-        decomposition_frequencies, _, psd_osc = irasa(epoch_data, subject.sampling_frequency,
-                                                      ch_names=selected_channels, band=band, win_sec=1,
-                                                      return_fit=False)
-        osc_epochs_data.append(psd_osc)
-    epochs_data = np.array(osc_epochs_data)
-
     # yf_old = rfft(epochs_data)
-    #
+    # print(yf_old.shape[-1])
     # yf_frequencies = rfftfreq(epochs_data.shape[-1], 1 / subject.sampling_frequency)
     #
     # def find_nearest(array, value):
@@ -68,11 +77,10 @@ def process(subject, band, selected_channels, label_names, starting_rank, end_ra
     # decomposition_frequencies = yf_frequencies[lim_min:lim_max]
     #
     # yf = np.abs(yf_old[:, :, lim_min:lim_max])
-    #
     # epochs_data = yf
 
     perform_parafac_decomposition(epochs_data, labels, selected_channels, label_names, starting_rank, end_rank,
-                                  replicas, iterations, save_file_name, decomposition_frequencies, t_min, t_max,
+                                  replicas, iterations, save_file_name, time_indexes, t_min, t_max,
                                   visualize)
 
 
@@ -143,9 +151,10 @@ def calculate_cosine_similarity(matrix_a, matrix_b):
 
 
 def average_similarity(similarity_data, name):
-    non_nan_similarity_data = np.where(np.isnan(similarity_data), 0, similarity_data)
     try:
-        averaged_similarity = np.mean(non_nan_similarity_data)
+        averaged_similarity = np.mean(similarity_data)
+        if math.isnan(averaged_similarity):
+            averaged_similarity = 0
         return averaged_similarity
     except:
         print('Nan averaged similarity for {} task, zeroing'.format(name))
@@ -153,7 +162,7 @@ def average_similarity(similarity_data, name):
 
 
 def perform_parafac_decomposition(x, y, selected_channels, label_names, starting_rank, end_rank, replicas,
-                                  iterations, save_file_name, selected_frequencies, t_min, t_max, visualize):
+                                  iterations, save_file_name, time_stamps, t_min, t_max, visualize):
     label_keys = list(label_names.keys())
     label_keys.sort()
     a_label = label_keys[0]
@@ -227,9 +236,9 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
 
             rank_replica_decompositions = parafac_decompositions[current_rank][0].factors.factors
 
-            combined_atoms_a[current_rank].append([[0 for _ in selected_frequencies] for _ in selected_channels])
-            combined_atoms_b[current_rank].append([[0 for _ in selected_frequencies] for _ in selected_channels])
-            combined_atoms_both[current_rank].append([[0 for _ in selected_frequencies] for _ in selected_channels])
+            combined_atoms_a[current_rank].append([[0 for _ in time_stamps] for _ in selected_channels])
+            combined_atoms_b[current_rank].append([[0 for _ in time_stamps] for _ in selected_channels])
+            combined_atoms_both[current_rank].append([[0 for _ in time_stamps] for _ in selected_channels])
             for statistically_significant_decomposition in statistically_significant[-1]:
                 if statistically_significant_decomposition['rank'] == current_rank:
                     if statistically_significant_decomposition['relation'] == 'greater':
@@ -257,10 +266,10 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
             similarities_b.append(calculate_cosine_similarity(b1, b2))
             similarities_both.append(calculate_cosine_similarity(both1, both2))
 
-        average_similarity_a = min(1, average_similarity(similarities_a, a_label_name))
-        average_similarity_b = min(1, average_similarity(similarities_b, b_label_name))
-        average_similarity_both = min(1, average_similarity(similarities_both,
-                                                     "{} and {}".format(a_label_name, b_label_name)))
+        average_similarity_a = average_similarity(similarities_a, a_label_name)
+        average_similarity_b = average_similarity(similarities_b, b_label_name)
+        average_similarity_both = average_similarity(similarities_both,
+                                                     "{} and {}".format(a_label_name, b_label_name))
 
         print('Averaged similarity {}: {}'.format(a_label_name, average_similarity_a))
         print('Averaged similarity {}: {}'.format(b_label_name, average_similarity_b))
@@ -274,17 +283,9 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
             averaged_atoms_a = average_heatmaps(combined_atoms_a[current_rank])
             averaged_atoms_b = average_heatmaps(combined_atoms_b[current_rank])
             visualize_combined_atoms_as_heatmap(averaged_atoms_a, averaged_atoms_b, selected_channels,
-                                                selected_frequencies, a_label_name, b_label_name, current_rank)
+                                                time_stamps, a_label_name, b_label_name, current_rank)
 
-        def prot(val):
-            if not isinstance(val, float): return 1
-            a = .9 * val + .1
-            if a < .1: return .1
-            if a > 1: return 1
-            return a
-
-        return prot(1 - average_similarity_a) * prot(1 - average_similarity_b) * prot(
-            1 - percentage_significant) * prot((end_rank - current_rank) / end_rank)
+        return (1 - average_similarity_a) * (1 - average_similarity_b) * (1 - percentage_significant)
 
     res_gp = gp_minimize(objective, space, n_calls=iterations, random_state=0)
     best_rank = res_gp.x[0]
@@ -297,7 +298,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
         'heatmap': averaged_heatmap,
         'heatmap_a': averaged_heatmap_a,
         'heatmap_b': averaged_heatmap_b,
-        'frequencies': selected_frequencies,
+        'time_stamps': time_stamps,
         'channels': selected_channels,
         'starting_rank': starting_rank,
         'end_rank': end_rank,
@@ -315,7 +316,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
         np.save(out_file, heatmap_data, allow_pickle=True)
 
     visualize_combined_atoms_as_heatmap(averaged_heatmap_a, averaged_heatmap_b, selected_channels,
-                                        selected_frequencies, a_label_name, b_label_name, f'best rank: {best_rank}')
+                                        time_stamps, a_label_name, b_label_name, best_rank)
 
 
 def adapt_selected_channels(subject, selected_channels):
