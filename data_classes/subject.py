@@ -20,10 +20,10 @@ class Subject:
         self.signals, self.signal_headers, self.header = highlevel.read_edf(subject_edf_path)
         annotations = read_annotations(subject_edf_path)
         initial_events, self.id_dict = events_from_annotations(self.raw, verbose='ERROR')
-        self.configurations = Configurations()
+        # self.configurations = Configurations()
         self.sampling_frequency = int(self.raw.info['sfreq'])
         self.min_event_length_sec = min(annotations.duration)
-        self.sub_event_length_sec = self.configurations.read('general.sub_event_length_sec')
+        # self.sub_event_length_sec = self.configurations.read('general.sub_event_length_sec')
 
         self.electrode_names = self.raw.ch_names #self.configurations.read('general.all_electrodes')
 

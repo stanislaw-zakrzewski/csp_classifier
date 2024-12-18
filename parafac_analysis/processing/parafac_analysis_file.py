@@ -4,25 +4,30 @@ from data_classes.subject import Subject
 from tkinter import filedialog as fd
 from parafac_analysis.processing.parafac_analysis_spectral_smart import adapt_selected_channels, process
 
+available_montages = ['biosemi64', 'standard_1020']
+
 
 def main():
     subject_path = fd.askopenfilename(filetypes=[("European Data Format files", "*.edf")])
+    subject_name = subject_path.split('/')[-1][:-4]
     subject = Subject(subject_path)
     print("Fill PARAFAC decomposition parameters")
     starting_rank = int(input('Starting rank: '))
     end_rank = int(input('End rank: '))
+
     replicas = input('Replica count (default: 5): ')
-    if replicas != '':
-        replicas = int(replicas)
-    else:
-        replicas = 5
+    replicas = int(replicas) if replicas != '' else 5
+
     iterations = input('Optimizer iterations >=10 (default: 10): ')
-    if iterations != '':
-        iterations = int(iterations)
-        if iterations < 10:
-            iterations = 10
-    else:
+    iterations = int(iterations) if iterations != '' else 10
+    if iterations < 10:
         iterations = 10
+
+    print('Available montages:')
+    for montage_index, available_montage in enumerate(available_montages):
+        print(f'\t{montage_index + 1}: {available_montage}')
+    montage = input('Select montage:')
+    montage = available_montages[int(montage) - 1]
 
     selected_frequency_band = input('Selected frequency band (default: "2,28"): ')
     if selected_frequency_band:
@@ -31,12 +36,21 @@ def main():
     else:
         selected_frequency_band = (2, 28)
 
+    t_min = input('Time after cue to start cut (default: 0): ')
+    t_min = float(t_min) if t_min != '' else .0
+
+    t_max = input('Time after cue to end cut (default: 1): ')
+    t_max = float(t_max) if t_max != '' else 1.0
+
     print('Available channels: {}'.format(', '.join(subject.electrode_names)))
-    selected_channels = input('Select channels (default: "C5,C3,C1,Cz,C2,C4,C6"): ')
-    if selected_channels:
+    selected_channels = input('Select channels (default: "C5,C3,C1,Cz,C2,C4,C6", all: "ALL"): ')
+    if selected_channels == 'ALL':
+        selected_channels = subject.electrode_names
+    elif selected_channels:
         selected_channels = selected_channels.split(',')
     else:
         selected_channels = ['C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6']
+    selected_channels = adapt_selected_channels(subject, selected_channels)
 
     label_names = {}
     for label_name in subject.id_dict:
@@ -55,8 +69,12 @@ def main():
         selected_label_2: label_names[selected_label_2]
     }
 
-    process(subject, selected_frequency_band, selected_channels, selected_labels, starting_rank, end_rank, replicas,
-            iterations)
+    save_file_name = 'significant_heatmaps/{}'.format(subject_name)
+
+    process(subject, selected_frequency_band, selected_channels, selected_labels, starting_rank, end_rank,
+            replicas, iterations, t_min, t_max, montage, save_file_name=save_file_name, verbose='ERROR')
+
+    print(f'Results saved to: {save_file_name}.npy')
 
 
 main()
