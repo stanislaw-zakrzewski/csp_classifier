@@ -21,6 +21,7 @@ def process(subject, band, selected_channels, label_names, starting_rank, end_ra
     raw_signal = subject.get_raw_copy()
     if montage == 'standard_1020':
         raw_signal = raw_signal.drop_channels(['X5'], on_missing='ignore')
+        raw_signal = raw_signal.drop_channels(['X3'], on_missing='ignore')
 
     filtered_raw_signal = raw_signal.filter(band[0], band[
         1], l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=subject.sampling_frequency * 2, fir_design='firwin',
@@ -185,6 +186,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
             for label_key in set(y):
                 label_loc[label_key] = np.where(y == label_key)[0]
 
+            atoms_p_value_pairs = []
             for atom_index in range(len(trial_factors[0])):
                 label_trial_factors = {}
                 for label_key in label_loc.keys():
@@ -207,6 +209,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
                     pvalue_less = stats.ranksums(a_label_trial_factors, b_label_trial_factors, alternative='less')[1]
                     pvalue_greater = \
                         stats.ranksums(a_label_trial_factors, b_label_trial_factors, alternative='greater')[1]
+                atoms_p_value_pairs.append([pvalue_greater, pvalue_less])
                 if pvalue_greater <= ALPHA_HYPOTHESIS:
                     statistically_significant[-1].append(
                         {'rank': current_rank, 'replica': replica, 'atom': atom_index, 'relation': 'greater',
@@ -215,6 +218,24 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
                     statistically_significant[-1].append(
                         {'rank': current_rank, 'replica': replica, 'atom': atom_index, 'relation': 'less',
                          'pvalue': pvalue_less})
+            if len(statistically_significant[-1]) == 0:
+                min_p_values = np.min(atoms_p_value_pairs, axis=1)
+                twenty_percent = max(1, int(.2 * len(trial_factors[0])))
+                min_value = np.sort(min_p_values, axis=None)[twenty_percent-1]
+                for atom_index, atoms_p_value_pair in enumerate(atoms_p_value_pairs):
+                    pvalue_greater, pvalue_less = atoms_p_value_pair
+                    if pvalue_greater > pvalue_less:
+                        if pvalue_less <= min_value:
+                            statistically_significant[-1].append(
+                                {'rank': current_rank, 'replica': replica, 'atom': atom_index, 'relation': 'less',
+                                 'pvalue': pvalue_less})
+                    if pvalue_greater < pvalue_less:
+                        if pvalue_greater <= min_value:
+                            statistically_significant[-1].append(
+                                {'rank': current_rank, 'replica': replica, 'atom': atom_index, 'relation': 'greater',
+                                 'pvalue': pvalue_greater})
+
+
             percentage_of_significant_atoms = round(len(statistically_significant[-1]) / current_rank * 100, 2)
             a_label_cardinality = len(list(filter(is_a_label, statistically_significant[-1])))
             b_label_cardinality = len(list(filter(is_b_label, statistically_significant[-1])))

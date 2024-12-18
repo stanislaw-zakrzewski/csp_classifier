@@ -6,7 +6,7 @@ import mne
 from mne.io import read_raw_edf
 from mne.stats import permutation_cluster_1samp_test as pcluster_test
 
-subject_edf_path = 'preprocessed_subjects/s14.edf'
+subject_edf_path = 'preprocessed_subjects/s43.edf'
 
 raw = read_raw_edf(subject_edf_path, preload=True, verbose='ERROR')
 

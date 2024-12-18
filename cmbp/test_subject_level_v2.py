@@ -150,7 +150,8 @@ def level(subject, selected_channels, selected_event_ids, spectral_filter, t_min
 
     raw_signal = subject.get_raw_copy()
     if montage == 'standard_1020':
-        raw_signal = raw_signal.drop_channels(['X5'], on_missing='ignore') # !!!!! CHANGE
+        raw_signal = raw_signal.drop_channels(['X3'], on_missing='ignore')
+        raw_signal = raw_signal.drop_channels(['X5'], on_missing='ignore')
 
     filtered_raw_signal = bandpass_filter(raw_signal, spectral_filter[0], spectral_filter[1], sampling_frequency)
 

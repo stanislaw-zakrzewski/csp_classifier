@@ -9,16 +9,16 @@ from matplotlib.ticker import FormatStrFormatter
 def visualize_combined_atoms_as_heatmap(heatmap_path, combined_atoms_a, combined_atoms_b, selected_channels,
                                         frequencies,
                                         a_label_name, b_label_name):
-    sns.set_theme(rc={'figure.figsize': (20, 10)})
+    sns.set_theme(rc={'figure.figsize': (7, 4)})
     df_a_data = {'Channel': [], "Frequency": [], "Amplitude": []}
     df_b_data = {'Channel': [], "Frequency": [], "Amplitude": []}
     for channel_index, channel_name in enumerate(selected_channels):
         for frequency_index, frequency in enumerate(frequencies):
             df_a_data['Channel'].append(channel_name)
-            df_a_data['Frequency'].append(round(frequency, 1))
+            df_a_data['Frequency'].append(int(frequency))
             df_a_data['Amplitude'].append(combined_atoms_a[channel_index][frequency_index])
             df_b_data['Channel'].append(channel_name)
-            df_b_data['Frequency'].append(round(frequency, 1))
+            df_b_data['Frequency'].append(int(frequency))
             df_b_data['Amplitude'].append(combined_atoms_b[channel_index][frequency_index])
     df_a = pd.DataFrame(df_a_data)
     df_a['Channel'] = pd.Categorical(df_a['Channel'], categories=selected_channels)
@@ -34,17 +34,18 @@ def visualize_combined_atoms_as_heatmap(heatmap_path, combined_atoms_a, combined
     b = df_b.pivot(index='Frequency', columns='Channel', values='Amplitude')
     sns.heatmap(a, ax=axes[0], cbar=False, vmin=vmin, vmax=vmax)
     sns.heatmap(b, ax=axes[1], cbar=False, vmin=vmin, vmax=vmax)
-    axes[0].set_title(a_label_name)
-    axes[1].set_title(b_label_name)
+    axes[1].set(ylabel=None)
+    axes[0].set_title(f'{a_label_name} imagery movement')
+    axes[1].set_title(f'{b_label_name} imagery movement')
     axes[0].invert_yaxis()
     axes[1].invert_yaxis()
     fig.colorbar(axes[0].collections[0], cax=axes[2])
-    fig.suptitle(heatmap_path)
+    # fig.suptitle(heatmap_path)
     plt.show()
 
 
-heatmap_path = fd.askopenfilename(filetypes=[("NumPy data files", "*.npy")])
-# heatmap_path = 'parafac_analysis/significant_heatmaps/s14.npy'
+# heatmap_path = fd.askopenfilename(filetypes=[("NumPy data files", "*.npy")])
+heatmap_path = 'parafac_analysis/significant_heatmaps/s48.npy'
 heatmap_data = np.load(heatmap_path, allow_pickle=True).item()
 
 visualize_combined_atoms_as_heatmap(heatmap_path, heatmap_data['heatmap_a'], heatmap_data['heatmap_b'],
