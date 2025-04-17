@@ -108,6 +108,11 @@ csp, lda, mne_info = main(
 print(csp, lda)
 
 print("Inicjalizacja trochę trwa...")
+<<<<<<< Updated upstream
+=======
+
+# UZYC TUTAJ GtecNautilusProInterface.py
+>>>>>>> Stashed changes
 d = pygds.GDS()
 pygds.configure_demo(d)  # Tu sie trzeba przyjrzec blizej - co i jak tam jest ustawiane
 d.SetConfiguration()
