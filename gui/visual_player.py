@@ -18,6 +18,12 @@ class Screen(tk.Frame):
         # Creating VLC player
         self.instance = vlc.Instance('--input-repeat=999999')
         self.player = self.instance.media_player_new()
+        self.rest_media = self.instance.media_new('commands//visual_commands//rest.png')
+        self.rest_media.get_mrl()
+        self.break_media = self.instance.media_new('commands//visual_commands//pause.jpg')
+        self.rest_media.get_mrl()
+        self.movement_media = self.instance.media_new('commands//visual_commands//movement.mov')
+        self.rest_media.get_mrl()
 
         # def change(rt):
         #     n = 0
@@ -38,9 +44,19 @@ class Screen(tk.Frame):
 
     def play(self, _source):
         # Function to start player from given source
-        Media = self.instance.media_new(_source)
-        Media.get_mrl()
-        self.player.set_media(Media)
+        if _source == 'rest':
+            self.player.set_media(self.rest_media)
+
+        elif _source == 'break':
+            self.player.set_media(self.break_media)
+
+        elif _source == 'movement':
+            self.player.set_media(self.movement_media)
+
+        else:
+            Media = self.instance.media_new(_source)
+            Media.get_mrl()
+            self.player.set_media(Media)
 
         self.player.set_hwnd(self.winfo_id())
         self.player.play()

@@ -59,24 +59,45 @@ class AudioCommands(Commands):
         p = pyaudio.PyAudio()
         stream = p.open(format=p.get_format_from_width(self.theSampWidth), channels=self.theNumChannels, rate=self.theFrameRate, output=True)
         for frame in audioFrames:
-            stream.write(frame)
+            try:
+                stream.write(frame)
+            except:
+                pass # PYAUDIO ERROR
         stream.close()
         p.terminate()
 
     def left(self):
-        self.doPlay(self.left_audioFrames)
+        try:
+            self.doPlay(self.left_audioFrames)
+        except:
+            pass # PYAUDIO ERROR
 
     def right(self):
-        self.doPlay(self.right_audioFrames)
+        try:
+            self.doPlay(self.right_audioFrames)
+        except:
+            pass # PYAUDIO ERROR
 
     def rest(self):
-        self.doPlay(self.rest_audioFrames)
+        try:
+            self.doPlay(self.rest_audioFrames)
+        except:
+            pass # PYAUDIO ERROR
 
     def movement(self):
-        self.doPlay(self.movement_audioFrames)
+        try:
+            self.doPlay(self.movement_audioFrames)
+        except:
+            pass  # PYAUDIO ERROR
 
     def pause(self):
-        self.doPlay(self.pause_audioFrames)
+        try:
+            self.doPlay(self.pause_audioFrames)
+        except:
+            pass # PYAUDIO ERROR
 
     def end(self):
-        self.doPlay(self.end_audioFrames)
+        try:
+            self.doPlay(self.end_audioFrames)
+        except:
+            pass # PYAUDIO ERROR

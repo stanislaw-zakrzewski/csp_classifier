@@ -1,3 +1,4 @@
+import traceback
 from threading import Thread
 from tkinter import *
 
@@ -493,6 +494,7 @@ class FilterBrowser(DoubleScrolledFrame):
                 return True
             except Exception as e:
                 print('ERROR:', e)
+                print(traceback.format_exc())
 
         # while self.current_queue is not None and len(self.current_queue) > 0:
         #     item = self.current_queue[0]

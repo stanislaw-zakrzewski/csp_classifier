@@ -75,7 +75,7 @@ class CollectData(DoubleScrolledFrame):
         self.gender_input['state'] = DISABLED
         self.create_queue()
         self.prompt_viewer = PromptViewer(self, self.start_acquisition, self.on_prompt_viewer_close, self.progressbar_value)
-        self.update_experiment_timeline_plot()
+        self.update_experiment_timeline_plot(0)
 
     def on_prompt_viewer_close(self):
         self.prepare_experiment['state'] = NORMAL
@@ -138,7 +138,7 @@ class CollectData(DoubleScrolledFrame):
         self.acquisition_thread = Thread(target=self.acquisition)
         self.acquisition_thread.start()
         self.queue_canvas = Canvas(self)
-        self.update_experiment_timeline_plot()
+        self.update_experiment_timeline_plot(0)
 
     def acquisition(self):
         recorded_signal, start_date = self.bci_interface.run_acquisition(self.prompt_viewer, self.current_queue,

@@ -52,6 +52,8 @@ class PromptViewer(Toplevel):
 
     def start_acquisition(self, start_command):
         start_command()
+        self.player = Screen(self)
+        self.player.pack(side='top', fill='both', expand=True)
         self.start_button.destroy()
 
     def on_closing(self):
@@ -70,12 +72,12 @@ class PromptViewer(Toplevel):
         if self.player is None:
             self.player = Screen(self)
             self.player.pack(side='top', fill='both', expand=True)
-        if self.progressbar is None:
-            self.progressbar = ttk.Progressbar(self, orient='vertical', variable=self.progressbar_value)
-            self.progressbar.place(relx=.5, rely=.5, anchor=CENTER, height=160)
+        # if self.progressbar is None:
+        #     self.progressbar = ttk.Progressbar(self, orient='vertical', variable=self.progressbar_value)
+        #     self.progressbar.place(relx=.5, rely=.5, anchor=CENTER, height=160)
 
         if prompt_code == 'movement':
-            self.player.play('commands//visual_commands//movement.mov')
+            self.player.play('movement')
             self.audio_commands.perform_command('movement')
         if prompt_code == 'left':
             self.player.play('commands//visual_commands//left.mov')
@@ -84,10 +86,10 @@ class PromptViewer(Toplevel):
             self.player.play('commands//visual_commands//right.mov')
             self.audio_commands.perform_command('right')
         elif prompt_code == 'rest':
-            self.player.play('commands//visual_commands//rest.png')
+            self.player.play('rest')
             self.audio_commands.perform_command('rest')
         elif prompt_code == 'break':
-            self.player.play('commands//visual_commands//pause.jpg')
+            self.player.play('break')
             self.audio_commands.perform_command('pause')
         elif prompt_code == 'end':
             self.player.play('commands//visual_commands//end.jpg')

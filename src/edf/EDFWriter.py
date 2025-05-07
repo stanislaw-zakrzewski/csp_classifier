@@ -1,5 +1,6 @@
 import time
 from pyedflib import highlevel
+import numpy as np
 
 from config.config import Configurations
 
@@ -29,4 +30,7 @@ class EDFWriter:
         header = highlevel.make_header(patientname=patient_name, gender=gender,
                                        startdate=start_date)
         header.update({'annotations': annotations})
-        highlevel.write_edf(filename, signal, sig_headers, header)
+        clipped_signal = []
+        for channel_signal in signal:
+            clipped_signal.append(np.clip(channel_signal, -1000.0, 1000.0))
+        highlevel.write_edf(filename, clipped_signal, sig_headers, header)
