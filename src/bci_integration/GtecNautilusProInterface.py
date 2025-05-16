@@ -130,7 +130,7 @@ class GtecNautilusProInterface:
                 item = current_queue[0]
                 if not prompt_viewer.closed:
                     prompt_viewer.change_prompt(item[0])
-                    # time.sleep(.5)
+                    # time.sleep(.5) # TUTAJ JEST PROBLEM
                     item[1] -= .5
                     if item[1] < .5 and current_queue is not None:
                         current_queue.pop(0)

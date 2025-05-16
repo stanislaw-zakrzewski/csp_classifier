@@ -1,0 +1,13 @@
+Sx - identyfikator x-tego badanego
+K - dane dla metody kinestetycznej
+V - dane dla metody wizualnej
+Pi - identyfikator i-tej sesji pomiarowej
+Tm - dane zarejestrowane podczas próby treningowej m-tej metody (w pracy nieużywane)
+SxSy...Sz - złączenie w jednym pliku danych pomiarowych x-tego, y-tego, … i z-tego badanego 
+
+W pracy 
+S1 (w pracy nieużywany)
+S2 (w pracy nieużywany)
+S3 (w pracy B3) 
+S4 (w pracy B2) 
+S5 (w pracy B1)

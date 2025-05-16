@@ -126,7 +126,7 @@
     },
     "trial_count": {
       "type": "int",
-      "value": "1"
+      "value": "15"
     },
     "pause_length": {
       "type": "int",
@@ -150,11 +150,11 @@
     },
     "indicator_frequency_min": {
       "type": "int",
-      "value": 11
+      "value": 12
     },
     "indicator_frequency_max": {
       "type": "int",
-      "value": 12
+      "value": 13
     },
     "indicator_channel": {
       "type": "int",

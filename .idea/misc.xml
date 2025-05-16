@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="csp_classifier" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="csp_classifier" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.10 (csp_classifier)" project-jdk-type="Python SDK" />
 </project>
