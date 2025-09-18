@@ -16,7 +16,7 @@ class EDFWriter:
         timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
         filename = 'data/{}.edf'.format(timestamp)
 
-        sig_headers = highlevel.make_signal_headers(self.electrode_names, sample_rate=self.sampling_frequency,
+        sig_headers = highlevel.make_signal_headers(self.electrode_names, sample_frequency=self.sampling_frequency,
                                                     physical_max=1000.0,
                                                     physical_min=-1000.0)
 

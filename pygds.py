@@ -146,10 +146,10 @@ you must call pygds.Initialize() manually and provide the right paths.
 
 '''
 gNEEDaccessHeaders = [
-    r"C:/Program Files/gtec/gNEEDaccess Client API/C/GDSClientAPI.h",
-    r"C:/Program Files/gtec/gNEEDaccess Client API/C/GDSClientAPI_gHIamp.h",
-    r"C:/Program Files/gtec/gNEEDaccess Client API/C/GDSClientAPI_gNautilus.h",
-    r"C:/Program Files/gtec/gNEEDaccess Client API/C/GDSClientAPI_gUSBamp.h"]
+    "C:\\Users\\I72\\Documents\\gtec\\gNEEDaccessClientAPI\\C\\GDSClientAPI.h",
+    "C:\\Users\\I72\\Documents\\gtec\\gNEEDaccessClientAPI\\C\\GDSClientAPI_gHIamp.h",
+    "C:\\Users\\I72\\Documents\\gtec\\gNEEDaccessClientAPI\\C\\GDSClientAPI_gNautilus.h",
+    "C:\\Users\\I72\\Documents\\gtec\\gNEEDaccessClientAPI\\C\\GDSClientAPI_gUSBamp.h"]
 
 #gds_dll_client = r"C:/Program Files/gtec/gNEEDaccess Client API/C/x64/GDSClientAPI.dll"
 #gds_dll_client = r"C:/Program Files/gtec/gNEEDaccess/GDSClientAPI.dll"
