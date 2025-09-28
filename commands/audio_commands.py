@@ -1,6 +1,6 @@
 from threading import Thread
 
-from playsound import playsound
+from playsound3 import playsound
 
 from commands.commands import Commands
 

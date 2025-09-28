@@ -8,7 +8,7 @@ import SenderLib
 from commands.audio_commands_pyaudio import AudioCommands
 from config.config import Configurations
 from gui.visual_player import Screen
-from playsound import playsound
+from playsound3 import playsound
 
 
 class PromptViewer(Toplevel):

@@ -21,7 +21,7 @@ from tensorly.decomposition import parafac
 from tensorly import unfold, cp_to_tensor
 from scipy.fft import fft, fftfreq, rfft, rfftfreq
 from sklearn.decomposition import TruncatedSVD
-from scipy.signal import morlet
+# from scipy.signal import morlet
 
 
 def process(subject, bands, selected_channels, n_splits=10, reg=None, verbose='DEBUG', score_window_flag=False):
