@@ -16,16 +16,28 @@ ALPHA_NORMALITY = .05
 ALPHA_HYPOTHESIS = .1
 
 
+FREQUENCY = 256
+
 def process(subject, band, selected_channels, label_names, starting_rank, end_rank, replicas, iterations, t_min, t_max,montage,
             verbose='DEBUG', save_file_name=None, visualize=False):
     raw_signal = subject.get_raw_copy()
+    s_freq = subject.sampling_frequency
     if montage == 'standard_1020':
         raw_signal = raw_signal.drop_channels(['X5'], on_missing='ignore')
         raw_signal = raw_signal.drop_channels(['X3'], on_missing='ignore')
 
+
+
     filtered_raw_signal = raw_signal.filter(band[0], band[
-        1], l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=subject.sampling_frequency * 2, fir_design='firwin',
+        1], l_trans_bandwidth=2, h_trans_bandwidth=2, filter_length=s_freq * 2, fir_design='firwin',
                                             skip_by_annotation='edge', verbose=verbose)
+
+    events = subject.events
+    if FREQUENCY > 0:
+        filtered_raw_signal = filtered_raw_signal.resample(sfreq=FREQUENCY)  # resample
+        events[:, 0] = np.round(events[:, 0] * (FREQUENCY / float(s_freq))).astype(
+            int)
+        s_freq = FREQUENCY
 
     filtered_raw_signal.set_montage(montage)
 
@@ -41,18 +53,23 @@ def process(subject, band, selected_channels, label_names, starting_rank, end_ra
     # picks = pick_types(filtered_raw_signal.info, meg=False, eeg=True, stim=False, eog=False,
     #                    exclude='bads')
 
+
+
     epochs = Epochs(filtered_raw_signal, subject.events, subject.id_dict, t_min, t_max, proj=True, picks=picks,
                     baseline=None, preload=True, verbose=verbose)
 
     epochs_data = epochs.get_data()
-    labels = np.array(epochs.events[:, -1])
+
+    labels = epochs.events[:, -1]
 
     osc_epochs_data = []
     decomposition_frequencies = list(range(band[0], band[1] + 1))
     for epoch_data in epochs_data:
-        decomposition_frequencies, _, psd_osc = irasa(epoch_data, subject.sampling_frequency,
-                                                      ch_names=selected_channels, band=band, win_sec=1,
+        decomposition_frequencies, psd_frac, psd_osc = irasa(epoch_data, float(s_freq),
+                                                      ch_names=selected_channels, band=band, win_sec=.5,
                                                       return_fit=False)
+        np.save('irasa_data.npy', {'freq': decomposition_frequencies, 'frac': psd_frac, 'osc': psd_osc, 'original': epoch_data}, allow_pickle=True)
+
         osc_epochs_data.append(psd_osc)
     epochs_data = np.array(osc_epochs_data)
 
@@ -122,9 +139,9 @@ def visualize_combined_atoms_as_heatmap(combined_atoms_a, combined_atoms_b, sele
     g2.set(ylabel=None)
     axes[1].set_title(b_label_name)
     axes[1].invert_yaxis()
-    fig.colorbar(axes[1].collections[0], cax=axes[2])
-    fig.suptitle('Rank: {}'.format(title))
-    plt.show()
+    # fig.colorbar(axes[1].collections[0], cax=axes[2])
+    # fig.suptitle('Rank: {}'.format(title))
+    # plt.show()
 
 
 def is_a_label(el):
@@ -178,6 +195,7 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
         combined_atoms_b[current_rank] = []
         combined_atoms_both[current_rank] = []
         parafac_decompositions = decompose(x, range(current_rank, current_rank + 1), replicas)
+
         for replica in range(replicas):
             statistically_significant.append([])
             trial_factors = parafac_decompositions[current_rank][replica].factors[0]
@@ -234,6 +252,35 @@ def perform_parafac_decomposition(x, y, selected_channels, label_names, starting
                             statistically_significant[-1].append(
                                 {'rank': current_rank, 'replica': replica, 'atom': atom_index, 'relation': 'greater',
                                  'pvalue': pvalue_greater})
+
+            if current_rank == 4:
+                a0 = [[0 for _ in selected_frequencies] for _ in selected_channels]
+                a1 = [[0 for _ in selected_frequencies] for _ in selected_channels]
+                a2 = [[0 for _ in selected_frequencies] for _ in selected_channels]
+                a3 = [[0 for _ in selected_frequencies] for _ in selected_channels]
+                rrr = parafac_decompositions[current_rank][0].factors.factors
+                combine_atom(rrr, 0, a0)
+                combine_atom(rrr, 1, a1)
+                combine_atom(rrr, 2, a2)
+                combine_atom(rrr, 3, a3)
+                a0 = np.array(a0)
+                a1 = np.array(a1)
+                a2 = np.array(a2)
+                a3 = np.array(a3)
+                a0 *= rrr[0][0][0]
+                a1 *= rrr[0][0][1]
+                a2 *= rrr[0][0][2]
+                a3 *= rrr[0][0][3]
+                o = {
+                    'frequencies': selected_frequencies,
+                    'channels': selected_channels,
+                    'data': x,
+                    'labels': y,
+                    'label_names': label_names,
+                    'decompositions': rrr,
+                    'significant': statistically_significant
+                }
+                np.save('decomposition', o, allow_pickle=True)
 
 
             percentage_of_significant_atoms = round(len(statistically_significant[-1]) / current_rank * 100, 2)

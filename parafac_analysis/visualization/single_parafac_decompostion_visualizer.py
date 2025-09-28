@@ -38,6 +38,7 @@ filename = fd.askopenfilename(filetypes=[("NumPy data files", "*.npy")])
 
 with open(filename, 'rb') as out_file:
     data_file = np.load(out_file, allow_pickle=True)
+    items = data_file.item()
     all_decompositions = data_file.item().get("decompositions")
     selected_channels = data_file.item().get("metadata")['selected_channels']
     a_label = data_file.item().get("metadata")['a_label']
