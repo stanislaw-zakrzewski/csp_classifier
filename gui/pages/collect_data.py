@@ -59,6 +59,9 @@ class CollectData(DoubleScrolledFrame):
         self.prepare_experiment = Button(self, text='Prepare experiment', command=self.open_prompt_window)
         self.prepare_experiment.grid(row=5, column=0, padx=10, pady=10)
 
+        self.start_acquisition_button = Button(self, text='Start Acquisition', command=self.start_acquisition, state='disabled')
+        self.start_acquisition_button.grid(row=6, column=0, padx=10, pady=10)
+
         self.acquisition_thread = None
         self.queue_canvas = None
 
@@ -73,6 +76,7 @@ class CollectData(DoubleScrolledFrame):
         self.prepare_experiment['state'] = DISABLED
         self.patient_name_input['state'] = DISABLED
         self.gender_input['state'] = DISABLED
+        self.start_acquisition_button['state'] = NORMAL
         self.create_queue()
         self.prompt_viewer = PromptViewer(self, self.start_acquisition, self.on_prompt_viewer_close, self.progressbar_value)
         self.update_experiment_timeline_plot(0)
@@ -81,6 +85,7 @@ class CollectData(DoubleScrolledFrame):
         self.prepare_experiment['state'] = NORMAL
         self.patient_name_input['state'] = NORMAL
         self.gender_input['state'] = NORMAL
+        self.start_acquisition_button['state'] = DISABLED
         self.queue = None
         self.current_queue = None
         self.plot_canvas.get_tk_widget().destroy()
@@ -130,7 +135,7 @@ class CollectData(DoubleScrolledFrame):
 
         if self.plot_canvas is None:
             self.plot_canvas = FigureCanvasTkAgg(self.fig, master=self)
-            self.plot_canvas.get_tk_widget().grid(row=6, column=0, columnspan=10)
+            self.plot_canvas.get_tk_widget().grid(row=7, column=0, columnspan=10)
         else:
             self.plot_canvas.draw()
 
@@ -139,6 +144,7 @@ class CollectData(DoubleScrolledFrame):
         self.acquisition_thread.start()
         self.queue_canvas = Canvas(self)
         self.update_experiment_timeline_plot(0)
+        self.start_acquisition_button['state'] = DISABLED
 
     def acquisition(self):
         recorded_signal, start_date = self.bci_interface.run_acquisition(self.prompt_viewer, self.current_queue,

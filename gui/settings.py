@@ -58,7 +58,12 @@ class Settings(Toplevel):
         try:
             path = key.split('.')
             if len(path) == 1:
-                configuration[key]['value'] = value
+                if configuration[key]['type'] == 'list':
+                    print(key)
+                    configuration[key]['value'] = value[1:-1].replace("'",'').split(', ')
+                    print('configkey',configuration[key])
+                else:
+                    configuration[key]['value'] = value
                 return True
             else:
                 return self.set_value_to_configuration(configuration[path[0]], '.'.join(path[1:]), value)
@@ -80,7 +85,8 @@ class Settings(Toplevel):
     def save_current_configuration(self):
         new_configuration = copy.deepcopy(self.configurations.default_configuration)
         for key in self.values:
-            self.set_value_to_configuration(new_configuration, key, self.values[key])
+            # self.set_value_to_configuration(new_configuration, key, self.values[key])
+            self.set_value_to_configuration(new_configuration, key, self.string_values[key].get())  # CHANGED value to string_value
         self.configurations.change_current_configuration(new_configuration)
 
     @staticmethod

@@ -90,11 +90,12 @@ class GtecNautilusProInterface:
                 existing_channels[ch_idx] = -1
         d.SetConfiguration()
 
-        batches_per_second = 2
+        batches_per_second = 10
 
         signal = []
         for _ in range(32):
             signal.append([])
+            # signal.append(np.zeros(125))
 
         def processCallback(samples):
             try:
@@ -107,6 +108,7 @@ class GtecNautilusProInterface:
                 global last
                 dt = datetime.now()
                 last = dt
+                print('GTEC', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], len(signal[0]), current_queue)
 
                 for channel in range(32):
                     signal_index = existing_channels[channel]
@@ -131,10 +133,10 @@ class GtecNautilusProInterface:
                 if not prompt_viewer.closed:
                     prompt_viewer.change_prompt(item[0])
                     # time.sleep(.5) # TUTAJ JEST PROBLEM
-                    item[1] -= .5
-                    if item[1] < .5 and current_queue is not None:
+                    item[1] -= 1.0/batches_per_second
+                    if item[1] < 1.0/batches_per_second and current_queue is not None:
                         current_queue.pop(0)
-                    update_experiment_timeline_plot(.5)
+                    update_experiment_timeline_plot(1.0/batches_per_second)
                 else:
                     return False
 
@@ -146,6 +148,10 @@ class GtecNautilusProInterface:
         start_date = datetime.now()
         d.GetData(d.SamplingRate // batches_per_second, processCallback)
         d.Close()
+        for i in range(len(signal)):
+            print(i)
+            # signal[i][2500:2625] = 999
+            # signal[i] = signal[i][:-125]
 
         del d
 

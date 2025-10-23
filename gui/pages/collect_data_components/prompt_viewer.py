@@ -8,7 +8,7 @@ import SenderLib
 from commands.audio_commands_pyaudio import AudioCommands
 from config.config import Configurations
 from gui.visual_player import Screen
-from playsound3 import playsound
+from playsound import playsound
 
 
 class PromptViewer(Toplevel):
@@ -18,9 +18,9 @@ class PromptViewer(Toplevel):
         self.title("Browse annotations for")
         self.geometry("1200x720")
 
-        self.start_button = Button(self, text='START ACQUISITION',
-                                   command=lambda: self.start_acquisition(start_command))
-        self.start_button.place(relx=.5, rely=.5, anchor=CENTER)
+        # self.start_button = Button(self, text='START ACQUISITION',
+        #                            command=lambda: self.start_acquisition(start_command))
+        # self.start_button.place(relx=.5, rely=.5, anchor=CENTER)
         self.player = None
         self.current_prompt_code = None
         self.closed = False
@@ -54,7 +54,7 @@ class PromptViewer(Toplevel):
         start_command()
         self.player = Screen(self)
         self.player.pack(side='top', fill='both', expand=True)
-        self.start_button.destroy()
+        # self.start_button.destroy()
 
     def on_closing(self):
         if self.current_prompt_code == 'end':
