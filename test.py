@@ -6,10 +6,10 @@ import mne
 from mne.io import read_raw_edf
 from mne.stats import permutation_cluster_1samp_test as pcluster_test
 
-subject_edf_path = 'preprocessed_subjects/s14.edf'
+subject_edf_path = 'data/2025-10-30T09-32-24.edf'
 
 raw = read_raw_edf(subject_edf_path, preload=True, verbose='ERROR')
-
+a = raw.get_data()[0][-500:]
 tmin, tmax = -1, 4
 event_ids = dict(left=2, right=3)  # map event IDs to tasks
 

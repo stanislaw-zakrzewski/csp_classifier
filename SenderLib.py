@@ -10,13 +10,13 @@ class GameState:
 
 
 class GameControl:
-    movement = True
-    left = False
-    right = False
+    movement = True  # Both hands movement
+    left = False  # Left hand movement
+    right = False  # Right hand movement
     leftProbability = 0
     rightProbability = 0
     applyMode = True
-    mode = 4
+    mode = 4  # Animation ID
 
     dataAcquisition = True
 

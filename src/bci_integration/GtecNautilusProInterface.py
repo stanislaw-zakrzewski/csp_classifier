@@ -108,7 +108,7 @@ class GtecNautilusProInterface:
                 global last
                 dt = datetime.now()
                 last = dt
-                print('GTEC', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], len(signal[0]), current_queue)
+
 
                 for channel in range(32):
                     signal_index = existing_channels[channel]
@@ -130,13 +130,15 @@ class GtecNautilusProInterface:
                 if current_queue is None or len(current_queue) == 0:
                     return False
                 item = current_queue[0]
+                print('GTEC', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], len(signal[0]), current_queue)
                 if not prompt_viewer.closed:
                     prompt_viewer.change_prompt(item[0])
                     # time.sleep(.5) # TUTAJ JEST PROBLEM
-                    item[1] -= 1.0/batches_per_second
-                    if item[1] < 1.0/batches_per_second and current_queue is not None:
+                    item[1] -= .1#1.0/batches_per_second
+                    item[1] = round(item[1], 1)
+                    if item[1] < .1 and current_queue is not None:
                         current_queue.pop(0)
-                    update_experiment_timeline_plot(1.0/batches_per_second)
+                    update_experiment_timeline_plot(.1)
                 else:
                     return False
 
