@@ -63,7 +63,7 @@ class GtecNautilusProInterface:
         self.sampling_rate = self.configurations.read("general.sampling_rate")
         self.selected_channels = self.configurations.read('general.selected_electrodes')
 
-    def run_acquisition(self, prompt_viewer, current_queue, update_experiment_timeline_plot, progressbar_value):
+    def run_acquisition(self, prompt_viewer, current_queue, update_experiment_timeline_plot, progressbar_value, batches_per_second):
         global current_trial_remaining_length
         global current_label
         global trial_order
@@ -89,8 +89,6 @@ class GtecNautilusProInterface:
                 ch.Enabled = 0
                 existing_channels[ch_idx] = -1
         d.SetConfiguration()
-
-        batches_per_second = 10
 
         signal = []
         for _ in range(32):

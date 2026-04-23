@@ -2,6 +2,7 @@ import copy
 import random
 from threading import Thread
 from tkinter import *
+import math
 
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -29,6 +30,7 @@ class CollectData(DoubleScrolledFrame):
     def __init__(self, parent, controller):
         DoubleScrolledFrame.__init__(self, parent)
         self.configurations = Configurations()
+        self.batches_per_second = 10
         self.queue = None
         self.current_queue = None
         self.bci_interface = GtecNautilusProInterface()
@@ -61,6 +63,20 @@ class CollectData(DoubleScrolledFrame):
 
         self.start_acquisition_button = Button(self, text='Start Acquisition', command=self.start_acquisition, state='disabled')
         self.start_acquisition_button.grid(row=6, column=0, padx=10, pady=10)
+
+        self.time_elapsed_label = Label(self, text='Elapsed time:')
+        self.time_elapsed_label.grid(row=7, column=0)
+        self.time_elapsed_value = IntVar()
+        self.time_elapsed_value.set(0)
+        self.time_elapsed = Label(self, textvariable=self.time_elapsed_value)
+        self.time_elapsed.grid(row=7, column=1)
+
+        self.time_total_label = Label(self, text='Total time:')
+        self.time_total_label.grid(row=8, column=0)
+        self.time_total_value = IntVar()
+        self.time_total_value.set(0)
+        self.time_total = Label(self, textvariable=self.time_total_value)
+        self.time_total.grid(row=8, column=1)
 
         self.acquisition_thread = None
         self.queue_canvas = None
@@ -96,6 +112,9 @@ class CollectData(DoubleScrolledFrame):
     def update_experiment_timeline_plot(self, value):
         if self.current_queue is None:
             return
+        # Calculate how may time is left in queue and subtract it from the total time
+
+        self.time_elapsed_value.set(math.ceil((self.time_total_value.get() - sum(list(map(lambda x: x[1], self.current_queue)))) * 10) / 10)
 
         if self.fig is None:
             self.fig = Figure(figsize=(15, 6))
@@ -135,7 +154,7 @@ class CollectData(DoubleScrolledFrame):
 
         if self.plot_canvas is None:
             self.plot_canvas = FigureCanvasTkAgg(self.fig, master=self)
-            self.plot_canvas.get_tk_widget().grid(row=7, column=0, columnspan=10)
+            self.plot_canvas.get_tk_widget().grid(row=9, column=0, columnspan=10)
         else:
             self.plot_canvas.draw()
 
@@ -148,7 +167,7 @@ class CollectData(DoubleScrolledFrame):
 
     def acquisition(self):
         recorded_signal, start_date = self.bci_interface.run_acquisition(self.prompt_viewer, self.current_queue,
-                                                                         self.update_experiment_timeline_plot, self.progressbar_value)
+                                                                         self.update_experiment_timeline_plot, self.progressbar_value, self.batches_per_second)
         if not self.prompt_viewer.closed:
             self.prompt_viewer.change_prompt('end')
         else:
@@ -168,4 +187,5 @@ class CollectData(DoubleScrolledFrame):
             queue.append(['break', pause_length])
             queue.append([trial_label, trial_length])
         self.queue = queue
+        self.time_total_value.set(sum(list(map(lambda x: x[1], self.queue))))
         self.current_queue = copy.deepcopy(queue)
