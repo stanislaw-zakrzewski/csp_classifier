@@ -1,12 +1,11 @@
 import os
-from tkinter import *
-from tkinter import filedialog
-
+from PySide6.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, 
+                             QFileDialog, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView)
+from PySide6.QtCore import Qt
 from pyedflib import highlevel
 
 from gui.annotation_viewer import open_annotation_viewer
 from gui.colors import colors
-from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
 
@@ -17,63 +16,113 @@ SELECTED_FIELDS = [
     'annotations'
 ]
 
-
-class BrowseRecordings(DoubleScrolledFrame):
-
-    def add_files_from_folder(self):
-        folder_selected = filedialog.askdirectory()
-        if folder_selected:
-            for filename in os.listdir(folder_selected):
-                if filename[-4:] == '.edf':
-                    if filename not in self.edf_headers:
-                        self.edf_headers[filename] = highlevel.read_edf_header(os.path.join(folder_selected, filename))
-                        edf_header = self.edf_headers[filename]
-                        Label(self.table, text=filename).grid(row=self.current_row, column=0, padx=5, pady=5, sticky=W)
-
-                        column_index = 1
-                        for key in edf_header.keys():
-
-                            if key in SELECTED_FIELDS:
-
-                                if key == 'annotations':
-                                    Button(self.table, text='View Annotations',
-                                           command=lambda key_copy=filename,
-                                                          annotations_copy=edf_header[key]: open_annotation_viewer(
-                                               self.table, key_copy, annotations_copy)).grid(
-                                        row=self.current_row,
-                                        column=column_index)
-                                else:
-                                    Label(self.table, text=edf_header[key]).grid(row=self.current_row,
-                                                                                 column=column_index, padx=5,
-                                                                                 pady=5)
-                                column_index += 1
-                        self.current_row += 1
-
+class BrowseRecordings(QScrollArea):
     def __init__(self, parent, controller):
-        DoubleScrolledFrame.__init__(self, parent)
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setStyleSheet(f"background-color: {colors['white_smoke']}; border: none;")
         self.edf_paths = []
-        self.current_row = 0
         self.edf_headers = {}
 
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
-        app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky=W)
+        content_widget = QWidget()
+        self.setWidget(content_widget)
 
-        back_to_start_page_button = Button(self, text="Back to Start Page",
-                                           command=lambda: controller.show_frame(StartPage))
-        back_to_start_page_button.grid(row=1, column=0, padx=10, pady=10, sticky=W)
+        self.layout = QVBoxLayout(content_widget)
+        self.layout.setAlignment(Qt.AlignTop)
 
-        load_data_from_folder_button = Button(self, text="Load Data from Folder", command=self.add_files_from_folder)
-        load_data_from_folder_button.grid(row=2, column=0, padx=10, pady=10, sticky=W)
+        # Title
+        app_title = QLabel("Kombajn EEG")
+        app_title.setFont(fonts['large_bold_font'])
+        app_title.setStyleSheet("margin: 10px; border: none;")
+        self.layout.addWidget(app_title)
 
-        edf_headers = {}
-        # for filename in os.listdir('data_s'):
-        #     if filename[-4:] == '.edf':
-        #         edf_headers[filename] = highlevel.read_edf_header(os.path.join('data_s', filename))
+        # Back Button
+        back_btn = QPushButton("Back to Start Page")
+        back_btn.setFont(fonts['medium_font'])
+        back_btn.clicked.connect(lambda: controller.show_frame(StartPage))
+        back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                border: 1px solid #CCCCCC;
+                border-radius: 4px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #EAEAEA;
+            }
+        """)
+        self.layout.addWidget(back_btn)
 
-        self.table = Frame(self)
-        self.table.grid(row=3, column=0)
-        Label(self.table, text='filename', font=fonts['medium_bold']).grid(row=0, column=0, padx=5, pady=5)
-        for index, selected_field in enumerate(SELECTED_FIELDS):
-            Label(self.table, text=selected_field, font=fonts['medium_bold']).grid(row=0, column=index + 1, padx=5,
-                                                                                   pady=5)
-        self.current_row = 1
+        # Load button
+        load_btn = QPushButton("Load Data from Folder")
+        load_btn.setFont(fonts['medium_font'])
+        load_btn.setStyleSheet("""
+            QPushButton {
+                padding: 10px; 
+                background-color: #2196F3; 
+                color: white; 
+                border: none; 
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #0b7dda;
+            }
+        """)
+        load_btn.clicked.connect(self.add_files_from_folder)
+        self.layout.addWidget(load_btn)
+
+        # Table Widget
+        self.table = QTableWidget()
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(['Filename', 'Patient Name', 'Start Date', 'Channels', 'Annotations'])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                gridline-color: #CCCCCC;
+                border: 1px solid #CCCCCC;
+            }
+            QHeaderView::section {
+                background-color: #EAEAEA;
+                padding: 4px;
+                border: 1px solid #CCCCCC;
+                font-weight: bold;
+            }
+        """)
+        self.layout.addWidget(self.table)
+
+    def add_files_from_folder(self):
+        folder_selected = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if folder_selected:
+            edf_files = [f for f in os.listdir(folder_selected) if f.endswith('.edf')]
+            
+            for filename in edf_files:
+                if filename not in self.edf_headers:
+                    full_path = os.path.join(folder_selected, filename)
+                    try:
+                        header = highlevel.read_edf_header(full_path)
+                        self.edf_headers[filename] = header
+                        
+                        row = self.table.rowCount()
+                        self.table.insertRow(row)
+                        
+                        # Set file name item
+                        self.table.setItem(row, 0, QTableWidgetItem(filename))
+                        
+                        # Set fields
+                        col_idx = 1
+                        for key in SELECTED_FIELDS:
+                            if key == 'annotations':
+                                btn = QPushButton("View Annotations")
+                                # Use default parameter inside lambda to avoid closures trap
+                                btn.clicked.connect(
+                                    lambda checked=False, f=filename, ann=header[key]: 
+                                    open_annotation_viewer(self, f, ann)
+                                )
+                                self.table.setCellWidget(row, col_idx, btn)
+                            else:
+                                val = str(header.get(key, ""))
+                                self.table.setItem(row, col_idx, QTableWidgetItem(val))
+                            col_idx += 1
+                    except Exception as e:
+                        print(f"Error loading EDF {filename}: {e}")

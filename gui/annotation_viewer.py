@@ -1,30 +1,27 @@
-from tkinter import *
-from tkinter.ttk import *
+from PySide6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QHeaderView
+from PySide6.QtCore import Qt
 
-from gui.components.double_scrolled_frame import DoubleScrolledFrame
+def open_annotation_viewer(parent, edf_path, annotations):
+    viewer = AnnotationViewer(parent, edf_path, annotations)
+    viewer.exec()
 
-
-def open_annotation_viewer(root, edf_path, annotations):
-    AnnotationViewer(root, edf_path, annotations)
-
-
-class AnnotationViewer(Toplevel):
-    def __init__(self, root, edf_path, annotations):
-        Toplevel.__init__(self, root)
-        self.grab_set()
-        self.title("Browse annotations for {}".format(edf_path))
-        self.geometry("500x500")
-
-        table = DoubleScrolledFrame(self)
-
-        Label(table, text='Start (s)').grid(row=0, column=0)
-        Label(table, text='Length (s)').grid(row=0, column=1)
-        Label(table, text='Label').grid(row=0, column=2)
-
-        row_index = 1
-        for annotation in annotations:
-            Label(table, text=annotation[0]).grid(row=row_index, column=0)
-            Label(table, text=annotation[1]).grid(row=row_index, column=1)
-            Label(table, text=annotation[2]).grid(row=row_index, column=2)
-            row_index += 1
-        table.pack(side="top", fill="both", expand=True)
+class AnnotationViewer(QDialog):
+    def __init__(self, parent, edf_path, annotations):
+        super().__init__(parent)
+        self.setWindowTitle(f"Browse annotations for {edf_path}")
+        self.resize(500, 500)
+        
+        layout = QVBoxLayout(self)
+        
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(['Start (s)', 'Length (s)', 'Label'])
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        table.setRowCount(len(annotations))
+        for row_idx, annotation in enumerate(annotations):
+            table.setItem(row_idx, 0, QTableWidgetItem(str(annotation[0])))
+            table.setItem(row_idx, 1, QTableWidgetItem(str(annotation[1])))
+            table.setItem(row_idx, 2, QTableWidgetItem(str(annotation[2])))
+            
+        layout.addWidget(table)

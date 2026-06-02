@@ -1,11 +1,10 @@
-from tkinter import *
-# import sv_ttk
-
 import sys
 from pathlib import Path
 
 # Add project root directory to sys.path to support running directly as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
 
 from gui.menu.menu import ApplicationMenu
 from gui.pages.analyze_data import AnalyzeData
@@ -17,15 +16,15 @@ from gui.pages.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from gui.pages.test_electrodes import TestElectrodes
 
-
-class App(Tk):
+class App(QMainWindow):
     def __init__(self, *args, **kwargs):
-        Tk.__init__(self, *args, **kwargs)
-        self.title("Kombajn EEG")
-        self.state('zoomed')
-        self.config(menu=ApplicationMenu(self))
-        self.config(bg="white")
-        # sv_ttk.set_theme("dark")
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle("Kombajn EEG")
+        self.showMaximized()
+        
+        # Set up menu
+        self.setMenuBar(ApplicationMenu(self))
+        
         pages = [
             {'name': 'Test Electrodes', 'frame': TestElectrodes},
             {'name': 'Filter Browser', 'frame': FilterBrowser},
@@ -35,35 +34,32 @@ class App(Tk):
             {'name': 'Browse Recordings', 'frame': BrowseRecordings},
             {'name': 'Prompt Viewer', 'frame': PromptViewer},
         ]
-
-        container = Frame(self)
-        container.pack(side="top", fill="both", expand=True)
-
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
+        
+        self.stacked_widget = QStackedWidget(self)
+        self.setCentralWidget(self.stacked_widget)
+        
         self.frames = {}
-        start_frame = StartPage(container, self, pages)
+        
+        # StartPage frame initialization (needs the pages list)
+        start_frame = StartPage(self.stacked_widget, self, pages)
         self.frames[StartPage] = start_frame
-
-        start_frame.grid(row=0, column=0, sticky="nsew")
-        for F in (x['frame'] for x in pages):
-            frame = F(container, self)
-
+        self.stacked_widget.addWidget(start_frame)
+        
+        # Other frames initialization
+        for p in pages:
+            F = p['frame']
+            frame = F(self.stacked_widget, self)
             self.frames[F] = frame
-
-            frame.grid(row=0, column=0, sticky="nsew")
-
+            self.stacked_widget.addWidget(frame)
+            
         self.show_frame(StartPage)
-        # Example of adding a video
-        # self.player = Screen(self)
-        # self.player.place(x=0, y=0, width=500, height=300)
-        # self.player.play('commands//visual_commands//left.mov')
-
+        
     def show_frame(self, cont):
         frame = self.frames[cont]
-        frame.tkraise()
+        self.stacked_widget.setCurrentWidget(frame)
 
-
-app = App()
-app.mainloop()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = App()
+    window.show()
+    sys.exit(app.exec())

@@ -1,16 +1,17 @@
 import traceback
+import math
 from threading import Thread
-from tkinter import *
-
 import numpy as np
-from PIL import Image, ImageTk
+
+from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QScrollArea
+from PySide6.QtCore import Qt, Signal, QPoint, QObject
+from PySide6.QtGui import QPainter, QPixmap, QPen, QColor
 
 import pygds
 from config.config import Configurations
 from gui.pages.start_page import StartPage
 from gui.colors import colors
 from gui.fonts import fonts
-from gui.components.double_scrolled_frame import DoubleScrolledFrame
 
 ELECTRODE_COORDINATES = {
     'Fp1': (479, 185),
@@ -94,238 +95,199 @@ ELECTRODE_COORDINATES = {
     'O2': (722, 905),
 }
 
+class ElectrodeCanvas(QWidget):
+    electrodeClicked = Signal(str)
 
-class TestElectrodes(DoubleScrolledFrame):
+    def __init__(self, image_path, coordinates, selected_electrodes, parent=None):
+        super().__init__(parent)
+        self.pixmap = QPixmap(image_path)
+        self.coordinates = coordinates
+        self.selected_electrodes = selected_electrodes
+        self.active_electrode = None
+        
+        if not self.pixmap.isNull():
+            self.setFixedSize(self.pixmap.size())
 
+    def set_active_electrode(self, electrode_code):
+        self.active_electrode = electrode_code
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        if not self.pixmap.isNull():
+            painter.drawPixmap(0, 0, self.pixmap)
+            
+        r = 35
+        for name in self.coordinates:
+            if name in self.selected_electrodes:
+                x, y = self.coordinates[name]
+                pen = QPen(QColor("red"))
+                if name == self.active_electrode:
+                    pen.setWidth(10)
+                else:
+                    pen.setWidth(5)
+                painter.setPen(pen)
+                painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(QPoint(x, y), r, r)
+
+    def mousePressEvent(self, event):
+        pos = event.position().toPoint() if hasattr(event, 'position') else event.pos()
+        r = 35
+        for name in self.coordinates:
+            if name in self.selected_electrodes:
+                x, y = self.coordinates[name]
+                dx = pos.x() - x
+                dy = pos.y() - y
+                if math.sqrt(dx*dx + dy*dy) <= r:
+                    self.electrodeClicked.emit(name)
+                    break
+
+class AcquisitionSignaler(QObject):
+    update_ui = Signal(str, str, bool)  # state ('normal' or 'disable'), text, acquisition_in_progress
+
+class TestElectrodes(QScrollArea):
     def __init__(self, parent, controller):
-        DoubleScrolledFrame.__init__(self, parent)
-        self.config(bg=colors['white_smoke'])
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setStyleSheet(f"background-color: {colors['white_smoke']}; border: none;")
+
         self.configurations = Configurations()
         self.selected_electrodes = self.configurations.read('general.selected_electrodes')
-
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
-        app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
-
-        back_to_start_page_button = Button(self, text="Back to Start Page",
-                                           command=lambda: controller.show_frame(StartPage))
-        back_to_start_page_button.grid(row=2, column=0, padx=10, pady=10, sticky='W')
-
-        test = ImageTk.PhotoImage(file="gui//electrode_placement_filled.png")
-        frame2 = Frame(self, bg="red", width=test.width(), height=test.height())
-        frame2.grid(row=3, column=0, columnspan=1, rowspan=2)
-        frame2.image = test
-        electrodes_canvas = Canvas(frame2, width=test.width(), height=test.height(), bg='blue')
-        electrodes_canvas.pack(expand=YES, fill=BOTH)
-        electrodes_canvas.create_image(2, 2, image=test, anchor=NW)
-        self.start_stop_button = Button(self, text='Start', command=self.toggle_data)
-        self.start_stop_button.grid(row=3,column=1)
         self.selected_electrode_code = None
-        self.l1 = Label(self, text='Selected electrode:', font=fonts['large_bold_font'])
-        self.l1.grid(row=4, column=1)
-        self.l = Label(self, text='', font=fonts['large_font'])
-        self.l.grid(row=5, column=1)
 
-        # # label1 = Label(myCanvas, image=test)
-        # # label1.image = test
-        #
-        # # Position image
-        # # label1.place(x=0, y=0)
-        # l = Label(frame2, bg='red', text='oko', width=50, height=50, borderwidth=0)
-        # l.corner_radius = 5
-        #
-        #
-        def create_circle(x, y, canvas, tag):  # center coordinates, radius
-            r = 35
-            x0 = x - r
-            y0 = y - r
-            x1 = x + r
-            y1 = y + r
-            hitbox = canvas.create_rectangle(x0, y0, x1, y1, outline='blue', width=0, tags=tag,
-                                             stipple='@transparent.xbm', fill='gray')
-            circle = canvas.create_oval(x0, y0, x1, y1, outline='red', width=5, tags=tag)
-            return {'hitbox': hitbox, 'circle': circle}
+        content_widget = QWidget()
+        self.setWidget(content_widget)
 
-        #
-        self.electrode_indicators = {}
+        main_layout = QVBoxLayout(content_widget)
+        main_layout.setAlignment(Qt.AlignTop)
 
-        def change_color(new_selected_electrode_code):
-            if new_selected_electrode_code == self.selected_electrode_code:
-                electrodes_canvas.itemconfig(self.electrode_indicators[new_selected_electrode_code]['circle'], width=5)
-                self.selected_electrode_code = None
-                self.l.config(text='')
-                self.l.config(text='')
-            else:
-                if self.selected_electrode_code is not None:
-                    electrodes_canvas.itemconfig(self.electrode_indicators[self.selected_electrode_code]['circle'],
-                                                 width=5)
-                electrodes_canvas.itemconfig(self.electrode_indicators[new_selected_electrode_code]['circle'], width=10)
-                self.selected_electrode_code = new_selected_electrode_code
-                self.l.config(text=self.selected_electrode_code)
+        # Header Title
+        app_title = QLabel("Kombajn EEG")
+        app_title.setFont(fonts['large_bold_font'])
+        app_title.setStyleSheet("margin: 10px; border: none;")
+        main_layout.addWidget(app_title)
 
-        for electrode in ELECTRODE_COORDINATES:
-            if electrode in self.selected_electrodes:
-                electrode_x, electrode_y = ELECTRODE_COORDINATES[electrode]
-                self.electrode_indicators[electrode] = create_circle(electrode_x, electrode_y, electrodes_canvas, electrode)
+        # Back Button
+        self.back_button = QPushButton("Back to Start Page")
+        self.back_button.setFont(fonts['medium_font'])
+        self.back_button.clicked.connect(lambda: controller.show_frame(StartPage))
+        self.back_button.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                border: 1px solid #CCCCCC;
+                border-radius: 4px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #EAEAEA;
+            }
+        """)
+        main_layout.addWidget(self.back_button)
 
-                electrodes_canvas.tag_bind(electrode, "<Button-1>", lambda event='', dup_el=electrode: change_color(dup_el))
+        # Horizontal layout for drawing canvas and controls
+        content_hbox = QHBoxLayout()
+        main_layout.addLayout(content_hbox)
 
-            # Button(frame2, text="Change Color", command=change_color).place(x=600, y=600)
-        # l.place(x=600,y=600)
+        # Electrode Placement Canvas
+        self.canvas = ElectrodeCanvas("gui/electrode_placement_filled.png", ELECTRODE_COORDINATES, self.selected_electrodes)
+        self.canvas.electrodeClicked.connect(self.on_electrode_clicked)
+        content_hbox.addWidget(self.canvas)
+
+        # Side controls panel
+        controls_panel = QWidget()
+        controls_layout = QVBoxLayout(controls_panel)
+        controls_layout.setAlignment(Qt.AlignTop)
+        content_hbox.addWidget(controls_panel)
+
+        self.start_stop_button = QPushButton("Start")
+        self.start_stop_button.setFont(fonts['medium_font'])
+        self.start_stop_button.clicked.connect(self.toggle_data)
+        self.start_stop_button.setStyleSheet("""
+            QPushButton {
+                background-color: #CCCCCC;
+                border: 1px solid #A5A5A5;
+                border-radius: 4px;
+                padding: 15px 30px;
+            }
+            QPushButton:hover {
+                background-color: #A5A5A5;
+            }
+        """)
+        controls_layout.addWidget(self.start_stop_button)
+
+        self.l1 = QLabel("Selected electrode:")
+        self.l1.setFont(fonts['large_bold_font'])
+        controls_layout.addWidget(self.l1)
+
+        self.l = QLabel("")
+        self.l.setFont(fonts['large_font'])
+        controls_layout.addWidget(self.l)
+
+        # Background Thread & Signaler Setup
+        self.signaler = AcquisitionSignaler()
+        self.signaler.update_ui.connect(self.on_update_ui)
         self.acquisition_thread = None
         self.acquisition_in_progress = False
         self.acquisition_initialized = False
         self.acquisition_stopped = False
 
+    def on_electrode_clicked(self, name):
+        if name == self.selected_electrode_code:
+            self.selected_electrode_code = None
+            self.l.setText("")
+            self.canvas.set_active_electrode(None)
+        else:
+            self.selected_electrode_code = name
+            self.l.setText(name)
+            self.canvas.set_active_electrode(name)
+
     def toggle_data(self):
         if not self.acquisition_initialized:
-            self.acquisition_thread = Thread(target=self.run_acquisition)
+            self.acquisition_thread = Thread(target=self.run_acquisition, daemon=True)
             self.acquisition_thread.start()
-            self.start_stop_button['state'] = 'disable'
+            self.start_stop_button.setEnabled(False)
         if self.acquisition_in_progress:
             self.acquisition_stopped = True
-            self.start_stop_button['state'] = 'disable'
+            self.start_stop_button.setEnabled(False)
 
+    def on_update_ui(self, state, text, in_progress):
+        self.start_stop_button.setEnabled(state == 'normal')
+        self.start_stop_button.setText(text)
+        self.acquisition_in_progress = in_progress
+        if not in_progress:
+            self.acquisition_initialized = False
+            self.acquisition_stopped = False
 
     def run_acquisition(self):
-        # global current_trial_remaining_length
-        # global current_label
-        # global trial_order
-        # global signal
-        # global current_length_in_seconds
-        # global annotations
-        # global last
-        # global commands
-
-        d = pygds.GDS()
-        pygds.configure_demo(d)
-        d.SetConfiguration()
+        try:
+            d = pygds.GDS()
+            pygds.configure_demo(d)
+            d.SetConfiguration()
+        except Exception as e:
+            print("Acquisition Init Error:", e)
+            self.signaler.update_ui.emit('normal', 'Start', False)
+            return
 
         batches_per_second = 2
-        trial_length_random_addition_in_seconds = 0
-        instructions_dict = {-1: 'pause', 0: 'rest', 1: 'movement'}
-        electrode_names = self.configurations.read('general.all_electrodes')
-        sampling_frequency = self.configurations.read('general.sampling_rate')
-
-        # for _ in range(32):
-        #     signal.append([])
 
         def processCallback(samples):
             if self.acquisition_stopped:
-                self.start_stop_button['state'] = 'normal'
-                self.start_stop_button['text'] = 'start'
-                self.acquisition_in_progress = False
-                self.acquisition_initialized = False
-                self.acquisition_stopped = False
+                self.signaler.update_ui.emit('normal', 'Start', False)
                 return False
             if not self.acquisition_in_progress:
-                self.start_stop_button['text'] = 'Stop'
-                self.start_stop_button['state'] = 'normal'
+                self.signaler.update_ui.emit('normal', 'Stop', True)
             try:
                 print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0))
-                # global current_trial_remaining_length
-                # global current_label
-                # global trial_order
-                # global signal
-                # global current_length_in_seconds
-                # global annotations
-                # global last
-                # global commands
-                # dt = datetime.now()
-                # last = dt
-                #
-                # for channel in range(32):
-                #     signal[channel] = np.concatenate((signal[channel], list(samples[:, channel])))
-                #
-                # # Podglad aktywnosci kanalow:
-                # np.set_printoptions(suppress=True, linewidth=10000, precision=2)
-                # # print(np.std(samples, axis=0)) # wszystkie kanały
-                # # print(np.std(samples[:, [32, 33, 34]], axis=0)) # akcelerometry - dla kontroli ;-)
-                # # print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
-                #
-                # if self.current_queue is None or len(self.current_queue) == 0:
-                #     return False
-                # item = self.current_queue[0]
-                # if not self.prompt_viewer.closed:
-                #     self.prompt_viewer.change_prompt(item[0])
-                #     time.sleep(.5)
-                #     item[1] -= .5
-                #     if item[1] < .5 and self.current_queue is not None:
-                #         self.current_queue.pop(0)
-                #     self.update_experiment_timeline_plot()
-                # else:
-                #     return False
-                #
-                #
-                #
-                #
-                # # current_trial_remaining_length -= 1
-                # # current_length_in_seconds += 1 / batches_per_second
-                # #
-                # # if current_trial_remaining_length == 0:
-                # #     if current_label == -1:
-                # #         current_label = trial_order.pop(0)
-                # #
-                # #         current_trial_remaining_length = \
-                # #             np.random.randint(
-                # #                 trial_length_random_addition_in_seconds * batches_per_second + 1) + trial_length_in_seconds * batches_per_second
-                # #         annotations.append(
-                # #             [current_length_in_seconds, current_trial_remaining_length / 2,
-                # #              instructions_dict[current_label]])
-                # #     else:
-                # #         if len(trial_order) == 0:
-                # #             return False
-                # #         current_label = -1
-                # #         current_trial_remaining_length = \
-                # #             np.random.randint(
-                # #                 trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
-                # #
-                # # commands.perform_command(instructions_dict[current_label])
-
                 return True
             except Exception as e:
                 print('ERROR:', e)
                 print(traceback.format_exc())
+                return False
 
-        # while self.current_queue is not None and len(self.current_queue) > 0:
-        #     item = self.current_queue[0]
-        #     if not self.prompt_viewer.closed:
-        #         self.prompt_viewer.change_prompt(item[0])
-        #         time.sleep(.5)
-        #         item[1] -= .5
-        #         if item[1] < .5 and self.current_queue is not None:
-        #             self.current_queue.pop(0)
-        #         self.update_experiment_timeline_plot()
-        #     else:
-        #         break
-        # last = datetime.now()
-        # all = datetime.now()
-        # start_date = datetime.now()
-        d.GetData(d.SamplingRate // batches_per_second, processCallback)
-        d.Close()
-        #
-        del d
-        # t = time.localtime()
-        # timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
-        # filename = 'data/{}.edf'.format(timestamp)
-        #
-        # sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency,
-        #                                             physical_max=2000000,
-        #                                             physical_min=-2000000)
-        #
-        # annotations = []
-        # len_for_annot = 0
-        # for index, queue_element in enumerate(self.queue):
-        #     if queue_element[0] != 'break':
-        #         annotations.append([len_for_annot,queue_element[1], queue_element[0]])
-        #     len_for_annot += queue_element[1]
-        #
-        # header = highlevel.make_header(patientname='patient_x', gender='Male', startdate=start_date)
-        # header.update({'annotations': annotations})
-        #
-        # if not self.prompt_viewer.closed:
-        #     self.prompt_viewer.change_prompt('end')
-        # else:
-        #     self.prompt_viewer.destroy()
-        # print(sig_headers)
-        # highlevel.write_edf(filename, signal, sig_headers, header)
-
+        try:
+            d.GetData(d.SamplingRate // batches_per_second, processCallback)
+            d.Close()
+        except Exception as e:
+            print("Data Fetching Error:", e)
+        finally:
+            del d

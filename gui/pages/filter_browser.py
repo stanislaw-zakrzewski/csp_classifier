@@ -1,17 +1,19 @@
 import traceback
+import math
 from threading import Thread
-from tkinter import *
-
 import numpy as np
-from PIL import Image, ImageTk
+import pandas as pd
+
+from PySide6.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, 
+                             QGridLayout, QLineEdit, QComboBox, QScrollArea, QFrame)
+from PySide6.QtCore import Qt, Signal, QPoint, QObject
+from PySide6.QtGui import QPainter, QPixmap, QPen, QColor
 
 import pygds
 from config.config import Configurations
 from gui.pages.start_page import StartPage
 from gui.colors import colors
 from gui.fonts import fonts
-from gui.components.double_scrolled_frame import DoubleScrolledFrame
-import pandas as pd
 
 ELECTRODE_COORDINATES = {
     'Fp1': (479, 185),
@@ -102,439 +104,388 @@ FILTER_NAMES = {
     'bs': 'band-stop'
 }
 
+class FilterElectrodeCanvas(QWidget):
+    def __init__(self, image_path, coordinates, parent=None):
+        super().__init__(parent)
+        self.pixmap = QPixmap(image_path)
+        self.coordinates = coordinates
+        self.highlighted_electrodes = set()
 
-class FilterBrowser(DoubleScrolledFrame):
+        if not self.pixmap.isNull():
+            self.setFixedSize(self.pixmap.size())
 
+    def update_electrode_colors(self, highlighted_list):
+        self.highlighted_electrodes = set(highlighted_list)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        if not self.pixmap.isNull():
+            painter.drawPixmap(0, 0, self.pixmap)
+
+        r = 35
+        for name in self.coordinates:
+            if name in self.highlighted_electrodes:
+                x, y = self.coordinates[name]
+                pen = QPen(QColor("red"))
+                pen.setWidth(10)
+                painter.setPen(pen)
+                painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(QPoint(x, y), r, r)
+
+class AcquisitionSignaler(QObject):
+    update_ui = Signal(str, str, bool)
+
+class FilterBrowser(QScrollArea):
     def __init__(self, parent, controller):
-        DoubleScrolledFrame.__init__(self, parent)
-        self.config(bg=colors['white_smoke'])
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setStyleSheet(f"background-color: {colors['white_smoke']}; border: none;")
+
         self.configurations = Configurations()
         self.selected_electrodes = self.configurations.read('general.selected_electrodes')
         self.filter_data = pd.read_csv('config/filters.csv')
 
-        self.filter_table = None
-        self.add_filter_button = Button(self, text="Add Filter", bg='green',
-                                        command=self.render_add_filter)
-        self.add_filter_button.grid(row=5, column=1)
-        self.add_filter_form = None
-        self.add_input_name = None
-        self.add_variable_band = StringVar(self)
-        self.add_variable_band_specific = StringVar(self)
-        self.add_variable_band_steepness = StringVar(self)
-        self.add_input_type = None
-        self.add_input_steepness = None
-        self.add_input_freq1 = None
-        self.add_input_freq2 = None
-        self.add_input_channels = None
+        content_widget = QWidget()
+        self.setWidget(content_widget)
 
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
-        app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
+        main_layout = QVBoxLayout(content_widget)
+        main_layout.setAlignment(Qt.AlignTop)
 
-        back_to_start_page_button = Button(self, text="Back to Start Page",
-                                           command=lambda: controller.show_frame(StartPage))
-        back_to_start_page_button.grid(row=2, column=0, padx=10, pady=10, sticky='W')
+        # Title
+        app_title = QLabel("Kombajn EEG")
+        app_title.setFont(fonts['large_bold_font'])
+        app_title.setStyleSheet("margin: 10px; border: none;")
+        main_layout.addWidget(app_title)
 
-        test = ImageTk.PhotoImage(file="gui//electrode_placement_filled.png")
-        frame2 = Frame(self, bg="red", width=test.width(), height=test.height())
-        frame2.grid(row=3, column=0, columnspan=1, rowspan=10)
-        frame2.image = test
-        self.electrodes_canvas = Canvas(frame2, width=test.width(), height=test.height(), bg='blue')
-        self.electrodes_canvas.pack(expand=YES, fill=BOTH)
-        self.electrodes_canvas.create_image(2, 2, image=test, anchor=NW)
-        self.table_title = Label(self, text='Filters', font=fonts['large_font'])
-        self.table_title.grid(row=3, column=1)
+        # Back Button
+        back_to_start_page_button = QPushButton("Back to Start Page")
+        back_to_start_page_button.setFont(fonts['medium_font'])
+        back_to_start_page_button.clicked.connect(lambda: controller.show_frame(StartPage))
+        back_to_start_page_button.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                border: 1px solid #CCCCCC;
+                border-radius: 4px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #EAEAEA;
+            }
+        """)
+        main_layout.addWidget(back_to_start_page_button)
+
+        # Content horizontal layout
+        content_hbox = QHBoxLayout()
+        main_layout.addLayout(content_hbox)
+
+        # Left panel: Image Canvas
+        self.electrodes_canvas = FilterElectrodeCanvas("gui/electrode_placement_filled.png", ELECTRODE_COORDINATES)
+        content_hbox.addWidget(self.electrodes_canvas)
+
+        # Right panel: Controls & Table
+        right_panel = QWidget()
+        self.right_layout = QVBoxLayout(right_panel)
+        self.right_layout.setAlignment(Qt.AlignTop)
+        content_hbox.addWidget(right_panel)
+
+        self.table_title = QLabel("Filters")
+        self.table_title.setFont(fonts['large_font'])
+        self.right_layout.addWidget(self.table_title)
+
+        # Table container
+        self.table_container = QWidget()
+        self.table_grid = QGridLayout(self.table_container)
+        self.right_layout.addWidget(self.table_container)
+        
         self.render_filter_table()
 
-        # # label1 = Label(myCanvas, image=test)
-        # # label1.image = test
-        #
-        # # Position image
-        # # label1.place(x=0, y=0)
-        # l = Label(frame2, bg='red', text='oko', width=50, height=50, borderwidth=0)
-        # l.corner_radius = 5
-        #
-        #
-        def create_circle(x, y, canvas, tag):  # center coordinates, radius
-            r = 35
-            x0 = x - r
-            y0 = y - r
-            x1 = x + r
-            y1 = y + r
-            hitbox = canvas.create_rectangle(x0, y0, x1, y1, outline='blue', width=0, tags=tag,
-                                             stipple='@transparent.xbm', fill='gray')
-            circle = canvas.create_oval(x0, y0, x1, y1, outline='red', width=0, tags=tag)
-            return {'hitbox': hitbox, 'circle': circle}
+        # Add Button / Add Form layout area
+        self.form_area = QWidget()
+        self.form_layout = QVBoxLayout(self.form_area)
+        self.form_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_layout.addWidget(self.form_area)
 
-        #
-        self.electrode_indicators = {}
+        self.add_filter_button = QPushButton("Add Filter")
+        self.add_filter_button.setFont(fonts['medium_font'])
+        self.add_filter_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+        self.add_filter_button.clicked.connect(self.render_add_filter)
+        self.form_layout.addWidget(self.add_filter_button)
 
-        # def change_color(new_selected_electrode_code):
-        #     if new_selected_electrode_code == self.selected_electrode_code:
-        #         self.electrodes_canvas.itemconfig(self.electrode_indicators[new_selected_electrode_code]['circle'], width=5)
-        #         self.selected_electrode_code = None
-        #         self.l.config(text='')
-        #         self.l.config(text='')
-        #     else:
-        #         if self.selected_electrode_code is not None:
-        #             self.electrodes_canvas.itemconfig(self.electrode_indicators[self.selected_electrode_code]['circle'],
-        #                                          width=5)
-        #         self.electrodes_canvas.itemconfig(self.electrode_indicators[new_selected_electrode_code]['circle'], width=10)
-        #         self.selected_electrode_code = new_selected_electrode_code
-        #         self.l.config(text=self.selected_electrode_code)
-
-        for electrode in ELECTRODE_COORDINATES:
-            electrode_x, electrode_y = ELECTRODE_COORDINATES[electrode]
-            self.electrode_indicators[electrode] = create_circle(electrode_x, electrode_y, self.electrodes_canvas,
-                                                                 electrode)
-
-            # self.electrodes_canvas.tag_bind(electrode, "<Button-1>",
-            #                            lambda event='', dup_el=electrode: change_color(dup_el))
-
-            # Button(frame2, text="Change Color", command=change_color).place(x=600, y=600)
-        # l.place(x=600,y=600)
+        # Acquisition threads (preserved but not active in default UI)
+        self.signaler = AcquisitionSignaler()
+        self.signaler.update_ui.connect(self.on_update_ui)
         self.acquisition_thread = None
         self.acquisition_in_progress = False
         self.acquisition_initialized = False
         self.acquisition_stopped = False
 
-    def update_electrode_colors(self, selected_electrodes):
-        for electrode in ELECTRODE_COORDINATES:
-            if electrode in selected_electrodes:
-                self.electrodes_canvas.itemconfig(self.electrode_indicators[electrode]['circle'], width=10)
-            else:
-                self.electrodes_canvas.itemconfig(self.electrode_indicators[electrode]['circle'], width=0)
+    def render_filter_table(self):
+        # Clear existing table layout
+        for i in reversed(range(self.table_grid.count())): 
+            widget = self.table_grid.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        headers = ['Name', 'Type', 'Frequency 1', 'Frequency 2', 'Steepness', 'Channels']
+        for col_idx, text in enumerate(headers):
+            lbl = QLabel(text)
+            lbl.setFont(fonts['medium_bold'])
+            self.table_grid.addWidget(lbl, 0, col_idx)
+
+        for row_index, data_row in enumerate(self.filter_data.values):
+            name_lbl = QLabel(str(data_row[0]))
+            name_lbl.setFont(fonts['medium_font'])
+            self.table_grid.addWidget(name_lbl, row_index + 1, 0)
+
+            type_lbl = QLabel(FILTER_NAMES.get(data_row[1], str(data_row[1])))
+            type_lbl.setFont(fonts['medium_font'])
+            self.table_grid.addWidget(type_lbl, row_index + 1, 1)
+
+            f1_lbl = QLabel(str(data_row[2]))
+            f1_lbl.setFont(fonts['medium_font'])
+            self.table_grid.addWidget(f1_lbl, row_index + 1, 2)
+
+            f2_lbl = QLabel(str(data_row[3]))
+            f2_lbl.setFont(fonts['medium_font'])
+            self.table_grid.addWidget(f2_lbl, row_index + 1, 3)
+
+            steep_lbl = QLabel(str(data_row[4]))
+            steep_lbl.setFont(fonts['medium_font'])
+            self.table_grid.addWidget(steep_lbl, row_index + 1, 4)
+
+            ch_lbl = QLabel(str(data_row[5]))
+            ch_lbl.setFont(fonts['medium_font'])
+            self.table_grid.addWidget(ch_lbl, row_index + 1, 5)
+
+            # Show Electrodes button
+            show_btn = QPushButton("Show Electrodes")
+            show_btn.setStyleSheet("background-color: #2196F3; color: white; border: none; padding: 5px; border-radius: 3px;")
+            show_btn.clicked.connect(lambda checked=False, r=row_index: self.select_row(r))
+            self.table_grid.addWidget(show_btn, row_index + 1, 6)
+
+            # Delete button
+            del_btn = QPushButton("DELETE")
+            del_btn.setStyleSheet("background-color: #f44336; color: white; border: none; padding: 5px; border-radius: 3px;")
+            del_btn.clicked.connect(lambda checked=False, r=row_index: self.remove_row(r))
+            self.table_grid.addWidget(del_btn, row_index + 1, 7)
 
     def render_add_filter(self):
-        self.add_filter_button.destroy()
-        add_filter_form = Frame(self)
-        Label(add_filter_form, text='Name', font=fonts['medium_font']).grid(row=0, column=0)
-        self.add_input_name = Entry(add_filter_form)
-        self.add_input_name.grid(row=0, column=1)
+        # Clear form area
+        for i in reversed(range(self.form_layout.count())): 
+            widget = self.form_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
 
-        def band_change_callback(*args):
-            add_variable_band = self.add_variable_band.get()
-            add_variable_band_specific = self.add_variable_band_specific.get()
-            if add_variable_band == 'alpha':
-                if add_variable_band_specific == 'whole':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 6)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 14)
-                elif add_variable_band_specific == 'lower':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 6)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 10)
-                elif add_variable_band_specific == 'upper':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 10)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 14)
-                else:
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 8)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 12)
-            elif add_variable_band == 'beta':
-                if add_variable_band_specific == 'whole':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 15)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 29)
-                elif add_variable_band_specific == 'lower':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 15)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 22)
-                elif add_variable_band_specific == 'upper':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 22)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 29)
-                else:
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 18)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 26)
+        add_filter_form = QWidget()
+        form_grid = QGridLayout(add_filter_form)
+        self.form_layout.addWidget(add_filter_form)
+
+        # Form fields
+        form_grid.addWidget(QLabel('Name'), 0, 0)
+        self.add_input_name = QLineEdit()
+        form_grid.addWidget(self.add_input_name, 0, 1)
+
+        # Band dropdowns
+        form_grid.addWidget(QLabel('Band'), 1, 0)
+        self.add_variable_band_specific = QComboBox()
+        self.add_variable_band_specific.addItems(['whole', 'lower', 'upper', 'middle'])
+        form_grid.addWidget(self.add_variable_band_specific, 1, 1)
+
+        self.add_variable_band = QComboBox()
+        self.add_variable_band.addItems(['alpha', 'beta', 'gamma'])
+        form_grid.addWidget(self.add_variable_band, 1, 2)
+
+        # Steepness dropdown
+        form_grid.addWidget(QLabel('Steepness Select'), 2, 0)
+        self.add_variable_band_steepness = QComboBox()
+        self.add_variable_band_steepness.addItems(['steep', 'semi-steep', 'soft'])
+        form_grid.addWidget(self.add_variable_band_steepness, 2, 1)
+
+        # Numeric inputs
+        form_grid.addWidget(QLabel('Frequency 1'), 3, 0)
+        self.add_input_freq1 = QLineEdit("6")
+        form_grid.addWidget(self.add_input_freq1, 3, 1)
+
+        form_grid.addWidget(QLabel('Frequency 2'), 4, 0)
+        self.add_input_freq2 = QLineEdit("14")
+        form_grid.addWidget(self.add_input_freq2, 4, 1)
+
+        form_grid.addWidget(QLabel('Steepness'), 5, 0)
+        self.add_input_steepness = QLineEdit("15")
+        form_grid.addWidget(self.add_input_steepness, 5, 1)
+        form_grid.addWidget(QLabel('%'), 5, 2)
+
+        form_grid.addWidget(QLabel('Channels'), 6, 0)
+        self.add_input_channels = QLineEdit()
+        form_grid.addWidget(self.add_input_channels, 6, 1)
+
+        # Connect signals for dynamic changes
+        self.add_variable_band_specific.currentTextChanged.connect(self.band_change_callback)
+        self.add_variable_band.currentTextChanged.connect(self.band_change_callback)
+        self.add_variable_band_steepness.currentTextChanged.connect(self.band_steepness_callback)
+
+        # Action buttons
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setStyleSheet("background-color: #ff9800; color: white; padding: 8px;")
+        cancel_btn.clicked.connect(self.render_add_button)
+        form_grid.addWidget(cancel_btn, 7, 0)
+
+        add_btn = QPushButton("Add")
+        add_btn.setStyleSheet("background-color: #4CAF50; color: white; padding: 8px;")
+        add_btn.clicked.connect(self.add_filter)
+        form_grid.addWidget(add_btn, 7, 1)
+
+    def band_change_callback(self):
+        band = self.add_variable_band.currentText()
+        specific = self.add_variable_band_specific.currentText()
+        if band == 'alpha':
+            if specific == 'whole':
+                self.add_input_freq1.setText("6")
+                self.add_input_freq2.setText("14")
+            elif specific == 'lower':
+                self.add_input_freq1.setText("6")
+                self.add_input_freq2.setText("10")
+            elif specific == 'upper':
+                self.add_input_freq1.setText("10")
+                self.add_input_freq2.setText("14")
             else:
-                if add_variable_band_specific == 'whole':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 30)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 40)
-                elif add_variable_band_specific == 'lower':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 30)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 35)
-                elif add_variable_band_specific == 'upper':
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 35)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 40)
-                else:
-                    self.add_input_freq1.delete(0, END)
-                    self.add_input_freq1.insert(0, 32)
-                    self.add_input_freq2.delete(0, END)
-                    self.add_input_freq2.insert(0, 38)
-
-        def band_steepness_callback(*args):
-            steepness = self.add_variable_band_steepness.get()
-            if steepness == 'steep':
-                self.add_input_steepness.delete(0, END)
-                self.add_input_steepness.insert(0, 15)
-            elif steepness == 'semi-steep':
-                self.add_input_steepness.delete(0, END)
-                self.add_input_steepness.insert(0, 30)
+                self.add_input_freq1.setText("8")
+                self.add_input_freq2.setText("12")
+        elif band == 'beta':
+            if specific == 'whole':
+                self.add_input_freq1.setText("15")
+                self.add_input_freq2.setText("29")
+            elif specific == 'lower':
+                self.add_input_freq1.setText("15")
+                self.add_input_freq2.setText("22")
+            elif specific == 'upper':
+                self.add_input_freq1.setText("22")
+                self.add_input_freq2.setText("29")
             else:
-                self.add_input_steepness.delete(0, END)
-                self.add_input_steepness.insert(0, 50)
+                self.add_input_freq1.setText("18")
+                self.add_input_freq2.setText("26")
+        else: # gamma
+            if specific == 'whole':
+                self.add_input_freq1.setText("30")
+                self.add_input_freq2.setText("40")
+            elif specific == 'lower':
+                self.add_input_freq1.setText("30")
+                self.add_input_freq2.setText("35")
+            elif specific == 'upper':
+                self.add_input_freq1.setText("35")
+                self.add_input_freq2.setText("40")
+            else:
+                self.add_input_freq1.setText("32")
+                self.add_input_freq2.setText("38")
 
-        Label(add_filter_form, text='Band', font=fonts['medium_font']).grid(row=1, column=0)
-        self.add_variable_band_specific.set('whole')
-        self.add_variable_band_specific.trace('w', band_change_callback)
-        OptionMenu(add_filter_form, self.add_variable_band_specific, *['whole', 'lower', 'upper', 'middle']).grid(row=1,
-                                                                                                                  column=1)
-        self.add_variable_band.set('alpha')
-        self.add_variable_band.trace('w', band_change_callback)
-        OptionMenu(add_filter_form, self.add_variable_band, *['alpha', 'beta', 'gamma']).grid(row=1, column=2)
+    def band_steepness_callback(self):
+        steepness = self.add_variable_band_steepness.currentText()
+        if steepness == 'steep':
+            self.add_input_steepness.setText("15")
+        elif steepness == 'semi-steep':
+            self.add_input_steepness.setText("30")
+        else:
+            self.add_input_steepness.setText("50")
 
-        Label(add_filter_form, text='Steepness', font=fonts['medium_font']).grid(row=2, column=0)
-        self.add_variable_band_steepness.set('steep')
-        self.add_variable_band_steepness.trace('w', band_steepness_callback)
-        OptionMenu(add_filter_form, self.add_variable_band_steepness, *['steep', 'semi-steep', 'soft']).grid(row=2,
-                                                                                                             column=1)
+    def render_add_button(self):
+        # Clear form area
+        for i in reversed(range(self.form_layout.count())): 
+            widget = self.form_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
 
-        Label(add_filter_form, text='Frequency 1', font=fonts['medium_font']).grid(row=3, column=0)
-        self.add_input_freq1 = Entry(add_filter_form)
-        self.add_input_freq1.grid(row=3, column=1)
-        Label(add_filter_form, text='Frequency 2', font=fonts['medium_font']).grid(row=4, column=0)
-        self.add_input_freq2 = Entry(add_filter_form)
-        self.add_input_freq2.grid(row=4, column=1)
-        Label(add_filter_form, text='Steepness', font=fonts['medium_font']).grid(row=5, column=0)
-        self.add_input_steepness = Entry(add_filter_form)
-        self.add_input_steepness.grid(row=5, column=1)
-        Label(add_filter_form, text='%', font=fonts['medium_font']).grid(row=5, column=3)
-        Label(add_filter_form, text='Channels', font=fonts['medium_font']).grid(row=6, column=0)
-        self.add_input_channels = Entry(add_filter_form)
-        self.add_input_channels.grid(row=6, column=1)
-
-        Button(add_filter_form, text='Cancel', bg='tan1',
-               command=self.render_add_button).grid(row=7,
-                                                    column=0)
-        Button(add_filter_form, text='Add', bg='seagreen2',
-               command=self.add_filter).grid(row=7,
-                                             column=1)
-        self.add_filter_form = add_filter_form
-        self.add_filter_form.grid(row=5, column=1)
-
-        self.add_input_freq1.insert(0, 6)
-        self.add_input_freq2.insert(0, 14)
-        self.add_input_steepness.insert(0, 15)
+        self.add_filter_button = QPushButton("Add Filter")
+        self.add_filter_button.setFont(fonts['medium_font'])
+        self.add_filter_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+        self.add_filter_button.clicked.connect(self.render_add_filter)
+        self.form_layout.addWidget(self.add_filter_button)
 
     def add_filter(self):
-        name = self.add_input_name.get()
-        # type = self.add_input_type.get()
-        freq1 = self.add_input_freq1.get()
-        freq2 = self.add_input_freq2.get()
-        steepness = self.add_input_steepness.get()
-        channels = self.add_input_channels.get()
+        name = self.add_input_name.text()
+        freq1 = self.add_input_freq1.text()
+        freq2 = self.add_input_freq2.text()
+        steepness = self.add_input_steepness.text()
+        channels = self.add_input_channels.text()
         self.filter_data.loc[len(self.filter_data.index)] = [name, 'bp', freq1, freq2, steepness, channels]
         self.filter_data.to_csv('config/filters.csv', index=False)
         self.render_add_button()
         self.render_filter_table()
 
-    def render_add_button(self):
-        self.add_filter_form.destroy()
-        self.add_filter_button = Button(self, text="Add Filter", bg='green',
-                                        command=self.render_add_filter)
-        self.add_filter_button.grid(row=5, column=1)
-
-    def render_filter_table(self):
-        if self.filter_table:
-            self.filter_table.destroy()
-        filter_table = Frame(self)
-        Label(filter_table, text='Name', font=fonts['medium_font']).grid(row=0, column=0)
-        Label(filter_table, text='Type', font=fonts['medium_font']).grid(row=0, column=1)
-        Label(filter_table, text='Frequency 1', font=fonts['medium_font']).grid(row=0, column=2)
-        Label(filter_table, text='Frequency 2', font=fonts['medium_font']).grid(row=0, column=3)
-        Label(filter_table, text='Steepness', font=fonts['medium_font']).grid(row=0, column=4)
-        Label(filter_table, text='Channels', font=fonts['medium_font']).grid(row=0, column=5)
-        for row_index, data_row in enumerate(self.filter_data.values):
-            Label(filter_table, text=data_row[0], font=fonts['medium_font']).grid(row=row_index + 1, column=0)
-            Label(filter_table, text=FILTER_NAMES[data_row[1]], font=fonts['medium_font']).grid(row=row_index + 1,
-                                                                                                column=1)
-            Label(filter_table, text=data_row[2], font=fonts['medium_font']).grid(row=row_index + 1, column=2)
-            Label(filter_table, text=data_row[3], font=fonts['medium_font']).grid(row=row_index + 1, column=3)
-            Label(filter_table, text=data_row[4], font=fonts['medium_font']).grid(row=row_index + 1, column=4)
-            Label(filter_table, text=data_row[5], font=fonts['medium_font']).grid(row=row_index + 1, column=5)
-            Button(filter_table, text='Show Electrodes', bg='blue',
-                   command=lambda bound_row_index=row_index: self.select_row(bound_row_index)).grid(row=row_index + 1,
-                                                                                                    column=6)
-            Button(filter_table, text='DELETE', bg='red',
-                   command=lambda bound_row_index=row_index: self.remove_row(bound_row_index)).grid(row=row_index + 1,
-                                                                                                    column=7)
-        self.filter_table = filter_table
-        self.filter_table.grid(row=4, column=1)
-
     def select_row(self, row_index):
         selected_row = self.filter_data.iloc[[row_index]].values[0]
-        self.update_electrode_colors(selected_row[5].split(' '))
+        channels_str = str(selected_row[5])
+        self.electrodes_canvas.update_electrode_colors(channels_str.split(' '))
 
     def remove_row(self, row_index):
         if not self.filter_data.empty:
             self.filter_data = self.filter_data.drop(self.filter_data.index[row_index])
-        self.filter_data.to_csv('filters.csv', index=False)
+        self.filter_data.to_csv('config/filters.csv', index=False)
         self.render_filter_table()
 
     def toggle_data(self):
         if not self.acquisition_initialized:
-            self.acquisition_thread = Thread(target=self.run_acquisition)
+            self.acquisition_thread = Thread(target=self.run_acquisition, daemon=True)
             self.acquisition_thread.start()
-            self.start_stop_button['state'] = 'disable'
+            self.signaler.update_ui.emit('disable', 'Start', False)
         if self.acquisition_in_progress:
             self.acquisition_stopped = True
-            self.start_stop_button['state'] = 'disable'
+            self.signaler.update_ui.emit('disable', 'Stop', True)
+
+    def on_update_ui(self, state, text, in_progress):
+        self.acquisition_in_progress = in_progress
+        if not in_progress:
+            self.acquisition_initialized = False
+            self.acquisition_stopped = False
 
     def run_acquisition(self):
-        # global current_trial_remaining_length
-        # global current_label
-        # global trial_order
-        # global signal
-        # global current_length_in_seconds
-        # global annotations
-        # global last
-        # global commands
-
-        d = pygds.GDS()
-        pygds.configure_demo(d)
-        d.SetConfiguration()
+        try:
+            d = pygds.GDS()
+            pygds.configure_demo(d)
+            d.SetConfiguration()
+        except Exception as e:
+            print("Acquisition Init Error:", e)
+            return
 
         batches_per_second = 2
-        trial_length_random_addition_in_seconds = 0
-        instructions_dict = {-1: 'pause', 0: 'rest', 1: 'movement'}
-        electrode_names = self.configurations.read('general.all_electrodes')
-        sampling_frequency = self.configurations.read('general.sampling_rate')
-
-        # for _ in range(32):
-        #     signal.append([])
 
         def processCallback(samples):
             if self.acquisition_stopped:
-                self.start_stop_button['state'] = 'normal'
-                self.start_stop_button['text'] = 'start'
-                self.acquisition_in_progress = False
-                self.acquisition_initialized = False
-                self.acquisition_stopped = False
                 return False
-            if not self.acquisition_in_progress:
-                self.start_stop_button['text'] = 'Stop'
-                self.start_stop_button['state'] = 'normal'
             try:
                 print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0))
-                # global current_trial_remaining_length
-                # global current_label
-                # global trial_order
-                # global signal
-                # global current_length_in_seconds
-                # global annotations
-                # global last
-                # global commands
-                # dt = datetime.now()
-                # last = dt
-                #
-                # for channel in range(32):
-                #     signal[channel] = np.concatenate((signal[channel], list(samples[:, channel])))
-                #
-                # # Podglad aktywnosci kanalow:
-                # np.set_printoptions(suppress=True, linewidth=10000, precision=2)
-                # # print(np.std(samples, axis=0)) # wszystkie kanały
-                # # print(np.std(samples[:, [32, 33, 34]], axis=0)) # akcelerometry - dla kontroli ;-)
-                # # print(np.std(samples[:, [5, 15, 14, 13, 23, 9, 17, 18, 19, 27, 16]], axis=0)) # FC3, C1, C3, C5, CP3, FC4, C2, C4, C6, CP4, CZ
-                #
-                # if self.current_queue is None or len(self.current_queue) == 0:
-                #     return False
-                # item = self.current_queue[0]
-                # if not self.prompt_viewer.closed:
-                #     self.prompt_viewer.change_prompt(item[0])
-                #     time.sleep(.5)
-                #     item[1] -= .5
-                #     if item[1] < .5 and self.current_queue is not None:
-                #         self.current_queue.pop(0)
-                #     self.update_experiment_timeline_plot()
-                # else:
-                #     return False
-                #
-                #
-                #
-                #
-                # # current_trial_remaining_length -= 1
-                # # current_length_in_seconds += 1 / batches_per_second
-                # #
-                # # if current_trial_remaining_length == 0:
-                # #     if current_label == -1:
-                # #         current_label = trial_order.pop(0)
-                # #
-                # #         current_trial_remaining_length = \
-                # #             np.random.randint(
-                # #                 trial_length_random_addition_in_seconds * batches_per_second + 1) + trial_length_in_seconds * batches_per_second
-                # #         annotations.append(
-                # #             [current_length_in_seconds, current_trial_remaining_length / 2,
-                # #              instructions_dict[current_label]])
-                # #     else:
-                # #         if len(trial_order) == 0:
-                # #             return False
-                # #         current_label = -1
-                # #         current_trial_remaining_length = \
-                # #             np.random.randint(
-                # #                 trial_timeout_random_addition_in_seconds * batches_per_second + 1) + trial_timeout_in_seconds * batches_per_second
-                # #
-                # # commands.perform_command(instructions_dict[current_label])
-
                 return True
             except Exception as e:
                 print('ERROR:', e)
                 print(traceback.format_exc())
+                return False
 
-        # while self.current_queue is not None and len(self.current_queue) > 0:
-        #     item = self.current_queue[0]
-        #     if not self.prompt_viewer.closed:
-        #         self.prompt_viewer.change_prompt(item[0])
-        #         time.sleep(.5)
-        #         item[1] -= .5
-        #         if item[1] < .5 and self.current_queue is not None:
-        #             self.current_queue.pop(0)
-        #         self.update_experiment_timeline_plot()
-        #     else:
-        #         break
-        # last = datetime.now()
-        # all = datetime.now()
-        # start_date = datetime.now()
-        d.GetData(d.SamplingRate // batches_per_second, processCallback)
-        d.Close()
-        #
-        del d
-        # t = time.localtime()
-        # timestamp = time.strftime('%Y-%m-%dT%H-%M-%S', t)
-        # filename = 'data/{}.edf'.format(timestamp)
-        #
-        # sig_headers = highlevel.make_signal_headers(electrode_names, sample_rate=sampling_frequency,
-        #                                             physical_max=2000000,
-        #                                             physical_min=-2000000)
-        #
-        # annotations = []
-        # len_for_annot = 0
-        # for index, queue_element in enumerate(self.queue):
-        #     if queue_element[0] != 'break':
-        #         annotations.append([len_for_annot,queue_element[1], queue_element[0]])
-        #     len_for_annot += queue_element[1]
-        #
-        # header = highlevel.make_header(patientname='patient_x', gender='Male', startdate=start_date)
-        # header.update({'annotations': annotations})
-        #
-        # if not self.prompt_viewer.closed:
-        #     self.prompt_viewer.change_prompt('end')
-        # else:
-        #     self.prompt_viewer.destroy()
-        # print(sig_headers)
-        # highlevel.write_edf(filename, signal, sig_headers, header)
+        try:
+            d.GetData(d.SamplingRate // batches_per_second, processCallback)
+            d.Close()
+        except Exception as e:
+            print("Acquisition Error:", e)
+        finally:
+            del d

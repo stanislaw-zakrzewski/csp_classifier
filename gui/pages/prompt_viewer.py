@@ -1,7 +1,7 @@
-from tkinter import *
+from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QScrollArea
+from PySide6.QtCore import Qt
 
 from gui.colors import colors
-from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
 from gui.visual_player import Screen
@@ -16,7 +16,6 @@ PROMPTS = {
         {'label': 'Pause', 'path': 'commands//visual_commands//pause.jpg'}],
 }
 
-
 class PromptViewerState:
     def __init__(self):
         self.current_prompt = None
@@ -27,65 +26,99 @@ class PromptViewerState:
     def get_prompt(self):
         return self.current_prompt
 
-
-class PromptViewer(DoubleScrolledFrame):
+class PromptViewer(QScrollArea):
     def __init__(self, parent, controller):
-        DoubleScrolledFrame.__init__(self, parent)
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setStyleSheet(f"background-color: {colors['white_smoke']}; border: none;")
 
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
-        app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
-
-        back_to_start_page_button = Button(self, text="Back to Start Page",
-                                           command=lambda: controller.show_frame(StartPage))
-        back_to_start_page_button.grid(row=1, column=0, padx=10, pady=10, sticky='w')
-
-        self.prompt_viewer_state = PromptViewerState
-
-        self.button_canvas = Canvas(self)
-        self.button_canvas.grid(row=2, column=0, sticky='w', pady=10)
-
-        Label(self.button_canvas, text='Video:').grid(row=0, column=0, padx=5, pady=5)
-        for index, video_prompt in enumerate(PROMPTS['video']):
-            Button(self.button_canvas, text=video_prompt['label'],
-                   command=lambda prompt_path=video_prompt['path']: self.set_current_prompt('video', prompt_path)) \
-                .grid(row=0, column=index + 1, padx=5, pady=5)
-
-        Label(self.button_canvas, text='Image:').grid(row=1, column=0, padx=5, pady=5)
-        for index, image_prompt in enumerate(PROMPTS['image']):
-            Button(self.button_canvas, text=image_prompt['label'],
-                   command=lambda prompt_path=image_prompt['path']: self.set_current_prompt('image', prompt_path)) \
-                .grid(row=1, column=index + 1, padx=5, pady=5)
-
-        Button(self.button_canvas, text='Clear', command=lambda: self.clear_prompt()).grid(row=2, column=0, padx=5,
-                                                                                           pady=5)
-
-        self.video_canvas = None
+        self.prompt_viewer_state = PromptViewerState()
         self.player = None
 
+        content_widget = QWidget()
+        self.setWidget(content_widget)
+
+        self.layout = QVBoxLayout(content_widget)
+        self.layout.setAlignment(Qt.AlignTop)
+
+        # Title
+        app_title = QLabel("Kombajn EEG")
+        app_title.setFont(fonts['large_bold_font'])
+        app_title.setStyleSheet("margin: 10px; border: none;")
+        self.layout.addWidget(app_title)
+
+        # Back Button
+        back_btn = QPushButton("Back to Start Page")
+        back_btn.setFont(fonts['medium_font'])
+        back_btn.clicked.connect(lambda: controller.show_frame(StartPage))
+        back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                border: 1px solid #CCCCCC;
+                border-radius: 4px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #EAEAEA;
+            }
+        """)
+        self.layout.addWidget(back_btn)
+
+        # Controls HBox
+        controls_hbox = QHBoxLayout()
+        controls_hbox.setAlignment(Qt.AlignLeft)
+        self.layout.addLayout(controls_hbox)
+
+        # Video prompts
+        video_label = QLabel("Video:")
+        video_label.setFont(fonts['medium_bold'])
+        controls_hbox.addWidget(video_label)
+
+        for video_prompt in PROMPTS['video']:
+            btn = QPushButton(video_prompt['label'])
+            btn.setStyleSheet("padding: 8px 15px;")
+            # Use default parameters in lambda to capture loop variables correctly
+            btn.clicked.connect(
+                lambda checked=False, p=video_prompt['path']: self.set_current_prompt('video', p)
+            )
+            controls_hbox.addWidget(btn)
+
+        # Separator spacing
+        controls_hbox.addSpacing(20)
+
+        # Image prompts
+        image_label = QLabel("Image:")
+        image_label.setFont(fonts['medium_bold'])
+        controls_hbox.addWidget(image_label)
+
+        for image_prompt in PROMPTS['image']:
+            btn = QPushButton(image_prompt['label'])
+            btn.setStyleSheet("padding: 8px 15px;")
+            btn.clicked.connect(
+                lambda checked=False, p=image_prompt['path']: self.set_current_prompt('image', p)
+            )
+            controls_hbox.addWidget(btn)
+
+        # Separator spacing
+        controls_hbox.addSpacing(20)
+
+        # Clear button
+        clear_btn = QPushButton("Clear")
+        clear_btn.setStyleSheet("background-color: #ff9800; color: white; padding: 8px 15px; border: none; border-radius: 3px;")
+        clear_btn.clicked.connect(self.clear_prompt)
+        controls_hbox.addWidget(clear_btn)
+
     def set_current_prompt(self, prompt_type, prompt_source):
-        if prompt_type == 'video':
-            self.set_video_prompt(prompt_source)
-        if prompt_type == 'image':
-            self.set_image_prompt(prompt_source)
-
-    def set_video_prompt(self, prompt_source):
         if self.player is None:
-            self.video_canvas = Canvas(self, width=500, height=300)
-            self.player = Screen(self.video_canvas)
-            self.video_canvas.grid(row=3, column=0)
-            self.player.place(x=0, y=0, width=500, height=300)
-        self.player.play(prompt_source)
-
-    def set_image_prompt(self, prompt_source):
-        if self.player is None:
-            self.video_canvas = Canvas(self, width=500, height=300)
-            self.player = Screen(self.video_canvas)
-            self.video_canvas.grid(row=3, column=0)
-            self.player.place(x=0, y=0, width=500, height=300)
+            self.player = Screen(self)
+            self.player.setFixedSize(500, 300)
+            self.layout.addWidget(self.player)
+            
         self.player.play(prompt_source)
 
     def clear_prompt(self):
-        self.player.destroy()
-        self.player = None
-        self.video_canvas.destroy()
-        self.video_canvas = None
+        if self.player is not None:
+            self.layout.removeWidget(self.player)
+            self.player.terminate()
+            self.player.deleteLater()
+            self.player = None

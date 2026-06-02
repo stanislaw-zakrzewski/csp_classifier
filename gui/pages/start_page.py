@@ -1,33 +1,64 @@
-from tkinter import *
-
+from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QGridLayout, QVBoxLayout, QScrollArea
+from PySide6.QtCore import Qt
 from gui.colors import colors
-from gui.components.double_scrolled_frame import DoubleScrolledFrame
 from gui.fonts import fonts
 
-GRID_COLUMN_THRESHOLD = 2
-
-
-class StartPage(DoubleScrolledFrame):
+class StartPage(QScrollArea):
     def __init__(self, parent, controller, pages):
-        DoubleScrolledFrame.__init__(self, parent)
-        self.config(bg=colors['white_smoke'])
-
-        app_title = Label(self, text="Kombajn EEG", font=fonts['large_bold_font'])
-        app_title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='W')
-
-        current_grid_row = 1
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setStyleSheet(f"background-color: {colors['white_smoke']}; border: none;")
+        
+        content_widget = QWidget()
+        self.setWidget(content_widget)
+        
+        layout = QVBoxLayout(content_widget)
+        layout.setAlignment(Qt.AlignTop)
+        
+        app_title = QLabel("Kombajn EEG")
+        app_title.setFont(fonts['large_bold_font'])
+        app_title.setStyleSheet("margin: 10px; border: none;")
+        layout.addWidget(app_title)
+        
+        grid_widget = QWidget()
+        grid_layout = QGridLayout(grid_widget)
+        grid_layout.setContentsMargins(10, 10, 10, 10)
+        grid_layout.setSpacing(15)
+        
+        GRID_COLUMN_THRESHOLD = 2
+        current_grid_row = 0
         current_grid_column = 0
+        
         self.buttons = {}
         for page in pages:
-
-            frame = page['frame']
-            self.buttons[page['name']] = Button(self, text=page['name'],
-                                                command=lambda bound_frame=frame: controller.show_frame(bound_frame),
-                                                width=30,
-                                                height=3, font=fonts['large_font'])
-
-            self.buttons[page['name']].grid(row=current_grid_row, column=current_grid_column, padx=10, pady=10)
+            frame_class = page['frame']
+            btn = QPushButton(page['name'])
+            btn.setFont(fonts['large_font'])
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: white;
+                    border: 2px solid #CCCCCC;
+                    border-radius: 8px;
+                    padding: 20px;
+                    min-width: 250px;
+                }
+                QPushButton:hover {
+                    background-color: #EAEAEA;
+                    border-color: #A5A5A5;
+                }
+                QPushButton:pressed {
+                    background-color: #CCCCCC;
+                }
+            """)
+            
+            # Use default parameter in lambda to capture loop variables correctly
+            btn.clicked.connect(lambda checked=False, f=frame_class: controller.show_frame(f))
+            self.buttons[page['name']] = btn
+            
+            grid_layout.addWidget(btn, current_grid_row, current_grid_column)
             current_grid_column += 1
             if current_grid_column >= GRID_COLUMN_THRESHOLD:
                 current_grid_row += 1
                 current_grid_column = 0
+                
+        layout.addWidget(grid_widget)

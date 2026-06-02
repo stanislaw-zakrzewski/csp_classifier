@@ -1,95 +1,85 @@
 import os
-import tkinter as tk
-import cv2
-from PIL import Image, ImageTk
-import time
-class Screen(tk.Frame):
-   '''
-   Screen widget: Embedded OpenCV video player for seamless looping and switching.
-   No external system libraries (like VLC/MPV DLLs) required.
-   '''
-   def __init__(self, parent, *args, **kwargs):
-       tk.Frame.__init__(self, parent, bg='black', *args, **kwargs)
-       self.parent = parent
-       # We use a Label to display the video frames
-       self.video_label = tk.Label(self, bg='black')
-       self.video_label.pack(fill=tk.BOTH, expand=True)
-       self.cap = None
-       self.is_video = False
-       self.delay = 33  # Default delay (~30 FPS)
-       self.media_map = {
-           'rest': 'commands/visual_commands/rest.png',
-           'break': 'commands/visual_commands/pause.jpg',
-           'movement': 'commands/visual_commands/movement.mov'
-       }
-       # Start the Tkinter frame update loop immediately
-       self.update_frame()
-   def play(self, _source):
-       filepath = self.media_map.get(_source, _source)
-       ext = os.path.splitext(filepath)[1].lower()
-       if ext in ['.png', '.jpg', '.jpeg']:
-           # --- Handle Static Images ---
-           self.is_video = False
-           # Clean up the old video capture if it was running
-           if self.cap is not None:
-               self.cap.release()
-               self.cap = None
-           # Read and display the image once
-           frame = cv2.imread(filepath)
-           if frame is not None:
-               self.display_frame(frame)
-       else:
-           # --- Handle Videos seamlessly ---
-           new_cap = cv2.VideoCapture(filepath)
-           if new_cap.isOpened():
-               self.is_video = True
-               # Seamless transition: Swap to the new video before destroying the old one
-               if self.cap is not None:
-                   self.cap.release()
-               self.cap = new_cap
-               # Automatically calculate playback speed based on video metadata
-               fps = self.cap.get(cv2.CAP_PROP_FPS)
-               if fps > 0:
-                   # Rename this to target_delay to act as our baseline
-                   self.target_delay = int(1000 / fps)
-               else:
-                   self.target_delay = 33
-   def stop(self):
-       # Route the stop command to display the 'rest' image
-       self.play('rest')
+from PySide6.QtWidgets import QWidget, QLabel, QStackedLayout
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtGui import QPixmap
+from PySide6.QtCore import QUrl, Qt
 
-   def display_frame(self, frame):
-       """Converts an OpenCV frame, stretches it, and updates the label."""
-       win_width = self.winfo_width()
-       win_height = self.winfo_height()
-       if win_width > 1 and win_height > 1:
-           # Changed to INTER_LINEAR - it is much faster for real-time stretching
-           frame = cv2.resize(frame, (win_width, win_height), interpolation=cv2.INTER_LINEAR)
-       cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-       img = Image.fromarray(cv2image)
-       imgtk = ImageTk.PhotoImage(image=img)
-       self.video_label.imgtk = imgtk
-       self.video_label.configure(image=imgtk)
+class Screen(QWidget):
+    """
+    Screen widget: Embedded PySide6 native media player using QMediaPlayer 
+    and QVideoWidget/QLabel for seamless video looping and image viewing.
+    """
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.layout = QStackedLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Image view (index 0)
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setStyleSheet("background-color: black;")
+        self.layout.addWidget(self.image_label)
+        
+        # Video view (index 1)
+        self.video_widget = QVideoWidget(self)
+        self.video_widget.setStyleSheet("background-color: black;")
+        self.layout.addWidget(self.video_widget)
+        
+        # Setup Qt native Multimedia player
+        self.media_player = QMediaPlayer(self)
+        self.audio_output = QAudioOutput(self)
+        self.media_player.setAudioOutput(self.audio_output)
+        self.media_player.setVideoOutput(self.video_widget)
+        self.media_player.setLoops(QMediaPlayer.Infinite)  # Loop infinitely
+        
+        self.media_map = {
+            'rest': 'commands/visual_commands/rest.png',
+            'break': 'commands/visual_commands/pause.jpg',
+            'movement': 'commands/visual_commands/movement.mov'
+        }
+        
+        self._current_image_path = None
+        self.play('rest')
 
-   def update_frame(self):
-       """Native Tkinter loop with dynamic delay to maintain true FPS."""
-       # Start a stopwatch
-       start_time = time.perf_counter()
-       if self.is_video and self.cap is not None:
-           ret, frame = self.cap.read()
-           if not ret:
-               self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-               ret, frame = self.cap.read()
-           if ret:
-               self.display_frame(frame)
-       # Stop the watch and calculate how many milliseconds the processing took
-       processing_time = int((time.perf_counter() - start_time) * 1000)
-       # Subtract the processing time from our target delay.
-       # Use max(1, ...) to ensure we never pass a negative number to Tkinter.
-       # If processing took longer than the target delay, it will move to the next frame in 1ms.
-       actual_delay = max(1, getattr(self, 'target_delay', 33) - processing_time)
-       self.after(actual_delay, self.update_frame)
-   def terminate(self):
-       """Cleanup function to release the camera/file lock on exit."""
-       if self.cap is not None:
-           self.cap.release()
+    def play(self, _source):
+        filepath = self.media_map.get(_source, _source)
+        filepath = os.path.abspath(filepath)
+        ext = os.path.splitext(filepath)[1].lower()
+        
+        if ext in ['.png', '.jpg', '.jpeg']:
+            # Stop any playing video
+            self.media_player.stop()
+            self._current_image_path = filepath
+            self.layout.setCurrentIndex(0)
+            self._update_image_display()
+        else:
+            self._current_image_path = None
+            self.layout.setCurrentIndex(1)
+            self.media_player.setSource(QUrl.fromLocalFile(filepath))
+            self.media_player.play()
+
+    def stop(self):
+        self.play('rest')
+
+    def _update_image_display(self):
+        if self._current_image_path and os.path.exists(self._current_image_path):
+            pixmap = QPixmap(self._current_image_path)
+            if not pixmap.isNull():
+                scaled_size = self.size()
+                if scaled_size.width() <= 1 or scaled_size.height() <= 1:
+                    # Fallback to pixmap's original size if widget size is not initialized yet
+                    scaled_size = pixmap.size()
+                self.image_label.setPixmap(pixmap.scaled(
+                    scaled_size, 
+                    Qt.KeepAspectRatio, 
+                    Qt.SmoothTransformation
+                ))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.layout.currentIndex() == 0:
+            self._update_image_display()
+
+    def terminate(self):
+        self.media_player.stop()
