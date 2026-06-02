@@ -1,6 +1,12 @@
 from tkinter import *
 # import sv_ttk
 
+import sys
+from pathlib import Path
+
+# Add project root directory to sys.path to support running directly as a script
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from gui.menu.menu import ApplicationMenu
 from gui.pages.analyze_data import AnalyzeData
 from gui.pages.browse_recordings import BrowseRecordings
