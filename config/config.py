@@ -1,5 +1,6 @@
 import json
 from json.decoder import JSONDecodeError
+import os
 
 
 class Singleton(type):
@@ -11,8 +12,8 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-DEFAULT_CONFIGURATION_PATH = 'config//default_configuration.json'
-CURRENT_CONFIGURATION_PATH = 'config//current_configuration.json'
+DEFAULT_CONFIGURATION_PATH = os.path.join('config', 'default_configuration.json')
+CURRENT_CONFIGURATION_PATH = os.path.join('config', 'current_configuration.json')
 
 
 class Configurations(metaclass=Singleton):
@@ -34,47 +35,35 @@ class Configurations(metaclass=Singleton):
         backup_value = None
         try:
             value = configuration[key]
-        except KeyError:
+        except (KeyError, TypeError):
             value = None
-            try:
-                backup_value = backup_configuration[key]
-            except KeyError:
-                backup_value = None
-        if value:
+            
+        try:
+            backup_value = backup_configuration[key]
+        except (KeyError, TypeError):
+            backup_value = None
+
+        if value is not None:
             if len(split_path) == 1:
-                return self.parse_value(value)
+                return value
             return self.read('.'.join(split_path[1:]), value, backup_value)
-        elif backup_value:
+        elif backup_value is not None:
             if len(split_path) == 1:
-                return self.parse_value(backup_value)
+                return backup_value
             return self.read('.'.join(split_path[1:]), backup_value, backup_value)
         return None
 
     @staticmethod
     def load_configuration(path):
-        with open(path) as configuration_file:
+        if not os.path.exists(path):
+            return {}
+        with open(path, 'r', encoding='utf-8') as configuration_file:
             try:
-                return json.loads(configuration_file.read())
-            except JSONDecodeError:
+                return json.load(configuration_file)
+            except (JSONDecodeError, IOError):
                 return {}
-
-    @staticmethod
-    def parse_value(element):
-        if element:
-            if element['type'] == 'list':
-                return element['value']
-            if element['type'] == 'float':
-                return float(element['value'])
-            if element['type'] == 'int':
-                return int(element['value'])
-            if element['type'] == 'float':
-                return float(element['value'])
-            if element['type'] == 'string':
-                return element['value']
-            if element['type'] == 'boolean':
-                return element['value']
 
     def change_current_configuration(self, configuration_data):
         self.current_configuration = configuration_data
-        with open('config//current_configuration.json', 'w') as f:
-            print(json.dumps(configuration_data), file=f)
+        with open(CURRENT_CONFIGURATION_PATH, 'w', encoding='utf-8') as f:
+            json.dump(configuration_data, f, indent=2)

@@ -94,9 +94,9 @@ if __name__ == "__main__":
             border: 1px solid #222222;
         }
         QLineEdit, QTextEdit {
-            background-color: #1e1e1e;
+            background-color: #2b2b2b;
             color: #ffffff;
-            border: 1px solid #2d2d2d;
+            border: 1px solid #3d3d3d;
             border-radius: 4px;
             padding: 6px;
         }
@@ -104,21 +104,21 @@ if __name__ == "__main__":
             border: 1px solid #2196F3;
         }
         QComboBox {
-            background-color: #1e1e1e;
+            background-color: #2b2b2b;
             color: #ffffff;
-            border: 1px solid #2d2d2d;
+            border: 1px solid #3d3d3d;
             border-radius: 4px;
             padding: 5px;
         }
         QComboBox QAbstractItemView {
-            background-color: #1e1e1e;
+            background-color: #2b2b2b;
             color: #ffffff;
-            selection-background-color: #2d2d2d;
+            selection-background-color: #3d3d3d;
         }
         QListWidget, QTableWidget {
-            background-color: #1e1e1e;
+            background-color: #2b2b2b;
             color: #ffffff;
-            border: 1px solid #2d2d2d;
+            border: 1px solid #3d3d3d;
             border-radius: 4px;
         }
         QTableWidget QTableCornerButton::section {
