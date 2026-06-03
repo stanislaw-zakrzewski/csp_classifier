@@ -17,8 +17,9 @@ from gui.pages.collect_data_components.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from src.bci_integration.GtecNautilusProInterface import GtecNautilusProInterface
 from src.edf.EDFWriter import EDFWriter
+from gui.components.back_button import BackButton
+from gui.components.title_label import TitleLabel
 
-# Thread-safe wrappers to cross the background thread -> main GUI thread boundary
 class ThreadSafePromptViewerProxy(QObject):
     change_prompt_signal = Signal(str)
 
@@ -35,7 +36,6 @@ class ThreadSafePromptViewerProxy(QObject):
         return self.prompt_viewer.closed
 
     def destroy(self):
-        # Safe call on main thread if needed
         pass
 
 class ThreadSafeTimelineSignaler(QObject):
@@ -50,7 +50,7 @@ class ThreadSafeTimelineSignaler(QObject):
         self.update_signal.emit(val)
 
 class CollectDataSignaler(QObject):
-    acquisition_finished = Signal(object, object) # recorded_signal, start_date
+    acquisition_finished = Signal(object, object)
 
 class CollectData(QScrollArea):
     def __init__(self, parent, controller):
@@ -64,8 +64,6 @@ class CollectData(QScrollArea):
         self.current_queue = None
         self.bci_interface = GtecNautilusProInterface()
         self.edf_writer = EDFWriter()
-        
-        # We can use a standard float to track progress bar value
         self.progressbar_value = 0.0
 
         content_widget = QWidget()
@@ -74,27 +72,12 @@ class CollectData(QScrollArea):
         self.layout = QVBoxLayout(content_widget)
         self.layout.setAlignment(Qt.AlignTop)
 
-        # Title
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        # Title (extracted component)
+        app_title = TitleLabel("Kombajn EEG")
         self.layout.addWidget(app_title)
 
-        # Back Button
-        back_btn = QPushButton("Back to Start Page")
-        back_btn.setFont(fonts['medium_font'])
-        back_btn.clicked.connect(lambda: controller.show_frame(StartPage))
-        back_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #EAEAEA;
-            }
-        """)
+        # Back Button (extracted component)
+        back_btn = BackButton(controller)
         self.layout.addWidget(back_btn)
 
         # Patient Info Form
@@ -102,14 +85,18 @@ class CollectData(QScrollArea):
         self.layout.addLayout(form_layout)
 
         name_row = QHBoxLayout()
-        name_row.addWidget(QLabel("Patient Name:"))
+        name_lbl = QLabel("Patient Name:")
+        name_lbl.setStyleSheet("color: white;")
+        name_row.addWidget(name_lbl)
         self.patient_name_input = QLineEdit()
         self.patient_name_input.setText(self.configurations.read('collect_data.patient_name'))
         name_row.addWidget(self.patient_name_input)
         form_layout.addLayout(name_row)
 
         gender_row = QHBoxLayout()
-        gender_row.addWidget(QLabel("Patient Gender:"))
+        gender_lbl = QLabel("Patient Gender:")
+        gender_lbl.setStyleSheet("color: white;")
+        gender_row.addWidget(gender_lbl)
         self.gender_input = QLineEdit()
         self.gender_input.setText(self.configurations.read('collect_data.patient_gender'))
         gender_row.addWidget(self.gender_input)
@@ -118,7 +105,18 @@ class CollectData(QScrollArea):
         # Controls
         self.prepare_experiment = QPushButton("Prepare experiment")
         self.prepare_experiment.clicked.connect(self.open_prompt_window)
-        self.prepare_experiment.setStyleSheet("padding: 10px;")
+        self.prepare_experiment.setStyleSheet("""
+            QPushButton {
+                padding: 10px;
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #2d2d2d;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #2d2d2d;
+            }
+        """)
         self.layout.addWidget(self.prepare_experiment)
 
         self.start_acquisition_button = QPushButton("Start Acquisition")
@@ -147,9 +145,11 @@ class CollectData(QScrollArea):
         self.layout.addLayout(stats_row)
 
         self.time_elapsed_label = QLabel("Elapsed time: 0")
+        self.time_elapsed_label.setStyleSheet("color: white;")
         stats_row.addWidget(self.time_elapsed_label)
 
         self.time_total_label = QLabel("Total time: 0")
+        self.time_total_label.setStyleSheet("color: white;")
         stats_row.addWidget(self.time_total_label)
 
         # Plot area
@@ -157,7 +157,7 @@ class CollectData(QScrollArea):
         self.plot_layout = QVBoxLayout(self.plot_container)
         self.layout.addWidget(self.plot_container)
 
-        # Signaler setup
+        # Signaler
         self.gui_signaler = CollectDataSignaler()
         self.gui_signaler.acquisition_finished.connect(self.on_acquisition_finished)
 
@@ -203,15 +203,25 @@ class CollectData(QScrollArea):
         self.time_elapsed_label.setText(f"Elapsed time: {elapsed}")
 
         if self.fig is None:
-            self.fig = Figure(figsize=(15, 6))
+            self.fig = Figure(figsize=(15, 6), facecolor='#121212')
         if self.gnt is None:
             self.gnt = self.fig.subplots()
-            self.gnt.set_xlabel('seconds since start')
-            self.gnt.set_ylabel('Prompt')
+            self.gnt.set_facecolor('#1e1e1e')
+            self.gnt.set_xlabel('seconds since start', color='white')
+            self.gnt.set_ylabel('Prompt', color='white')
+            self.gnt.tick_params(colors='white')
+            for spine in self.gnt.spines.values():
+                spine.set_color('#2d2d2d')
         else:
             self.gnt.clear()
+            self.gnt.set_facecolor('#1e1e1e')
+            self.gnt.tick_params(colors='white')
+            self.gnt.set_xlabel('seconds since start', color='white')
+            self.gnt.set_ylabel('Prompt', color='white')
+            for spine in self.gnt.spines.values():
+                spine.set_color('#2d2d2d')
 
-        # Prepare data for plot
+        # Prepare data
         data = {}
         previous_time_end = 0
         for item in self.current_queue:
@@ -231,7 +241,7 @@ class CollectData(QScrollArea):
         self.gnt.set_ylim(0, yticks[-1] + 5)
         self.gnt.set_xlim(0, 40)
         self.gnt.set_yticklabels(self.labels)
-        self.gnt.grid(True)
+        self.gnt.grid(True, color='#2d2d2d')
 
         for index, item in enumerate(self.labels):
             if item in data:
@@ -250,7 +260,6 @@ class CollectData(QScrollArea):
         self.start_acquisition_button.setEnabled(False)
 
     def acquisition(self):
-        # Create thread-safe wrappers for callback objects
         prompt_viewer_proxy = ThreadSafePromptViewerProxy(self.prompt_viewer)
         timeline_signaler = ThreadSafeTimelineSignaler(self.update_experiment_timeline_plot)
         
@@ -267,7 +276,6 @@ class CollectData(QScrollArea):
     def on_acquisition_finished(self, recorded_signal, start_date):
         if self.prompt_viewer and not self.prompt_viewer.closed:
             self.prompt_viewer.change_prompt('end')
-            # Let it display end for a second before closing
             self.prompt_viewer.close()
             
         self.edf_writer.write(

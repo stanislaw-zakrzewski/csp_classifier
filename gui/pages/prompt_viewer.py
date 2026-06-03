@@ -5,6 +5,8 @@ from gui.colors import colors
 from gui.fonts import fonts
 from gui.pages.start_page import StartPage
 from gui.visual_player import Screen
+from gui.components.back_button import BackButton
+from gui.components.title_label import TitleLabel
 
 PROMPTS = {
     'video': [
@@ -41,27 +43,12 @@ class PromptViewer(QScrollArea):
         self.layout = QVBoxLayout(content_widget)
         self.layout.setAlignment(Qt.AlignTop)
 
-        # Title
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        # Title (extracted component)
+        app_title = TitleLabel("Kombajn EEG")
         self.layout.addWidget(app_title)
 
-        # Back Button
-        back_btn = QPushButton("Back to Start Page")
-        back_btn.setFont(fonts['medium_font'])
-        back_btn.clicked.connect(lambda: controller.show_frame(StartPage))
-        back_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #EAEAEA;
-            }
-        """)
+        # Back Button (extracted component)
+        back_btn = BackButton(controller)
         self.layout.addWidget(back_btn)
 
         # Controls HBox
@@ -72,23 +59,23 @@ class PromptViewer(QScrollArea):
         # Video prompts
         video_label = QLabel("Video:")
         video_label.setFont(fonts['medium_bold'])
+        video_label.setStyleSheet("color: white;")
         controls_hbox.addWidget(video_label)
 
         for video_prompt in PROMPTS['video']:
             btn = QPushButton(video_prompt['label'])
             btn.setStyleSheet("padding: 8px 15px;")
-            # Use default parameters in lambda to capture loop variables correctly
             btn.clicked.connect(
                 lambda checked=False, p=video_prompt['path']: self.set_current_prompt('video', p)
             )
             controls_hbox.addWidget(btn)
 
-        # Separator spacing
         controls_hbox.addSpacing(20)
 
         # Image prompts
         image_label = QLabel("Image:")
         image_label.setFont(fonts['medium_bold'])
+        image_label.setStyleSheet("color: white;")
         controls_hbox.addWidget(image_label)
 
         for image_prompt in PROMPTS['image']:
@@ -99,7 +86,6 @@ class PromptViewer(QScrollArea):
             )
             controls_hbox.addWidget(btn)
 
-        # Separator spacing
         controls_hbox.addSpacing(20)
 
         # Clear button

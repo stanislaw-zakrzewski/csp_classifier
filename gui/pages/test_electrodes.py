@@ -4,14 +4,15 @@ from threading import Thread
 import numpy as np
 
 from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QScrollArea
-from PySide6.QtCore import Qt, Signal, QPoint, QObject
-from PySide6.QtGui import QPainter, QPixmap, QPen, QColor
+from PySide6.QtCore import Qt, Signal, QObject
 
 import pygds
 from config.config import Configurations
-from gui.pages.start_page import StartPage
 from gui.colors import colors
 from gui.fonts import fonts
+from gui.components.back_button import BackButton
+from gui.components.title_label import TitleLabel
+from gui.components.electrode_canvas import ElectrodeCanvas
 
 ELECTRODE_COORDINATES = {
     'Fp1': (479, 185),
@@ -95,55 +96,8 @@ ELECTRODE_COORDINATES = {
     'O2': (722, 905),
 }
 
-class ElectrodeCanvas(QWidget):
-    electrodeClicked = Signal(str)
-
-    def __init__(self, image_path, coordinates, selected_electrodes, parent=None):
-        super().__init__(parent)
-        self.pixmap = QPixmap(image_path)
-        self.coordinates = coordinates
-        self.selected_electrodes = selected_electrodes
-        self.active_electrode = None
-        
-        if not self.pixmap.isNull():
-            self.setFixedSize(self.pixmap.size())
-
-    def set_active_electrode(self, electrode_code):
-        self.active_electrode = electrode_code
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        if not self.pixmap.isNull():
-            painter.drawPixmap(0, 0, self.pixmap)
-            
-        r = 35
-        for name in self.coordinates:
-            if name in self.selected_electrodes:
-                x, y = self.coordinates[name]
-                pen = QPen(QColor("red"))
-                if name == self.active_electrode:
-                    pen.setWidth(10)
-                else:
-                    pen.setWidth(5)
-                painter.setPen(pen)
-                painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(QPoint(x, y), r, r)
-
-    def mousePressEvent(self, event):
-        pos = event.position().toPoint() if hasattr(event, 'position') else event.pos()
-        r = 35
-        for name in self.coordinates:
-            if name in self.selected_electrodes:
-                x, y = self.coordinates[name]
-                dx = pos.x() - x
-                dy = pos.y() - y
-                if math.sqrt(dx*dx + dy*dy) <= r:
-                    self.electrodeClicked.emit(name)
-                    break
-
 class AcquisitionSignaler(QObject):
-    update_ui = Signal(str, str, bool)  # state ('normal' or 'disable'), text, acquisition_in_progress
+    update_ui = Signal(str, str, bool)
 
 class TestElectrodes(QScrollArea):
     def __init__(self, parent, controller):
@@ -161,35 +115,20 @@ class TestElectrodes(QScrollArea):
         main_layout = QVBoxLayout(content_widget)
         main_layout.setAlignment(Qt.AlignTop)
 
-        # Header Title
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        # Header Title (extracted component)
+        app_title = TitleLabel("Kombajn EEG")
         main_layout.addWidget(app_title)
 
-        # Back Button
-        self.back_button = QPushButton("Back to Start Page")
-        self.back_button.setFont(fonts['medium_font'])
-        self.back_button.clicked.connect(lambda: controller.show_frame(StartPage))
-        self.back_button.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #EAEAEA;
-            }
-        """)
+        # Back Button (extracted component)
+        self.back_button = BackButton(controller)
         main_layout.addWidget(self.back_button)
 
-        # Horizontal layout for drawing canvas and controls
+        # Horizontal layout for canvas and controls
         content_hbox = QHBoxLayout()
         main_layout.addLayout(content_hbox)
 
-        # Electrode Placement Canvas
-        self.canvas = ElectrodeCanvas("gui/electrode_placement_filled.png", ELECTRODE_COORDINATES, self.selected_electrodes)
+        # Electrode Placement Canvas (extracted unified component)
+        self.canvas = ElectrodeCanvas(ELECTRODE_COORDINATES, limit_to_electrodes=self.selected_electrodes)
         self.canvas.electrodeClicked.connect(self.on_electrode_clicked)
         content_hbox.addWidget(self.canvas)
 
@@ -204,13 +143,18 @@ class TestElectrodes(QScrollArea):
         self.start_stop_button.clicked.connect(self.toggle_data)
         self.start_stop_button.setStyleSheet("""
             QPushButton {
-                background-color: #CCCCCC;
-                border: 1px solid #A5A5A5;
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #2d2d2d;
                 border-radius: 4px;
                 padding: 15px 30px;
             }
             QPushButton:hover {
-                background-color: #A5A5A5;
+                background-color: #2d2d2d;
+                border-color: #3e3e3e;
+            }
+            QPushButton:pressed {
+                background-color: #3d3d3d;
             }
         """)
         controls_layout.addWidget(self.start_stop_button)
@@ -223,7 +167,7 @@ class TestElectrodes(QScrollArea):
         self.l.setFont(fonts['large_font'])
         controls_layout.addWidget(self.l)
 
-        # Background Thread & Signaler Setup
+        # Acquisition Signaler
         self.signaler = AcquisitionSignaler()
         self.signaler.update_ui.connect(self.on_update_ui)
         self.acquisition_thread = None

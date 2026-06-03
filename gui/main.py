@@ -60,6 +60,132 @@ class App(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    
+    dark_stylesheet = """
+        QWidget {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        QMainWindow, QDialog, QScrollArea {
+            background-color: #121212;
+            border: none;
+        }
+        QLabel {
+            background-color: transparent;
+            color: #ffffff;
+        }
+        QPushButton {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            padding: 8px 15px;
+        }
+        QPushButton:hover {
+            background-color: #2d2d2d;
+            border-color: #3e3e3e;
+        }
+        QPushButton:pressed {
+            background-color: #3d3d3d;
+        }
+        QPushButton:disabled {
+            background-color: #121212;
+            color: #888888;
+            border: 1px solid #222222;
+        }
+        QLineEdit, QTextEdit {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            padding: 6px;
+        }
+        QLineEdit:focus {
+            border: 1px solid #2196F3;
+        }
+        QComboBox {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        QComboBox QAbstractItemView {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            selection-background-color: #2d2d2d;
+        }
+        QListWidget, QTableWidget {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #2d2d2d;
+            border-radius: 4px;
+        }
+        QTableWidget QTableCornerButton::section {
+            background-color: #1e1e1e;
+            border: 1px solid #2d2d2d;
+        }
+        QHeaderView::section {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            padding: 5px;
+            border: 1px solid #2d2d2d;
+            font-weight: bold;
+        }
+        QScrollBar:vertical {
+            border: none;
+            background: #121212;
+            width: 10px;
+            margin: 0px;
+        }
+        QScrollBar::handle:vertical {
+            background: #2d2d2d;
+            min-height: 20px;
+            border-radius: 5px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: #3d3d3d;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+        QScrollBar:horizontal {
+            border: none;
+            background: #121212;
+            height: 10px;
+            margin: 0px;
+        }
+        QScrollBar::handle:horizontal {
+            background: #2d2d2d;
+            min-width: 20px;
+            border-radius: 5px;
+        }
+        QScrollBar::handle:horizontal:hover {
+            background: #3d3d3d;
+        }
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+            width: 0px;
+        }
+        QMenuBar {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border-bottom: 1px solid #2d2d2d;
+        }
+        QMenuBar::item:selected {
+            background-color: #2d2d2d;
+        }
+        QMenu {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #2d2d2d;
+        }
+        QMenu::item:selected {
+            background-color: #2d2d2d;
+        }
+    """
+    app.setStyleSheet(dark_stylesheet)
+    
     window = App()
     window.show()
     sys.exit(app.exec())
+

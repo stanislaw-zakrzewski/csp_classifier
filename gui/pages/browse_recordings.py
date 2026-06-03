@@ -7,7 +7,8 @@ from pyedflib import highlevel
 from gui.annotation_viewer import open_annotation_viewer
 from gui.colors import colors
 from gui.fonts import fonts
-from gui.pages.start_page import StartPage
+from gui.components.back_button import BackButton
+from gui.components.title_label import TitleLabel
 
 SELECTED_FIELDS = [
     'patientname',
@@ -30,27 +31,12 @@ class BrowseRecordings(QScrollArea):
         self.layout = QVBoxLayout(content_widget)
         self.layout.setAlignment(Qt.AlignTop)
 
-        # Title
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        # Title (extracted component)
+        app_title = TitleLabel("Kombajn EEG")
         self.layout.addWidget(app_title)
 
-        # Back Button
-        back_btn = QPushButton("Back to Start Page")
-        back_btn.setFont(fonts['medium_font'])
-        back_btn.clicked.connect(lambda: controller.show_frame(StartPage))
-        back_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #EAEAEA;
-            }
-        """)
+        # Back Button (extracted component)
+        back_btn = BackButton(controller)
         self.layout.addWidget(back_btn)
 
         # Load button
@@ -71,21 +57,23 @@ class BrowseRecordings(QScrollArea):
         load_btn.clicked.connect(self.add_files_from_folder)
         self.layout.addWidget(load_btn)
 
-        # Table Widget
+        # Table Widget styled dark
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(['Filename', 'Patient Name', 'Start Date', 'Channels', 'Annotations'])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setStyleSheet("""
             QTableWidget {
-                background-color: white;
-                gridline-color: #CCCCCC;
-                border: 1px solid #CCCCCC;
+                background-color: #1e1e1e;
+                gridline-color: #2d2d2d;
+                border: 1px solid #2d2d2d;
+                color: #ffffff;
             }
             QHeaderView::section {
-                background-color: #EAEAEA;
-                padding: 4px;
-                border: 1px solid #CCCCCC;
+                background-color: #2d2d2d;
+                color: #ffffff;
+                padding: 6px;
+                border: 1px solid #333333;
                 font-weight: bold;
             }
         """)
@@ -95,6 +83,9 @@ class BrowseRecordings(QScrollArea):
         folder_selected = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder_selected:
             edf_files = [f for f in os.listdir(folder_selected) if f.endswith('.edf')]
+            
+            # Clear old rows first
+            self.table.setRowCount(0)
             
             for filename in edf_files:
                 if filename not in self.edf_headers:
@@ -114,7 +105,18 @@ class BrowseRecordings(QScrollArea):
                         for key in SELECTED_FIELDS:
                             if key == 'annotations':
                                 btn = QPushButton("View Annotations")
-                                # Use default parameter inside lambda to avoid closures trap
+                                btn.setStyleSheet("""
+                                    QPushButton {
+                                        background-color: #2b2b2b;
+                                        color: white;
+                                        border: 1px solid #3d3d3d;
+                                        border-radius: 3px;
+                                        padding: 4px;
+                                    }
+                                    QPushButton:hover {
+                                        background-color: #3d3d3d;
+                                    }
+                                """)
                                 btn.clicked.connect(
                                     lambda checked=False, f=filename, ann=header[key]: 
                                     open_annotation_viewer(self, f, ann)

@@ -1,7 +1,8 @@
-from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QGridLayout, QVBoxLayout, QScrollArea
+from PySide6.QtWidgets import QWidget, QPushButton, QGridLayout, QVBoxLayout, QScrollArea
 from PySide6.QtCore import Qt
 from gui.colors import colors
 from gui.fonts import fonts
+from gui.components.title_label import TitleLabel
 
 class StartPage(QScrollArea):
     def __init__(self, parent, controller, pages):
@@ -15,9 +16,7 @@ class StartPage(QScrollArea):
         layout = QVBoxLayout(content_widget)
         layout.setAlignment(Qt.AlignTop)
         
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        app_title = TitleLabel("Kombajn EEG")
         layout.addWidget(app_title)
         
         grid_widget = QWidget()
@@ -36,22 +35,22 @@ class StartPage(QScrollArea):
             btn.setFont(fonts['large_font'])
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: white;
-                    border: 2px solid #CCCCCC;
+                    background-color: #1e1e1e;
+                    color: #ffffff;
+                    border: 2px solid #2d2d2d;
                     border-radius: 8px;
                     padding: 20px;
                     min-width: 250px;
                 }
                 QPushButton:hover {
-                    background-color: #EAEAEA;
-                    border-color: #A5A5A5;
+                    background-color: #2d2d2d;
+                    border-color: #3e3e3e;
                 }
                 QPushButton:pressed {
-                    background-color: #CCCCCC;
+                    background-color: #3d3d3d;
                 }
             """)
             
-            # Use default parameter in lambda to capture loop variables correctly
             btn.clicked.connect(lambda checked=False, f=frame_class: controller.show_frame(f))
             self.buttons[page['name']] = btn
             

@@ -9,7 +9,8 @@ from analyze_data import analyze_edf as analyze_edf_prime
 from config.config import Configurations
 from gui.colors import colors
 from gui.fonts import fonts
-from gui.pages.start_page import StartPage
+from gui.components.back_button import BackButton
+from gui.components.title_label import TitleLabel
 
 class AnalyzeData(QScrollArea):
     def __init__(self, parent, controller):
@@ -27,27 +28,12 @@ class AnalyzeData(QScrollArea):
         self.layout = QVBoxLayout(content_widget)
         self.layout.setAlignment(Qt.AlignTop)
         
-        # App Title
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        # App Title (extracted component)
+        app_title = TitleLabel("Kombajn EEG")
         self.layout.addWidget(app_title)
         
-        # Back button
-        back_btn = QPushButton("Back to Start Page")
-        back_btn.setFont(fonts['medium_font'])
-        back_btn.clicked.connect(lambda: controller.show_frame(StartPage))
-        back_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #EAEAEA;
-            }
-        """)
+        # Back button (extracted component)
+        back_btn = BackButton(controller)
         self.layout.addWidget(back_btn)
         
         # File selector row
@@ -56,11 +42,22 @@ class AnalyzeData(QScrollArea):
         
         self.select_btn = QPushButton("Select EDF file")
         self.select_btn.clicked.connect(self.select_edf_file)
-        self.select_btn.setStyleSheet("padding: 8px;")
+        self.select_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #2d2d2d;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            QPushButton:hover {
+                background-color: #2d2d2d;
+            }
+        """)
         file_row.addWidget(self.select_btn)
         
         self.file_label = QLabel("No file selected")
-        self.file_label.setStyleSheet("padding: 8px;")
+        self.file_label.setStyleSheet("padding: 8px; color: #aaaaaa;")
         file_row.addWidget(self.file_label)
         file_row.addStretch()
         
@@ -101,9 +98,20 @@ class AnalyzeData(QScrollArea):
                 verbose='ERROR'
             )
             
-            # Create a Figure
-            figure = Figure(figsize=(25, 10))
+            # Create a Figure with dark styling
+            figure = Figure(figsize=(25, 10), facecolor='#121212')
             ax = figure.subplots()
+            ax.set_facecolor('#1e1e1e')
+            
+            # Style the labels, ticks, and spine borders
+            ax.tick_params(colors='white')
+            ax.xaxis.label.set_color('white')
+            ax.yaxis.label.set_color('white')
+            ax.title.set_color('white')
+            ax.grid(True, color='#2d2d2d')
+            for spine in ax.spines.values():
+                spine.set_color('#2d2d2d')
+                
             sns.lineplot(
                 data=accuracy_data, 
                 x="frequency", 
@@ -114,8 +122,16 @@ class AnalyzeData(QScrollArea):
                 markers=True, 
                 style='configuration'
             )
+            
+            # Style the Legend for dark mode
+            legend = ax.get_legend()
+            if legend:
+                legend.get_frame().set_facecolor('#1e1e1e')
+                legend.get_frame().set_edgecolor('#2d2d2d')
+                for text in legend.get_texts():
+                    text.set_color('white')
+            
             ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
-            ax.grid()
             
             # Remove old canvas and toolbar if any
             if self.canvas is not None:

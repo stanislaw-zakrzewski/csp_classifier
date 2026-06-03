@@ -15,7 +15,8 @@ from config.config import Configurations
 from data_classes.subject import Subject
 from gui.fonts import fonts
 from gui.colors import colors
-from gui.pages.start_page import StartPage
+from gui.components.back_button import BackButton
+from gui.components.title_label import TitleLabel
 
 class ERDSAnalysis(QScrollArea):
     def __init__(self, parent, controller, none=None):
@@ -37,27 +38,12 @@ class ERDSAnalysis(QScrollArea):
         self.main_layout = QVBoxLayout(content_widget)
         self.main_layout.setAlignment(Qt.AlignTop)
         
-        # Title
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        # Title (extracted component)
+        app_title = TitleLabel("Kombajn EEG")
         self.main_layout.addWidget(app_title)
         
-        # Back Button
-        back_btn = QPushButton("Back to Start Page")
-        back_btn.setFont(fonts['medium_font'])
-        back_btn.clicked.connect(lambda: controller.show_frame(StartPage))
-        back_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #EAEAEA;
-            }
-        """)
+        # Back Button (extracted component)
+        back_btn = BackButton(controller)
         self.main_layout.addWidget(back_btn)
         
         # Parameters section
@@ -71,17 +57,29 @@ class ERDSAnalysis(QScrollArea):
         
         self.select_btn = QPushButton("Select EDF file")
         self.select_btn.clicked.connect(self.select_edf_file)
-        self.select_btn.setStyleSheet("padding: 8px;")
+        self.select_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #2d2d2d;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            QPushButton:hover {
+                background-color: #2d2d2d;
+            }
+        """)
         file_row.addWidget(self.select_btn)
         
         self.file_label = QLabel("No file selected")
-        self.file_label.setStyleSheet("padding: 8px;")
+        self.file_label.setStyleSheet("padding: 8px; color: #aaaaaa;")
         file_row.addWidget(self.file_label)
         file_row.addStretch()
         
         # Picks section
         picks_label = QLabel("Picks:")
         picks_label.setFont(fonts['medium_bold'])
+        picks_label.setStyleSheet("color: white;")
         params_layout.addWidget(picks_label)
         
         self.picks_widget = QWidget()
@@ -237,6 +235,9 @@ class ERDSAnalysis(QScrollArea):
                 1, ncols, figsize=(12, ncols), gridspec_kw={"width_ratios": ratios}
             )
             
+            # Apply dark mode to left figures
+            fig.patch.set_facecolor('#121212')
+            
             if ncols == 2:
                 axes_list = [axes[0]]
                 colorbar_ax = axes[1]
@@ -261,14 +262,27 @@ class ERDSAnalysis(QScrollArea):
                     mask=mask,
                     mask_style="mask",
                 )
+                
+                # Apply dark styles
+                ax.set_facecolor('#1e1e1e')
+                ax.tick_params(colors='white')
+                ax.xaxis.label.set_color('white')
+                ax.yaxis.label.set_color('white')
+                ax.title.set_color('white')
+                for spine in ax.spines.values():
+                    spine.set_color('#2d2d2d')
+                    
                 ax.set_title(epochs.ch_names[ch], fontsize=10)
                 ax.axvline(0, linewidth=1, color="black", linestyle=":")
                 if ch != 0:
                     ax.set_ylabel("")
                     ax.set_yticklabels("")
                     
-            fig.colorbar(axes_list[0].images[-1], cax=colorbar_ax).ax.set_yscale("linear")
-            fig.suptitle(f"ERDS ({event})")
+            cbar = fig.colorbar(axes_list[0].images[-1], cax=colorbar_ax)
+            cbar.ax.set_yscale("linear")
+            cbar.ax.yaxis.label.set_color('white')
+            cbar.ax.tick_params(colors='white')
+            fig.suptitle(f"ERDS ({event})", color='white')
             
             canvas = FigureCanvas(fig)
             self.left_canvases.append(canvas)
@@ -285,7 +299,7 @@ class ERDSAnalysis(QScrollArea):
         
         g = sns.FacetGrid(df, row="band", col="channel", margin_titles=True)
         g.map(sns.lineplot, "time", "value", "condition", n_boot=10)
-        axline_kw = dict(color="black", linestyle="dashed", linewidth=0.5, alpha=0.5)
+        axline_kw = dict(color="white", linestyle="dashed", linewidth=0.5, alpha=0.5)
         g.map(plt.axhline, y=0, **axline_kw)
         g.map(plt.axvline, x=0, **axline_kw)
         g.set(ylim=(-1.5, 1.5))
@@ -293,6 +307,31 @@ class ERDSAnalysis(QScrollArea):
         g.set_titles(col_template="{col_name}", row_template="{row_name}")
         g.add_legend(ncol=2, loc="lower center")
         g.fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.08)
+        
+        # Apply dark mode styles to FacetGrid
+        g.figure.patch.set_facecolor('#121212')
+        for ax in g.axes.flat:
+            ax.set_facecolor('#1e1e1e')
+            ax.tick_params(colors='white')
+            ax.xaxis.label.set_color('white')
+            ax.yaxis.label.set_color('white')
+            for text in ax.texts:
+                text.set_color('white')
+            for spine in ax.spines.values():
+                spine.set_color('#2d2d2d')
+                
+        # Fix label text colors specifically
+        for ax in g.axes[:, -1]:
+            ax.yaxis.get_label().set_color('white')
+        for ax in g.axes[0, :]:
+            ax.xaxis.get_label().set_color('white')
+            
+        legend = g.legend
+        if legend:
+            legend.get_frame().set_facecolor('#1e1e1e')
+            legend.get_frame().set_edgecolor('#2d2d2d')
+            for text in legend.get_texts():
+                text.set_color('white')
         
         self.right_canvas = FigureCanvas(g.figure)
         self.figures_layout.addWidget(self.right_canvas, 0, 1, len(event_ids), 1)

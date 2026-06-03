@@ -6,14 +6,15 @@ import pandas as pd
 
 from PySide6.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, 
                              QGridLayout, QLineEdit, QComboBox, QScrollArea, QFrame)
-from PySide6.QtCore import Qt, Signal, QPoint, QObject
-from PySide6.QtGui import QPainter, QPixmap, QPen, QColor
+from PySide6.QtCore import Qt, Signal, QObject
 
 import pygds
 from config.config import Configurations
-from gui.pages.start_page import StartPage
 from gui.colors import colors
 from gui.fonts import fonts
+from gui.components.back_button import BackButton
+from gui.components.title_label import TitleLabel
+from gui.components.electrode_canvas import ElectrodeCanvas
 
 ELECTRODE_COORDINATES = {
     'Fp1': (479, 185),
@@ -104,35 +105,6 @@ FILTER_NAMES = {
     'bs': 'band-stop'
 }
 
-class FilterElectrodeCanvas(QWidget):
-    def __init__(self, image_path, coordinates, parent=None):
-        super().__init__(parent)
-        self.pixmap = QPixmap(image_path)
-        self.coordinates = coordinates
-        self.highlighted_electrodes = set()
-
-        if not self.pixmap.isNull():
-            self.setFixedSize(self.pixmap.size())
-
-    def update_electrode_colors(self, highlighted_list):
-        self.highlighted_electrodes = set(highlighted_list)
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        if not self.pixmap.isNull():
-            painter.drawPixmap(0, 0, self.pixmap)
-
-        r = 35
-        for name in self.coordinates:
-            if name in self.highlighted_electrodes:
-                x, y = self.coordinates[name]
-                pen = QPen(QColor("red"))
-                pen.setWidth(10)
-                painter.setPen(pen)
-                painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(QPoint(x, y), r, r)
-
 class AcquisitionSignaler(QObject):
     update_ui = Signal(str, str, bool)
 
@@ -152,35 +124,20 @@ class FilterBrowser(QScrollArea):
         main_layout = QVBoxLayout(content_widget)
         main_layout.setAlignment(Qt.AlignTop)
 
-        # Title
-        app_title = QLabel("Kombajn EEG")
-        app_title.setFont(fonts['large_bold_font'])
-        app_title.setStyleSheet("margin: 10px; border: none;")
+        # Title (extracted component)
+        app_title = TitleLabel("Kombajn EEG")
         main_layout.addWidget(app_title)
 
-        # Back Button
-        back_to_start_page_button = QPushButton("Back to Start Page")
-        back_to_start_page_button.setFont(fonts['medium_font'])
-        back_to_start_page_button.clicked.connect(lambda: controller.show_frame(StartPage))
-        back_to_start_page_button.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #EAEAEA;
-            }
-        """)
+        # Back Button (extracted component)
+        back_to_start_page_button = BackButton(controller)
         main_layout.addWidget(back_to_start_page_button)
 
         # Content horizontal layout
         content_hbox = QHBoxLayout()
         main_layout.addLayout(content_hbox)
 
-        # Left panel: Image Canvas
-        self.electrodes_canvas = FilterElectrodeCanvas("gui/electrode_placement_filled.png", ELECTRODE_COORDINATES)
+        # Left panel: Image Canvas (extracted component)
+        self.electrodes_canvas = ElectrodeCanvas(ELECTRODE_COORDINATES, interactive=False)
         content_hbox.addWidget(self.electrodes_canvas)
 
         # Right panel: Controls & Table
@@ -191,6 +148,7 @@ class FilterBrowser(QScrollArea):
 
         self.table_title = QLabel("Filters")
         self.table_title.setFont(fonts['large_font'])
+        self.table_title.setStyleSheet("color: white;")
         self.right_layout.addWidget(self.table_title)
 
         # Table container
@@ -223,7 +181,7 @@ class FilterBrowser(QScrollArea):
         self.add_filter_button.clicked.connect(self.render_add_filter)
         self.form_layout.addWidget(self.add_filter_button)
 
-        # Acquisition threads (preserved but not active in default UI)
+        # Acquisition thread variables (preserved)
         self.signaler = AcquisitionSignaler()
         self.signaler.update_ui.connect(self.on_update_ui)
         self.acquisition_thread = None
@@ -242,31 +200,38 @@ class FilterBrowser(QScrollArea):
         for col_idx, text in enumerate(headers):
             lbl = QLabel(text)
             lbl.setFont(fonts['medium_bold'])
+            lbl.setStyleSheet("color: white;")
             self.table_grid.addWidget(lbl, 0, col_idx)
 
         for row_index, data_row in enumerate(self.filter_data.values):
             name_lbl = QLabel(str(data_row[0]))
             name_lbl.setFont(fonts['medium_font'])
+            name_lbl.setStyleSheet("color: white;")
             self.table_grid.addWidget(name_lbl, row_index + 1, 0)
 
             type_lbl = QLabel(FILTER_NAMES.get(data_row[1], str(data_row[1])))
             type_lbl.setFont(fonts['medium_font'])
+            type_lbl.setStyleSheet("color: white;")
             self.table_grid.addWidget(type_lbl, row_index + 1, 1)
 
             f1_lbl = QLabel(str(data_row[2]))
             f1_lbl.setFont(fonts['medium_font'])
+            f1_lbl.setStyleSheet("color: white;")
             self.table_grid.addWidget(f1_lbl, row_index + 1, 2)
 
             f2_lbl = QLabel(str(data_row[3]))
             f2_lbl.setFont(fonts['medium_font'])
+            f2_lbl.setStyleSheet("color: white;")
             self.table_grid.addWidget(f2_lbl, row_index + 1, 3)
 
             steep_lbl = QLabel(str(data_row[4]))
             steep_lbl.setFont(fonts['medium_font'])
+            steep_lbl.setStyleSheet("color: white;")
             self.table_grid.addWidget(steep_lbl, row_index + 1, 4)
 
             ch_lbl = QLabel(str(data_row[5]))
             ch_lbl.setFont(fonts['medium_font'])
+            ch_lbl.setStyleSheet("color: white;")
             self.table_grid.addWidget(ch_lbl, row_index + 1, 5)
 
             # Show Electrodes button
@@ -331,12 +296,10 @@ class FilterBrowser(QScrollArea):
         self.add_input_channels = QLineEdit()
         form_grid.addWidget(self.add_input_channels, 6, 1)
 
-        # Connect signals for dynamic changes
         self.add_variable_band_specific.currentTextChanged.connect(self.band_change_callback)
         self.add_variable_band.currentTextChanged.connect(self.band_change_callback)
         self.add_variable_band_steepness.currentTextChanged.connect(self.band_steepness_callback)
 
-        # Action buttons
         cancel_btn = QPushButton("Cancel")
         cancel_btn.setStyleSheet("background-color: #ff9800; color: white; padding: 8px;")
         cancel_btn.clicked.connect(self.render_add_button)
