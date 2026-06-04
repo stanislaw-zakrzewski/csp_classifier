@@ -1,17 +1,169 @@
+import sys
+import os
+import tempfile
+import shutil
+import traceback
+import mne
+import pickle
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
-from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea
-from PySide6.QtCore import Qt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 import matplotlib.ticker as ticker
-import seaborn as sns
 
-from analyze_data import analyze_edf as analyze_edf_prime
+from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea
+from PySide6.QtCore import Qt, QThread, Signal
+
 from config.config import Configurations
 from gui.colors import colors
 from gui.fonts import fonts
 from gui.components.back_button import BackButton
 from gui.components.title_label import TitleLabel
+
+# MOABB and sklearn / pyriemann
+from moabb.datasets.base import BaseDataset
+from moabb.evaluations import WithinSessionEvaluation
+from moabb.paradigms import MotorImagery
+from mne.decoding import CSP
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.model_selection import StratifiedKFold
+from sklearn.pipeline import make_pipeline
+from sklearn.svm import SVC
+from pyriemann.estimation import Covariances
+from pyriemann.tangentspace import TangentSpace
+from sklearn.linear_model import LogisticRegression
+
+# Monkey-patch WithinSessionEvaluation to respect n_splits
+def custom_create_splitter(self):
+    from sklearn.model_selection import StratifiedKFold
+    from moabb.evaluations.splitters import WithinSessionSplitter
+    cv_class, cv_kwargs = self._resolve_cv(StratifiedKFold)
+    n_folds = self.n_splits if self.n_splits is not None else 5
+    return WithinSessionSplitter(
+        n_folds=n_folds,
+        shuffle=True,
+        random_state=self.random_state,
+        cv_class=cv_class,
+        **cv_kwargs,
+    )
+
+WithinSessionEvaluation._create_splitter = custom_create_splitter
+
+# Keep track of active QThreads globally to prevent them from being garbage-collected
+# during execution, which would cause the fatal QThread destruction crash.
+active_threads = []
+
+
+class LocalEDF(BaseDataset):
+    def __init__(self, edf_path):
+        self.edf_path = edf_path
+        
+        # Load Raw file to inspect annotations
+        raw = mne.io.read_raw_edf(edf_path, preload=False)
+        
+        # Get unique annotations (ignore break/pause/rest_break)
+        unique_annots = sorted(list(set(raw.annotations.description)))
+        unique_annots = [a for a in unique_annots if a not in ('break', 'pause', 'rest_break')]
+        
+        # Map unique annotations to numbers (1, 2, 3...)
+        events = {desc: idx + 1 for idx, desc in enumerate(unique_annots)}
+        
+        # Set max duration from annotations
+        max_duration = float(raw.annotations.duration.max()) if len(raw.annotations.duration) > 0 else 4.0
+        interval = [0.0, max_duration]
+        
+        super().__init__(
+            subjects=[1],
+            sessions_per_subject=1,
+            events=events,
+            code="LocalEDF",
+            interval=interval,
+            paradigm="imagery"
+        )
+        self._raw_cache = mne.io.read_raw_edf(edf_path, preload=True)
+
+    def _get_single_subject_data(self, subject):
+        return {'0session': {'0run': self._raw_cache}}
+
+    def data_path(self, subject, path=None, force_update=False, update_path=None, verbose=None):
+        return [self.edf_path]
+
+
+class AnalysisThread(QThread):
+    finished = Signal(object, str, float)  # (DataFrame or None, error_message, chance_level)
+    status = Signal(str)
+
+    def __init__(self, edf_path):
+        super().__init__()
+        self.edf_path = edf_path
+        active_threads.append(self)
+
+    def run(self):
+        temp_dir = tempfile.mkdtemp(prefix="bids_temp_")
+        try:
+            self.status.emit("Reading EDF file annotations...")
+            dataset = LocalEDF(self.edf_path)
+            
+            events_list = list(dataset.event_id.keys())
+            if not events_list:
+                raise ValueError("No class events found in EDF file annotations. Cannot perform classification.")
+                
+            n_classes = len(events_list)
+            chance_level = 1.0 / n_classes
+            
+            # Calculate sample count from annotations
+            annots = dataset._raw_cache.annotations
+            n_samples = len([a for a in annots if a['description'] in events_list])
+            if n_samples < 2:
+                raise ValueError(f"Too few trials ({n_samples}) in EDF file. At least 2 trials are required for classification.")
+                
+            n_splits = min(5, n_samples)
+            
+            self.status.emit("Converting EDF file to BIDS format...")
+            # Run BIDS conversion
+            bids_root = dataset.convert_to_bids(path=temp_dir, subjects=[1], overwrite=True)
+            
+            self.status.emit(f"Running MOABB cross-validation ({n_splits}-fold)...")
+            
+            # Setup pipelines
+            pipelines = {
+                "CSP + LDA": make_pipeline(CSP(n_components=4), LDA()),
+                "Cov + Tangent Space + LR": make_pipeline(Covariances(estimator='oas'), TangentSpace(metric='riemann'), LogisticRegression(max_iter=1000)),
+                "CSP + SVM": make_pipeline(CSP(n_components=4), SVC(kernel='rbf'))
+            }
+            
+            paradigm = MotorImagery(events=events_list, n_classes=n_classes, fmin=2, fmax=36)
+            
+            from moabb.datasets.base import CacheConfig
+            cache_config = CacheConfig(use=False, save_raw=False, save_epochs=False, save_array=False)
+            
+            evaluation = WithinSessionEvaluation(
+                paradigm=paradigm,
+                datasets=[dataset],
+                overwrite=True,
+                n_splits=n_splits,
+                cv_class=StratifiedKFold,
+                hdf5_path=os.path.join(temp_dir, "results.hdf5"),
+                cache_config=cache_config,
+                n_jobs=1
+            )
+            
+            from joblib import parallel_backend
+            with parallel_backend('sequential'):
+                results = evaluation.process(pipelines)
+            self.finished.emit(results, "", chance_level)
+            
+        except Exception as e:
+            tb = traceback.format_exc()
+            self.finished.emit(None, f"{str(e)}\n\n{tb}", 0.5)
+        finally:
+            # Clean up the temp BIDS directory
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception:
+                pass
+
 
 class AnalyzeData(QScrollArea):
     def __init__(self, parent, controller):
@@ -22,6 +174,7 @@ class AnalyzeData(QScrollArea):
         self.canvas = None
         self.toolbar = None
         self.selected_file_path = ""
+        self.is_analyzing = False
         
         content_widget = QWidget()
         self.setWidget(content_widget)
@@ -29,11 +182,11 @@ class AnalyzeData(QScrollArea):
         self.layout = QVBoxLayout(content_widget)
         self.layout.setAlignment(Qt.AlignTop)
         
-        # App Title (extracted component)
+        # App Title
         app_title = TitleLabel("Kombajn EEG")
         self.layout.addWidget(app_title)
         
-        # Back button (extracted component)
+        # Back button
         back_btn = BackButton(controller)
         self.layout.addWidget(back_btn)
         
@@ -43,17 +196,22 @@ class AnalyzeData(QScrollArea):
         
         self.select_btn = QPushButton("Select EDF file")
         self.select_btn.clicked.connect(self.select_edf_file)
-        self.select_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #2d2d2d;
+        self.select_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['surface']};
+                color: {colors['text']};
+                border: 1px solid {colors['border']};
                 border-radius: 4px;
                 padding: 8px;
-            }
-            QPushButton:hover {
-                background-color: #2d2d2d;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['border']};
+            }}
+            QPushButton:disabled {{
+                background-color: #1a1a1a;
+                color: #555555;
+                border: 1px solid #222222;
+            }}
         """)
         file_row.addWidget(self.select_btn)
         
@@ -65,19 +223,37 @@ class AnalyzeData(QScrollArea):
         # Analyze button
         self.analyze_btn = QPushButton("Analyze selected EDF")
         self.analyze_btn.clicked.connect(self.analyze_edf_gui)
-        self.analyze_btn.setStyleSheet("""
-            QPushButton {
+        self.analyze_btn.setStyleSheet(f"""
+            QPushButton {{
                 padding: 10px; 
-                background-color: #4CAF50; 
+                background-color: {colors['success']}; 
                 color: white; 
                 border: none; 
                 border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['success_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: #2e4a30;
+                color: #888888;
+            }}
         """)
         self.layout.addWidget(self.analyze_btn)
+        self.analyze_btn.setEnabled(False)
+        
+        # Status Label
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("padding: 8px; color: #2196F3; font-weight: bold;")
+        self.layout.addWidget(self.status_label)
+        
+        # Post-analysis control panel (hidden by default)
+        self.post_analysis_widget = QWidget()
+        self.post_analysis_layout = QVBoxLayout(self.post_analysis_widget)
+        self.post_analysis_layout.setContentsMargins(0, 10, 0, 10)
+        self.layout.addWidget(self.post_analysis_widget)
+        self.post_analysis_widget.hide()
         
         # Matplotlib chart container
         self.chart_container = QVBoxLayout()
@@ -90,17 +266,68 @@ class AnalyzeData(QScrollArea):
         if filename:
             self.selected_file_path = filename
             self.file_label.setText(filename)
+            self.status_label.setText("")
+            self.analyze_btn.setEnabled(True)
             
     def analyze_edf_gui(self):
-        if self.selected_file_path:
-            accuracy_data = analyze_edf_prime(
-                self.selected_file_path,
-                classifier_type=self.configurations.read('analyze_data.classifier'),
-                verbose='ERROR'
-            )
-            
+        if not self.selected_file_path:
+            self.status_label.setStyleSheet("color: #ff9800; font-weight: bold; padding: 4px;")
+            self.status_label.setText("Please select an EDF file first.")
+            return
+
+        # Prevent concurrent executions / multiple click spamming
+        if self.is_analyzing:
+            return
+
+        if hasattr(self, 'analysis_thread') and self.analysis_thread is not None:
+            try:
+                if self.analysis_thread.isRunning():
+                    return
+                # Ensure previous thread is fully joined
+                self.analysis_thread.wait()
+            except RuntimeError:
+                # The C++ object was already deleted by deleteLater, so it is safe to proceed
+                self.analysis_thread = None
+
+        self.is_analyzing = True
+
+        # Disable buttons
+        self.select_btn.setEnabled(False)
+        self.analyze_btn.setEnabled(False)
+        self.status_label.setStyleSheet("color: #2196F3; font-weight: bold; padding: 4px;")
+        self.status_label.setText("Starting analysis...")
+
+        # Start thread
+        thread = AnalysisThread(self.selected_file_path)
+        self.analysis_thread = thread
+        
+        thread.status.connect(self.update_status)
+        thread.finished.connect(self.analysis_completed)
+        thread.finished.connect(lambda *args, t=thread: active_threads.remove(t) if t in active_threads else None)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    def update_status(self, text):
+        self.status_label.setText(text)
+
+    def analysis_completed(self, results, error_msg, chance_level):
+        self.is_analyzing = False
+        self.select_btn.setEnabled(True)
+        # Keep analyze button disabled until results are cleared
+        self.analyze_btn.setEnabled(False)
+
+        if error_msg:
+            self.status_label.setStyleSheet("color: #f44336; font-weight: bold; padding: 4px;")
+            self.status_label.setText(f"Analysis failed:\n{error_msg}")
+            return
+
+        self.status_label.setStyleSheet("color: #4CAF50; font-weight: bold; padding: 4px;")
+        self.status_label.setText("Analysis completed successfully!")
+
+        # Plot results
+        try:
             # Create a Figure with dark styling
-            figure = Figure(figsize=(25, 10), facecolor='#121212')
+            figure = Figure(figsize=(8, 5), facecolor='#121212')
             ax = figure.subplots()
             ax.set_facecolor('#1e1e1e')
             
@@ -109,31 +336,37 @@ class AnalyzeData(QScrollArea):
             ax.xaxis.label.set_color('white')
             ax.yaxis.label.set_color('white')
             ax.title.set_color('white')
-            ax.grid(True, color='#2d2d2d')
+            ax.grid(True, color='#2d2d2d', linestyle='--', alpha=0.5)
             for spine in ax.spines.values():
                 spine.set_color('#2d2d2d')
                 
-            sns.lineplot(
-                data=accuracy_data, 
-                x="frequency", 
-                y="accuracy", 
-                hue="configuration", 
-                errorbar=None, 
-                ax=ax, 
-                markers=True, 
-                style='configuration'
+            # Plot using seaborn barplot
+            sns.barplot(
+                data=results,
+                x="pipeline",
+                y="score",
+                hue="pipeline",
+                legend=False,
+                ax=ax,
+                palette="viridis",
+                errorbar="sd",
+                capsize=0.1
             )
             
+            # Draw chance level
+            ax.axhline(y=chance_level, color='#f44336', linestyle='--', linewidth=1.5, label=f'Chance Level ({chance_level:.2f})')
+            
+            ax.set_xlabel("Classification Pipeline", fontsize=10, fontweight='bold', labelpad=10)
+            ax.set_ylabel("Accuracy", fontsize=10, fontweight='bold', labelpad=10)
+            ax.set_title("BCI Pipeline Comparison (MOABB Within-Session)", fontsize=12, fontweight='bold', pad=15)
+            ax.set_ylim(0, 1.05)
+            
             # Style the Legend for dark mode
-            legend = ax.get_legend()
+            legend = ax.legend(facecolor='#1e1e1e', edgecolor='#2d2d2d')
             if legend:
-                legend.get_frame().set_facecolor('#1e1e1e')
-                legend.get_frame().set_edgecolor('#2d2d2d')
                 for text in legend.get_texts():
                     text.set_color('white')
-            
-            ax.xaxis.set_major_locator(ticker.MultipleLocator(.5))
-            
+                    
             # Remove old canvas and toolbar if any
             if self.canvas is not None:
                 self.chart_container.removeWidget(self.canvas)
@@ -149,3 +382,123 @@ class AnalyzeData(QScrollArea):
             
             self.chart_container.addWidget(self.canvas)
             self.chart_container.addWidget(self.toolbar)
+            
+            # Setup the post-analysis control panel buttons
+            while self.post_analysis_layout.count():
+                child = self.post_analysis_layout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+                    
+            # 1. Notice Label (instead of Clear button)
+            notice_label = QLabel("Due to implementation of analysis the program must be reopened to run analysis again")
+            notice_label.setStyleSheet("color: #ff9800; font-weight: bold; padding: 4px; font-size: 13px;")
+            self.post_analysis_layout.addWidget(notice_label)
+            
+            # Spacer
+            self.post_analysis_layout.addSpacing(10)
+            
+            # 2. Save buttons horizontal row (using exact Viridis colors)
+            save_row_widget = QWidget()
+            save_row_layout = QHBoxLayout(save_row_widget)
+            save_row_layout.setContentsMargins(0, 5, 0, 5)
+            
+            pipelines_styles = {
+                "CSP + LDA": ("#3b528b", "#4c66a8"),
+                "Cov + Tangent Space + LR": ("#21918c", "#2ca8a2"),
+                "CSP + SVM": ("#5ec962", "#76db7a")
+            }
+            
+            for name, (bg_color, hover_color) in pipelines_styles.items():
+                btn = QPushButton(f"Save {name}")
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        padding: 8px 15px; 
+                        background-color: {bg_color}; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px;
+                        font-weight: bold;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {hover_color};
+                    }}
+                """)
+                btn.clicked.connect(lambda checked=False, p_name=name: self.save_pipeline(p_name))
+                save_row_layout.addWidget(btn)
+                
+            save_row_layout.addStretch()
+            self.post_analysis_layout.addWidget(save_row_widget)
+            
+            self.post_analysis_widget.show()
+            
+        except Exception as e:
+            tb = traceback.format_exc()
+            self.status_label.setStyleSheet("color: #f44336; font-weight: bold; padding: 4px;")
+            self.status_label.setText(f"Error plotting results: {e}\n\n{tb}")
+
+    def save_pipeline(self, pipeline_name):
+        filename, _ = QFileDialog.getSaveFileName(
+            self, f"Save Trained {pipeline_name}", f"{pipeline_name.replace(' + ', '_').replace(' ', '_').lower()}.pkl", "Pickle files (*.pkl)"
+        )
+        if not filename:
+            return
+            
+        try:
+            self.status_label.setStyleSheet("color: #2196F3; font-weight: bold; padding: 4px;")
+            self.status_label.setText(f"Fitting and saving {pipeline_name}...")
+            
+            # Re-create dataset and paradigm to fit on all data
+            dataset = LocalEDF(self.selected_file_path)
+            events_list = list(dataset.event_id.keys())
+            
+            # Setup specific pipeline structure
+            if pipeline_name == "CSP + LDA":
+                pipeline = make_pipeline(CSP(n_components=4), LDA())
+            elif pipeline_name == "Cov + Tangent Space + LR":
+                pipeline = make_pipeline(Covariances(estimator='oas'), TangentSpace(metric='riemann'), LogisticRegression(max_iter=1000))
+            elif pipeline_name == "CSP + SVM":
+                pipeline = make_pipeline(CSP(n_components=4), SVC(kernel='rbf'))
+            else:
+                raise ValueError(f"Unknown pipeline: {pipeline_name}")
+                
+            paradigm = MotorImagery(events=events_list, n_classes=len(events_list), fmin=2, fmax=36)
+            
+            # Fit on all epochs of the dataset
+            X, y, metadata = paradigm.get_data(dataset=dataset, subjects=[1])
+            pipeline.fit(X, y)
+            
+            # Serialize the trained pipeline using pickle
+            with open(filename, 'wb') as f:
+                pickle.dump(pipeline, f)
+                
+            self.status_label.setStyleSheet("color: #4CAF50; font-weight: bold; padding: 4px;")
+            self.status_label.setText(f"Successfully saved {pipeline_name} to {os.path.basename(filename)}!")
+        except Exception as e:
+            tb = traceback.format_exc()
+            self.status_label.setStyleSheet("color: #f44336; font-weight: bold; padding: 4px;")
+            self.status_label.setText(f"Failed to save pipeline: {e}\n\n{tb}")
+
+    def on_show(self):
+        # Clear status if no thread is active
+        is_running = False
+        if hasattr(self, 'analysis_thread') and self.analysis_thread is not None:
+            try:
+                is_running = self.analysis_thread.isRunning()
+            except RuntimeError:
+                self.analysis_thread = None
+                
+        if not is_running:
+            self.status_label.setText("")
+
+    def on_hide(self):
+        # Disconnect signals to prevent UI update if page is hidden
+        if hasattr(self, 'analysis_thread') and self.analysis_thread is not None:
+            try:
+                if self.analysis_thread.isRunning():
+                    try:
+                        self.analysis_thread.status.disconnect()
+                        self.analysis_thread.finished.disconnect()
+                    except Exception:
+                        pass
+            except RuntimeError:
+                self.analysis_thread = None
