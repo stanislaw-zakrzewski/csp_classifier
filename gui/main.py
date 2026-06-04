@@ -15,6 +15,8 @@ from gui.pages.filter_browser import FilterBrowser
 from gui.pages.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from gui.pages.test_electrodes import TestElectrodes
+from gui.pages.real_time import RealTime
+
 
 class App(QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -33,6 +35,7 @@ class App(QMainWindow):
             {'name': 'ERD/S Analysis', 'frame': ERDSAnalysis},
             {'name': 'Browse Recordings', 'frame': BrowseRecordings},
             {'name': 'Prompt Viewer', 'frame': PromptViewer},
+            {'name': 'Real-Time Analysis', 'frame': RealTime},
         ]
         
         self.stacked_widget = QStackedWidget(self)
