@@ -301,3 +301,13 @@ class CollectData(QScrollArea):
         self.time_total_val = sum(list(map(lambda x: x[1], self.queue)))
         self.time_total_label.setText(f"Total time: {self.time_total_val}")
         self.current_queue = copy.deepcopy(queue)
+
+    def on_show(self):
+        # Reload latest configurations dynamically
+        self.patient_name_input.setText(self.configurations.read('collect_data.patient_name'))
+        self.gender_input.setText(self.configurations.read('collect_data.patient_gender'))
+
+    def on_hide(self):
+        # Close active overlay prompts dialog if visible
+        if self.prompt_viewer and not self.prompt_viewer.closed:
+            self.prompt_viewer.close()

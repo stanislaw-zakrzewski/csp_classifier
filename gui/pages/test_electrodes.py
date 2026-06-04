@@ -235,3 +235,18 @@ class TestElectrodes(QScrollArea):
             print("Data Fetching Error:", e)
         finally:
             del d
+
+    def on_show(self):
+        # Reload latest configurations dynamically
+        self.selected_electrodes = self.configurations.read('general.selected_electrodes')
+        self.canvas.limit_to_electrodes = self.selected_electrodes
+        if self.selected_electrode_code not in self.selected_electrodes:
+            self.selected_electrode_code = None
+            self.l.setText("")
+            self.canvas.set_active_electrode(None)
+        self.canvas.update()
+
+    def on_hide(self):
+        # Stop data acquisition if page is switched
+        if self.acquisition_in_progress:
+            self.acquisition_stopped = True

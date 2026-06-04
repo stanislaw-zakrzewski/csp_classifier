@@ -108,3 +108,7 @@ class PromptViewer(QScrollArea):
             self.player.terminate()
             self.player.deleteLater()
             self.player = None
+
+    def on_hide(self):
+        # Stop and clear prompt media player when leaving page
+        self.clear_prompt()

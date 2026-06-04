@@ -452,3 +452,13 @@ class FilterBrowser(QScrollArea):
             print("Acquisition Error:", e)
         finally:
             del d
+
+    def on_show(self):
+        # Reload latest CSV filter configurations dynamically
+        self.filter_data = pd.read_csv('config/filters.csv')
+        self.render_filter_table()
+
+    def on_hide(self):
+        # Stop data acquisition if page is switched
+        if self.acquisition_in_progress:
+            self.acquisition_stopped = True

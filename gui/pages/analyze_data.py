@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea
 from PySide6.QtCore import Qt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
@@ -136,6 +137,7 @@ class AnalyzeData(QScrollArea):
             # Remove old canvas and toolbar if any
             if self.canvas is not None:
                 self.chart_container.removeWidget(self.canvas)
+                plt.close(self.canvas.figure)
                 self.canvas.deleteLater()
             if self.toolbar is not None:
                 self.chart_container.removeWidget(self.toolbar)

@@ -167,12 +167,15 @@ class ERDSAnalysis(QScrollArea):
             picks = [self.available_electrodes[0]]
             
         # Clear old canvases
+        # Clear old canvases and close figures to avoid memory leaks
         for canvas in self.left_canvases:
             self.figures_layout.removeWidget(canvas)
+            plt.close(canvas.figure)
             canvas.deleteLater()
         self.left_canvases = []
         if self.right_canvas is not None:
             self.figures_layout.removeWidget(self.right_canvas)
+            plt.close(self.right_canvas.figure)
             self.right_canvas.deleteLater()
             self.right_canvas = None
             

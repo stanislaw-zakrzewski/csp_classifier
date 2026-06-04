@@ -45,17 +45,36 @@ class App(QMainWindow):
         self.frames[StartPage] = start_frame
         self.stacked_widget.addWidget(start_frame)
         
-        # Other frames initialization
-        for p in pages:
-            F = p['frame']
-            frame = F(self.stacked_widget, self)
-            self.frames[F] = frame
-            self.stacked_widget.addWidget(frame)
-            
         self.show_frame(StartPage)
         
     def show_frame(self, cont):
-        frame = self.frames[cont]
+        # 1. Notify the current page it is being hidden
+        current_widget = self.stacked_widget.currentWidget()
+        if current_widget and hasattr(current_widget, 'on_hide') and callable(current_widget.on_hide):
+            try:
+                current_widget.on_hide()
+            except Exception as e:
+                print(f"Error in on_hide for {current_widget.__class__.__name__}: {e}")
+                
+        # 2. Lazily instantiate target page if it is not created yet
+        if cont not in self.frames:
+            try:
+                frame = cont(self.stacked_widget, self)
+                self.frames[cont] = frame
+                self.stacked_widget.addWidget(frame)
+            except Exception as e:
+                print(f"Error instantiating page {cont.__name__}: {e}")
+                return
+        else:
+            frame = self.frames[cont]
+            
+        # 3. Notify the target page it is being shown
+        if hasattr(frame, 'on_show') and callable(frame.on_show):
+            try:
+                frame.on_show()
+            except Exception as e:
+                print(f"Error in on_show for {frame.__class__.__name__}: {e}")
+                
         self.stacked_widget.setCurrentWidget(frame)
 
 if __name__ == "__main__":
