@@ -129,14 +129,15 @@ class GtecNautilusProInterface:
                     return False
                 item = current_queue[0]
                 
+                prompt_to_show = item[0]
                 if real_time_processor is not None:
-                    prompt_text = real_time_processor(signal)
+                    prompt_text = real_time_processor(signal, current_true_label=prompt_to_show)
                     if prompt_text is not None:
-                        item[0] = prompt_text
+                        prompt_to_show = prompt_text
                         
-                print('GTEC', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], len(signal[0]), current_queue)
+                print('GTEC', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], len(signal[0]), prompt_to_show)
                 if not prompt_viewer.closed:
-                    prompt_viewer.change_prompt(item[0])
+                    prompt_viewer.change_prompt(prompt_to_show)
                     # time.sleep(.5) # TUTAJ JEST PROBLEM
                     item[1] -= .1#1.0/batches_per_second
                     item[1] = round(item[1], 1)
