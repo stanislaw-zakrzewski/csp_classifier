@@ -63,7 +63,7 @@ class GtecNautilusProInterface:
         self.sampling_rate = self.configurations.read("general.sampling_rate")
         self.selected_channels = self.configurations.read('general.selected_electrodes')
 
-    def run_acquisition(self, prompt_viewer, current_queue, update_experiment_timeline_plot, progressbar_value, batches_per_second):
+    def run_acquisition(self, prompt_viewer, current_queue, update_experiment_timeline_plot, progressbar_value, batches_per_second, real_time_processor=None):
         global current_trial_remaining_length
         global current_label
         global trial_order
@@ -128,6 +128,12 @@ class GtecNautilusProInterface:
                 if current_queue is None or len(current_queue) == 0:
                     return False
                 item = current_queue[0]
+                
+                if real_time_processor is not None:
+                    prompt_text = real_time_processor(signal)
+                    if prompt_text is not None:
+                        item[0] = prompt_text
+                        
                 print('GTEC', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], len(signal[0]), current_queue)
                 if not prompt_viewer.closed:
                     prompt_viewer.change_prompt(item[0])
