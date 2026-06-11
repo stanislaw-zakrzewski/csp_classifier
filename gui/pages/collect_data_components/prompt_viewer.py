@@ -80,7 +80,7 @@ class PromptViewer(QDialog):
             self.layout.addWidget(self.player)
             
         if prompt_code == 'movement':
-            self.player.play('movement')
+            self.player.play('commands//visual_commands//movement.mov')
             self.audio_commands.perform_command('movement')
         elif prompt_code == 'left':
             self.player.play('commands//visual_commands//left.mov')
@@ -89,10 +89,10 @@ class PromptViewer(QDialog):
             self.player.play('commands//visual_commands//right.mov')
             self.audio_commands.perform_command('right')
         elif prompt_code == 'rest':
-            self.player.play('rest')
+            self.player.play('commands//visual_commands/rest.png')
             self.audio_commands.perform_command('rest')
         elif prompt_code == 'break':
-            self.player.play('break')
+            self.player.play('commands//visual_commands/pause.jpg')
             self.audio_commands.perform_command('pause')
         elif prompt_code == 'end':
             self.player.play('commands//visual_commands//end.jpg')
