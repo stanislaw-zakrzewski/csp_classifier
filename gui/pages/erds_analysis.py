@@ -162,6 +162,18 @@ class ERDSAnalysis(QScrollArea):
         if not self.selected_edf_file_path:
             return
             
+        self.analyze_button.setEnabled(False)
+        self.analyze_button.setText("Analyzing ERD/S... Please wait")
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
+
+        try:
+            self._do_analyze_edf_gui()
+        finally:
+            self.analyze_button.setEnabled(True)
+            self.analyze_button.setText("Analyze ERD/S for selected EDF")
+
+    def _do_analyze_edf_gui(self):
         picks = [el for el in self.available_electrodes if self.picks_values[el]]
         if not picks:
             picks = [self.available_electrodes[0]]
@@ -183,9 +195,7 @@ class ERDSAnalysis(QScrollArea):
         subject = Subject(self.selected_edf_file_path)
         raw = subject.get_raw_copy()
         
-        event_names = list(set(raw.annotations.description))
-        event_names.sort()
-        event_ids = {name: idx for idx, name in enumerate(event_names)}
+        event_ids = subject.id_dict
         duration = raw.annotations.duration.max()
         sampling_frequency = int(raw.info['sfreq'])
         
@@ -200,7 +210,7 @@ class ERDSAnalysis(QScrollArea):
         epochs = mne.Epochs(
             raw,
             events=subject.events,
-            event_id=event_names,
+            event_id=event_ids,
             tmin=tmin - 0.5,
             tmax=tmax + 0.5,
             picks=picks,

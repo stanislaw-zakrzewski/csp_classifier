@@ -5,7 +5,7 @@ from threading import Thread
 import numpy as np
 
 from PySide6.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, 
-                             QLineEdit, QScrollArea, QProgressBar)
+                             QLineEdit, QScrollArea, QProgressBar, QCheckBox)
 from PySide6.QtCore import Qt, Signal, QObject
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -16,6 +16,7 @@ from gui.colors import colors
 from gui.pages.collect_data_components.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from src.bci_integration.GtecNautilusProInterface import GtecNautilusProInterface
+from src.bci_integration.ZeroMockBCIInterface import ZeroMockBCIInterface
 from src.edf.EDFWriter import EDFWriter
 from gui.components.back_button import BackButton
 from gui.components.title_label import TitleLabel
@@ -65,6 +66,7 @@ class CollectData(QScrollArea):
         self.bci_interface = GtecNautilusProInterface()
         self.edf_writer = EDFWriter()
         self.progressbar_value = 0.0
+        self.is_mock_enabled = False
 
         content_widget = QWidget()
         self.setWidget(content_widget)
@@ -103,6 +105,11 @@ class CollectData(QScrollArea):
         form_layout.addLayout(gender_row)
 
         # Controls
+        self.mock_checkbox = QCheckBox("Use mocked data")
+        self.mock_checkbox.setStyleSheet(f"color: white; font-weight: bold;")
+        self.mock_checkbox.stateChanged.connect(self.on_mock_toggled)
+        self.layout.addWidget(self.mock_checkbox)
+
         self.prepare_experiment = QPushButton("Prepare experiment")
         self.prepare_experiment.clicked.connect(self.open_prompt_window)
         self.prepare_experiment.setStyleSheet("""
@@ -168,6 +175,9 @@ class CollectData(QScrollArea):
         self.gnt = None
         self.labels = None
         self.is_running = False
+
+    def on_mock_toggled(self, state):
+        self.is_mock_enabled = (state == Qt.Checked.value)
 
     def open_prompt_window(self):
         self.prepare_experiment.setEnabled(False)
@@ -308,13 +318,23 @@ class CollectData(QScrollArea):
         prompt_viewer_proxy = ThreadSafePromptViewerProxy(self.prompt_viewer)
         timeline_signaler = ThreadSafeTimelineSignaler(self.update_experiment_timeline_plot)
         
-        recorded_signal, start_date = self.bci_interface.run_acquisition(
-            prompt_viewer_proxy,
-            self.current_queue,
-            timeline_signaler,
-            self.progressbar_value,
-            self.batches_per_second
-        )
+        if self.is_mock_enabled:
+            mock_interface = ZeroMockBCIInterface()
+            recorded_signal, start_date = mock_interface.run_acquisition(
+                prompt_viewer_proxy,
+                self.current_queue,
+                timeline_signaler,
+                self.progressbar_value,
+                self.batches_per_second
+            )
+        else:
+            recorded_signal, start_date = self.bci_interface.run_acquisition(
+                prompt_viewer_proxy,
+                self.current_queue,
+                timeline_signaler,
+                self.progressbar_value,
+                self.batches_per_second
+            )
         
         self.gui_signaler.acquisition_finished.emit(recorded_signal, start_date)
 
