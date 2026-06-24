@@ -325,23 +325,57 @@ class Settings(QDialog):
 
     def create_list_entry(self, final_key, label_widget, values, form_layout):
         f = QWidget()
-        layout = QHBoxLayout(f)
+        layout = QVBoxLayout(f)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(8)
         
         box = QListWidget()
-        box.setMaximumHeight(100)
+        box.setMaximumHeight(120)
+        box.setStyleSheet(f"""
+            QListWidget {{
+                background-color: {colors['background']};
+                border: 1px solid {colors['border']};
+                border-radius: 4px;
+                color: {colors['text']};
+                padding: 4px;
+                outline: none;
+            }}
+            QListWidget::item {{
+                padding: 6px;
+                border-radius: 3px;
+                margin-bottom: 2px;
+            }}
+            QListWidget::item:hover {{
+                background-color: {colors['surface']};
+            }}
+            QListWidget::item:selected {{
+                background-color: {colors['primary']};
+                color: white;
+            }}
+        """)
         layout.addWidget(box)
         
-        btn_panel = QWidget()
-        btn_layout = QVBoxLayout(btn_panel)
-        btn_layout.setContentsMargins(0, 0, 0, 0)
-        btn_layout.setSpacing(4)
-        layout.addWidget(btn_panel)
+        bottom_panel = QWidget()
+        bottom_layout = QHBoxLayout(bottom_panel)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_layout.setSpacing(8)
+        layout.addWidget(bottom_panel)
         
         new_val_input = QLineEdit()
-        new_val_input.setPlaceholderText("New item...")
-        btn_layout.addWidget(new_val_input)
+        new_val_input.setPlaceholderText("Type new item...")
+        new_val_input.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {colors['background']};
+                border: 1px solid {colors['border']};
+                border-radius: 4px;
+                color: {colors['text']};
+                padding: 6px 10px;
+            }}
+            QLineEdit:focus {{
+                border: 1px solid {colors['primary']};
+            }}
+        """)
+        bottom_layout.addWidget(new_val_input)
         
         def add():
             txt = new_val_input.text().strip()
@@ -349,31 +383,47 @@ class Settings(QDialog):
                 box.addItem(txt)
                 new_val_input.clear()
                 
+        new_val_input.returnPressed.connect(add)
+                
         add_btn = QPushButton('Add')
-        add_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px;
-                font-size: 11px;
-            }
+        add_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['surface']};
+                color: {colors['text']};
+                border: 1px solid {colors['border']};
+                border-radius: 4px;
+                padding: 6px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['border']};
+            }}
         """)
         add_btn.clicked.connect(add)
-        btn_layout.addWidget(add_btn)
+        bottom_layout.addWidget(add_btn)
         
         def remove():
             for item in box.selectedItems():
                 box.takeItem(box.row(item))
                 
         rem_btn = QPushButton('Remove')
-        rem_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px;
-                font-size: 11px;
-            }
+        rem_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['surface']};
+                color: {colors['danger']};
+                border: 1px solid {colors['border']};
+                border-radius: 4px;
+                padding: 6px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['danger']};
+                color: white;
+            }}
         """)
         rem_btn.clicked.connect(remove)
-        btn_layout.addWidget(rem_btn)
+        bottom_layout.addWidget(rem_btn)
         
         self.inputs[final_key] = box
+        label_widget.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         form_layout.addRow(label_widget, f)
 
     def get_label(self, key):
