@@ -334,6 +334,7 @@ class RealTime(QScrollArea):
             self.time_total_val = 0.0
             self.time_total_label.setText("Total time: Infinite")
             
+        self._last_drawn_sec = -1
         self.prompt_viewer = PromptViewer(self, self.start_or_stop_acquisition, self.on_prompt_viewer_close, self.progressbar_value)
         self.prompt_viewer.show()
         self.update_experiment_timeline_plot(0)
@@ -374,6 +375,12 @@ class RealTime(QScrollArea):
         total_time_in_queue = sum(list(map(lambda x: x[1], self.current_queue)))
         elapsed = math.ceil((self.time_total_val - total_time_in_queue) * 10) / 10
         self.time_elapsed_label.setText(f"Elapsed time: {elapsed}")
+
+        current_sec = int(elapsed)
+        if hasattr(self, '_last_drawn_sec') and getattr(self, '_last_drawn_sec') == current_sec:
+            if elapsed != 0:
+                return
+        self._last_drawn_sec = current_sec
 
         if self.fig is None:
             self.fig = Figure(figsize=(15, 6), facecolor='#121212')

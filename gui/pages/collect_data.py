@@ -120,7 +120,7 @@ class CollectData(QScrollArea):
         self.layout.addWidget(self.prepare_experiment)
 
         self.start_acquisition_button = QPushButton("Start Acquisition")
-        self.start_acquisition_button.clicked.connect(self.start_acquisition)
+        self.start_acquisition_button.clicked.connect(self.start_or_stop_acquisition)
         self.start_acquisition_button.setEnabled(False)
         self.start_acquisition_button.setStyleSheet("""
             QPushButton {
@@ -167,6 +167,7 @@ class CollectData(QScrollArea):
         self.fig = None
         self.gnt = None
         self.labels = None
+        self.is_running = False
 
     def open_prompt_window(self):
         self.prepare_experiment.setEnabled(False)
@@ -174,7 +175,8 @@ class CollectData(QScrollArea):
         self.gender_input.setEnabled(False)
         self.start_acquisition_button.setEnabled(True)
         self.create_queue()
-        self.prompt_viewer = PromptViewer(self, self.start_acquisition, self.on_prompt_viewer_close, self.progressbar_value)
+        self._last_drawn_sec = -1
+        self.prompt_viewer = PromptViewer(self, self.start_or_stop_acquisition, self.on_prompt_viewer_close, self.progressbar_value)
         self.prompt_viewer.show()
         self.update_experiment_timeline_plot(0)
 
@@ -183,6 +185,24 @@ class CollectData(QScrollArea):
         self.patient_name_input.setEnabled(True)
         self.gender_input.setEnabled(True)
         self.start_acquisition_button.setEnabled(False)
+        self.start_acquisition_button.setText("Start Acquisition")
+        self.start_acquisition_button.setStyleSheet("""
+            QPushButton {
+                padding: 10px;
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #0b7dda;
+            }
+            QPushButton:disabled {
+                background-color: #CCCCCC;
+                color: #888888;
+            }
+        """)
+        self.is_running = False
         self.queue = None
         self.current_queue = None
         
@@ -201,6 +221,12 @@ class CollectData(QScrollArea):
         total_time_in_queue = sum(list(map(lambda x: x[1], self.current_queue)))
         elapsed = math.ceil((self.time_total_val - total_time_in_queue) * 10) / 10
         self.time_elapsed_label.setText(f"Elapsed time: {elapsed}")
+
+        current_sec = int(elapsed)
+        if hasattr(self, '_last_drawn_sec') and getattr(self, '_last_drawn_sec') == current_sec:
+            if elapsed != 0:
+                return
+        self._last_drawn_sec = current_sec
 
         if self.fig is None:
             self.fig = Figure(figsize=(15, 6), facecolor='#121212')
@@ -253,11 +279,30 @@ class CollectData(QScrollArea):
         else:
             self.plot_canvas.draw()
 
-    def start_acquisition(self):
-        self.acquisition_thread = Thread(target=self.acquisition, daemon=True)
-        self.acquisition_thread.start()
-        self.update_experiment_timeline_plot(0)
-        self.start_acquisition_button.setEnabled(False)
+    def start_or_stop_acquisition(self):
+        if not self.is_running:
+            self.is_running = True
+            self.start_acquisition_button.setText("Stop Acquisition")
+            self.start_acquisition_button.setStyleSheet("""
+                QPushButton {
+                    padding: 10px;
+                    background-color: #f44336;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                }
+                QPushButton:hover { background-color: #d32f2f; }
+            """)
+            self.acquisition_thread = Thread(target=self.acquisition, daemon=True)
+            self.acquisition_thread.start()
+        else:
+            self.is_running = False
+            self.start_acquisition_button.setText("Start Acquisition")
+            self.start_acquisition_button.setEnabled(False)
+            if self.current_queue is not None:
+                self.current_queue.clear()
+            if self.prompt_viewer and not self.prompt_viewer.closed:
+                self.prompt_viewer.change_prompt('Stopped')
 
     def acquisition(self):
         prompt_viewer_proxy = ThreadSafePromptViewerProxy(self.prompt_viewer)
@@ -274,6 +319,26 @@ class CollectData(QScrollArea):
         self.gui_signaler.acquisition_finished.emit(recorded_signal, start_date)
 
     def on_acquisition_finished(self, recorded_signal, start_date):
+        self.is_running = False
+        self.start_acquisition_button.setText("Start Acquisition")
+        self.start_acquisition_button.setEnabled(False)
+        self.start_acquisition_button.setStyleSheet("""
+            QPushButton {
+                padding: 10px;
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #0b7dda;
+            }
+            QPushButton:disabled {
+                background-color: #CCCCCC;
+                color: #888888;
+            }
+        """)
+
         if self.prompt_viewer and not self.prompt_viewer.closed:
             self.prompt_viewer.change_prompt('end')
             self.prompt_viewer.close()
