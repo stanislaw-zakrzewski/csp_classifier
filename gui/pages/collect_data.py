@@ -62,6 +62,7 @@ class CollectData(QScrollArea):
         self.configurations = Configurations()
         self.batches_per_second = 10
         self.queue = None
+        self.queue_original = None
         self.current_queue = None
         self.bci_interface = GtecNautilusProInterface()
         self.edf_writer = EDFWriter()
@@ -366,7 +367,7 @@ class CollectData(QScrollArea):
         self.edf_writer.write(
             recorded_signal, 
             start_date, 
-            self.queue, 
+            self.queue_original,
             self.patient_name_input.text(),
             self.gender_input.text()
         )
@@ -379,10 +380,14 @@ class CollectData(QScrollArea):
         label_queue = list(np.repeat(labels, trial_count))
         random.shuffle(label_queue)
         queue = []
+        queue_original = []
         for trial_label in label_queue:
             queue.append(['break', pause_length])
+            queue_original.append(['break', pause_length])
             queue.append([trial_label, trial_length])
+            queue_original.append([trial_label, trial_length])
         self.queue = queue
+        self.queue_original = queue_original
         self.time_total_val = sum(list(map(lambda x: x[1], self.queue)))
         self.time_total_label.setText(f"Total time: {self.time_total_val}")
         self.current_queue = copy.deepcopy(queue)
