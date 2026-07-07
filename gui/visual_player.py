@@ -1,15 +1,15 @@
 import os
-from PySide6.QtWidgets import QWidget, QLabel, QStackedLayout
+from PySide6.QtWidgets import QWidget, QLabel, QStackedLayout, QGraphicsView, QGraphicsScene
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QVideoFrame
-from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtGui import QPixmap
-from PySide6.QtCore import QUrl, Qt
+from PySide6.QtCore import QUrl, Qt, QSizeF
 
 class Screen(QWidget):
     """
     Screen widget: Embedded PySide6 native media player.
-    Uses dual QMediaPlayer + QVideoWidget instances to achieve 100% seamless
-    transitions (zero black frames) when switching between videos.
+    Uses dual QMediaPlayer + QGraphicsVideoItem instances to achieve 100% seamless
+    transitions (zero black frames) when switching between videos, while supporting transparent overlays.
     """
     def __init__(self, parent=None, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -23,25 +23,43 @@ class Screen(QWidget):
         self.layout.addWidget(self.image_label)
         
         # 2. Player 1 (index 1)
-        self.video_widget_1 = QVideoWidget(self)
+        self.video_widget_1 = QGraphicsView(self)
+        self.video_widget_1.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.video_widget_1.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.video_widget_1.setFrameShape(QGraphicsView.NoFrame)
         self.video_widget_1.setStyleSheet("background-color: black;")
+        
+        self.scene_1 = QGraphicsScene(self)
+        self.video_widget_1.setScene(self.scene_1)
+        self.video_item_1 = QGraphicsVideoItem()
+        self.video_item_1.setAspectRatioMode(Qt.KeepAspectRatio)
+        self.scene_1.addItem(self.video_item_1)
         self.layout.addWidget(self.video_widget_1)
         
         self.media_player_1 = QMediaPlayer(self)
         self.audio_output_1 = QAudioOutput(self)
         self.media_player_1.setAudioOutput(self.audio_output_1)
-        self.media_player_1.setVideoOutput(self.video_widget_1)
+        self.media_player_1.setVideoOutput(self.video_item_1)
         self.media_player_1.setLoops(QMediaPlayer.Infinite)
         
         # 3. Player 2 (index 2)
-        self.video_widget_2 = QVideoWidget(self)
+        self.video_widget_2 = QGraphicsView(self)
+        self.video_widget_2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.video_widget_2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.video_widget_2.setFrameShape(QGraphicsView.NoFrame)
         self.video_widget_2.setStyleSheet("background-color: black;")
+        
+        self.scene_2 = QGraphicsScene(self)
+        self.video_widget_2.setScene(self.scene_2)
+        self.video_item_2 = QGraphicsVideoItem()
+        self.video_item_2.setAspectRatioMode(Qt.KeepAspectRatio)
+        self.scene_2.addItem(self.video_item_2)
         self.layout.addWidget(self.video_widget_2)
         
         self.media_player_2 = QMediaPlayer(self)
         self.audio_output_2 = QAudioOutput(self)
         self.media_player_2.setAudioOutput(self.audio_output_2)
-        self.media_player_2.setVideoOutput(self.video_widget_2)
+        self.media_player_2.setVideoOutput(self.video_item_2)
         self.media_player_2.setLoops(QMediaPlayer.Infinite)
         
         # Playback transition states
@@ -131,6 +149,15 @@ class Screen(QWidget):
         super().resizeEvent(event)
         if self.layout.currentIndex() == 0:
             self._update_image_display()
+            
+        size = self.size()
+        if hasattr(self, 'video_item_1'):
+            self.video_item_1.setSize(QSizeF(size.width(), size.height()))
+            self.scene_1.setSceneRect(0, 0, size.width(), size.height())
+            
+        if hasattr(self, 'video_item_2'):
+            self.video_item_2.setSize(QSizeF(size.width(), size.height()))
+            self.scene_2.setSceneRect(0, 0, size.width(), size.height())
 
     def terminate(self):
         self.media_player_1.stop()

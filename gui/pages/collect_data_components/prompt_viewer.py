@@ -1,7 +1,8 @@
 import os
-from PySide6.QtWidgets import QDialog, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QDialog, QLabel, QVBoxLayout, QGridLayout, QWidget
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtMultimedia import QSoundEffect
+from PySide6.QtGui import QPainter, QFont
 
 from config.config import Configurations
 from gui.visual_player import Screen
@@ -28,8 +29,56 @@ class QtAudioCommands:
         if name in self.sounds:
             self.sounds[name].play()
 
+class ArrowOverlay(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.arrow_text = ""
+        self.font_size = 50
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+
+    def set_arrow(self, text, size):
+        if self.arrow_text != text or self.font_size != size:
+            self.arrow_text = text
+            self.font_size = size
+            self.update()
+
+    def paintEvent(self, event):
+        if not self.arrow_text:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
+        
+        font = QFont("Segoe UI", self.font_size, QFont.Bold)
+        font.setHintingPreference(QFont.PreferNoHinting)
+        painter.setFont(font)
+        painter.setPen(Qt.white)
+        
+        # Calculate tight bounding rect of the arrow glyph to find its visual center
+        fm = painter.fontMetrics()
+        tight_rect = fm.tightBoundingRect(self.arrow_text)
+        
+        # Position at 1/3 of the screen height
+        target_x = self.rect().center().x()
+        target_y = int(self.rect().height() / 3 * 2)
+        
+        # Centering calculations
+        glyph_center = tight_rect.center()
+        
+        # Adjust Y slightly downward if it tends to move "up" a little bit visually
+        # A tiny fraction of font_size (e.g., 2% of font_size) corrects for the arrowhead visual bias
+        visual_bias_y = int(self.font_size * 0.02)
+        
+        origin_x = target_x - glyph_center.x()
+        origin_y = target_y - glyph_center.y() + visual_bias_y
+        
+        from PySide6.QtCore import QPoint
+        painter.drawText(QPoint(origin_x, origin_y), self.arrow_text)
+
 class PromptViewer(QDialog):
-    def __init__(self, parent, start_command, close_command, progressbar_value):
+    def __init__(self, parent, start_command, close_command, progressbar_value, is_adaptive=False):
         super().__init__(parent)
         self.configurations = Configurations()
         self.setWindowTitle("Browse annotations for")
@@ -41,10 +90,14 @@ class PromptViewer(QDialog):
         self.closed = False
         self.prompt_label = None
         self.progressbar_value = progressbar_value
+        self.is_adaptive = is_adaptive
+        self.arrow_overlay = None
+        self.current_direction = None
+
         
         self.close_command = close_command
         
-        self.layout = QVBoxLayout(self)
+        self.layout = QGridLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         
         # Audio & Sender setup
@@ -77,8 +130,9 @@ class PromptViewer(QDialog):
             
         if self.player is None:
             self.player = Screen(self)
-            self.layout.addWidget(self.player)
+            self.layout.addWidget(self.player, 0, 0)
             
+        # Normal video playing
         if prompt_code == 'movement':
             self.player.play('commands//visual_commands//movement.mov')
             self.audio_commands.perform_command('movement')
@@ -98,7 +152,21 @@ class PromptViewer(QDialog):
             self.player.play('commands//visual_commands//end.jpg')
             self.audio_commands.perform_command('end')
             
+        # Adaptive overlay
+        if self.is_adaptive:
+            self._ensure_arrow_overlay()
+            if prompt_code == 'left':
+                self._set_arrow_direction('left')
+            elif prompt_code == 'right':
+                self._set_arrow_direction('right')
+            elif prompt_code in ['rest', 'break']:
+                self.arrow_overlay.set_arrow("", 50)
+            elif prompt_code == 'end':
+                self.arrow_overlay.set_arrow("END", 70)
+            
         self.current_prompt_code = prompt_code
+
+
 
     def set_audio_prompt(self, prompt_code):
         if prompt_code == self.current_prompt_code:
@@ -202,4 +270,22 @@ class PromptViewer(QDialog):
             self.prompt_label = QLabel("BREAK")
             self.prompt_label.setAlignment(Qt.AlignCenter)
             self.prompt_label.setStyleSheet("color: white; font-family: 'Segoe UI'; font-size: 70px; font-weight: bold;")
-            self.layout.addWidget(self.prompt_label)
+            self.layout.addWidget(self.prompt_label, 0, 0)
+
+    def _ensure_arrow_overlay(self):
+        if self.arrow_overlay is None:
+            self.arrow_overlay = ArrowOverlay(self)
+            self.layout.addWidget(self.arrow_overlay, 0, 0)
+
+    def _set_arrow_direction(self, direction):
+        self.current_direction = direction
+        self.set_arrow_scale(0.1)
+
+    def set_arrow_scale(self, scale):
+        if self.arrow_overlay is None or not self.current_direction:
+            return
+        # Clip scale between 0.0 and 1.0
+        scale = max(0.0, min(1.0, scale))
+        font_size = int(50 + scale * 450)
+        symbol = "←" if self.current_direction == 'left' else "→"
+        self.arrow_overlay.set_arrow(symbol, font_size)

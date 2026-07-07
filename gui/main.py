@@ -16,7 +16,7 @@ from gui.pages.prompt_viewer import PromptViewer
 from gui.pages.start_page import StartPage
 from gui.pages.test_electrodes import TestElectrodes
 from gui.pages.real_time import RealTime
-
+from gui.pages.adaptive_real_time import AdaptiveRealTime
 
 class App(QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -36,6 +36,7 @@ class App(QMainWindow):
             {'name': 'Browse Recordings', 'frame': BrowseRecordings},
             {'name': 'Prompt Viewer', 'frame': PromptViewer},
             {'name': 'Real-Time Analysis', 'frame': RealTime},
+            {'name': 'Adaptive Real-Time Analysis', 'frame': AdaptiveRealTime},
         ]
         
         self.stacked_widget = QStackedWidget(self)
