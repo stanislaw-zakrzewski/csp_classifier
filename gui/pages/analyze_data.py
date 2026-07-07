@@ -91,7 +91,7 @@ class LocalEDF(BaseDataset):
 
 
 class AnalysisThread(QThread):
-    finished = Signal(object, str, float)  # (DataFrame or None, error_message, chance_level)
+    analysis_finished = Signal(object, str, float)  # (DataFrame or None, error_message, chance_level)
     status = Signal(str)
 
     def __init__(self, edf_path):
@@ -127,10 +127,18 @@ class AnalysisThread(QThread):
             self.status.emit(f"Running MOABB cross-validation ({n_splits}-fold)...")
             
             # Setup pipelines
+            from pyriemann.tangentspace import TangentSpace
+            from pyriemann.classification import MDM
+            from conv_s4d import ConvS4DClassifier
+            
+            # The custom paradigm that uses the dynamic config
+            from moabb.paradigms import MotorImagery
+            
             pipelines = {
-                "CSP + LDA": make_pipeline(CSP(n_components=4), LDA()),
-                "Cov + Tangent Space + LR": make_pipeline(Covariances(estimator='oas'), TangentSpace(metric='riemann'), LogisticRegression(max_iter=1000)),
-                "CSP + SVM": make_pipeline(CSP(n_components=4), SVC(kernel='rbf'))
+                "Riemannian MDM": make_pipeline(Covariances(estimator='lwf'), MDM()),
+                "Cov + TS+ SVM": make_pipeline(Covariances(estimator='lwf'), TangentSpace(), SVC(kernel='linear')),
+                "CSP + SVM": make_pipeline(CSP(n_components=4), SVC(kernel='rbf')),
+                "Conv-S4D (CNN)": ConvS4DClassifier()
             }
             
             paradigm = MotorImagery(events=events_list, n_classes=n_classes, fmin=2, fmax=36)
@@ -152,17 +160,22 @@ class AnalysisThread(QThread):
             from joblib import parallel_backend
             with parallel_backend('sequential'):
                 results = evaluation.process(pipelines)
-            self.finished.emit(results, "", chance_level)
+            self.analysis_finished.emit(results, "", chance_level)
             
         except Exception as e:
+            print("[AnalysisThread] CRITICAL: Exception occurred inside thread run:")
+            traceback.print_exc()
+            sys.stdout.flush()
             tb = traceback.format_exc()
-            self.finished.emit(None, f"{str(e)}\n\n{tb}", 0.5)
+            self.analysis_finished.emit(None, f"{str(e)}\n\n{tb}", 0.5)
         finally:
+            print('Avoid errors')
             # Clean up the temp BIDS directory
-            try:
-                shutil.rmtree(temp_dir, ignore_errors=True)
-            except Exception:
-                pass
+            # Commented out to prevent memory-mapping crash on Windows
+            # try:
+            #     shutil.rmtree(temp_dir, ignore_errors=True)
+            # except Exception:
+            #     pass
 
 
 class AnalyzeData(QScrollArea):
@@ -243,8 +256,8 @@ class AnalyzeData(QScrollArea):
         self.layout.addWidget(self.analyze_btn)
         self.analyze_btn.setEnabled(False)
         
-        # Status Label
         self.status_label = QLabel("")
+        self.status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_label.setStyleSheet("padding: 8px; color: #2196F3; font-weight: bold;")
         self.layout.addWidget(self.status_label)
         
@@ -302,15 +315,17 @@ class AnalyzeData(QScrollArea):
         self.analysis_thread = thread
         
         thread.status.connect(self.update_status)
-        thread.finished.connect(self.analysis_completed)
+        thread.analysis_finished.connect(self.analysis_completed)
         thread.finished.connect(lambda *args, t=thread: active_threads.remove(t) if t in active_threads else None)
-        thread.finished.connect(thread.deleteLater)
         thread.start()
 
     def update_status(self, text):
         self.status_label.setText(text)
 
     def analysis_completed(self, results, error_msg, chance_level):
+        print(f"[AnalyzeData] analysis_completed called. error_msg: {error_msg}")
+        sys.stdout.flush()
+        
         self.is_analyzing = False
         self.select_btn.setEnabled(True)
         # Keep analyze button disabled until results are cleared
@@ -319,10 +334,14 @@ class AnalyzeData(QScrollArea):
         if error_msg:
             self.status_label.setStyleSheet("color: #f44336; font-weight: bold; padding: 4px;")
             self.status_label.setText(f"Analysis failed:\n{error_msg}")
+            print(f"[AnalyzeData] Analysis failed: {error_msg}")
+            sys.stdout.flush()
             return
 
         self.status_label.setStyleSheet("color: #4CAF50; font-weight: bold; padding: 4px;")
         self.status_label.setText("Analysis completed successfully!")
+        print("[AnalyzeData] Analysis completed successfully. Starting plotting...")
+        sys.stdout.flush()
 
         # Plot results
         try:
@@ -341,6 +360,8 @@ class AnalyzeData(QScrollArea):
                 spine.set_color('#2d2d2d')
                 
             # Plot using seaborn barplot
+            print("[AnalyzeData] Generating Seaborn barplot...")
+            sys.stdout.flush()
             sns.barplot(
                 data=results,
                 x="pipeline",
@@ -368,22 +389,48 @@ class AnalyzeData(QScrollArea):
                     text.set_color('white')
                     
             # Remove old canvas and toolbar if any
+            print("[AnalyzeData] Removing old canvas and toolbar if present...")
+            sys.stdout.flush()
             if self.canvas is not None:
                 self.chart_container.removeWidget(self.canvas)
-                plt.close(self.canvas.figure)
+                try:
+                    self.canvas.figure.clf()
+                except Exception as ce:
+                    print(f"[AnalyzeData] Warning clearing figure: {ce}")
                 self.canvas.deleteLater()
+                self.canvas = None
             if self.toolbar is not None:
                 self.chart_container.removeWidget(self.toolbar)
                 self.toolbar.deleteLater()
+                self.toolbar = None
                 
             # Create and add new canvas & toolbar
+            print("[AnalyzeData] Creating new FigureCanvas...")
+            sys.stdout.flush()
             self.canvas = FigureCanvas(figure)
+            # self.canvas.setMinimumHeight(400)
             self.toolbar = NavigationToolbar(self.canvas, self)
+            
+            # figure.tight_layout()
+            # self.canvas.draw()
             
             self.chart_container.addWidget(self.canvas)
             self.chart_container.addWidget(self.toolbar)
+            print("[AnalyzeData] Plot successfully added to GUI.")
+            sys.stdout.flush()
             
-            # Setup the post-analysis control panel buttons
+        except Exception as e:
+            print("[AnalyzeData] CRITICAL: Exception occurred while plotting results:")
+            traceback.print_exc()
+            sys.stdout.flush()
+            tb = traceback.format_exc()
+            self.status_label.setStyleSheet("color: #f44336; font-weight: bold; padding: 4px;")
+            self.status_label.setText(f"Error plotting results: {e}\n\n{tb}")
+
+        # Setup the post-analysis control panel buttons (always try to show this)
+        try:
+            print("[AnalyzeData] Setting up post-analysis buttons...")
+            sys.stdout.flush()
             while self.post_analysis_layout.count():
                 child = self.post_analysis_layout.takeAt(0)
                 if child.widget():
@@ -403,9 +450,10 @@ class AnalyzeData(QScrollArea):
             save_row_layout.setContentsMargins(0, 5, 0, 5)
             
             pipelines_styles = {
-                "CSP + LDA": ("#3b528b", "#4c66a8"),
-                "Cov + Tangent Space + LR": ("#21918c", "#2ca8a2"),
-                "CSP + SVM": ("#5ec962", "#76db7a")
+                "Riemannian MDM": ("#440154", "#482878"),
+                "Cov + TS+ SVM": ("#31688e", "#2c728e"),
+                "CSP + SVM": ("#35b779", "#20a486"),
+                "Conv-S4D (CNN)": ("#fde725", "#d6c21a")
             }
             
             for name, (bg_color, hover_color) in pipelines_styles.items():
@@ -430,11 +478,12 @@ class AnalyzeData(QScrollArea):
             self.post_analysis_layout.addWidget(save_row_widget)
             
             self.post_analysis_widget.show()
-            
+            print("[AnalyzeData] Post-analysis widget shown successfully.")
+            sys.stdout.flush()
         except Exception as e:
-            tb = traceback.format_exc()
-            self.status_label.setStyleSheet("color: #f44336; font-weight: bold; padding: 4px;")
-            self.status_label.setText(f"Error plotting results: {e}\n\n{tb}")
+            print("[AnalyzeData] CRITICAL: Exception occurred while setting up buttons:")
+            traceback.print_exc()
+            sys.stdout.flush()
 
     def save_pipeline(self, pipeline_name):
         filename, _ = QFileDialog.getSaveFileName(
