@@ -1,4 +1,5 @@
 import torch
+torch.set_num_threads(1)
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -102,11 +103,15 @@ class ConvS4DClassifier(ClassifierMixin, BaseEstimator):
         
         self.model = None
         self.classes_ = None
+        self.label_encoder = None
         self.fisher = {}
         self.optpar = {}
 
     def fit(self, X, y):
-        self.classes_ = unique_labels(y)
+        from sklearn.preprocessing import LabelEncoder
+        self.label_encoder = LabelEncoder()
+        y_encoded = self.label_encoder.fit_transform(y)
+        self.classes_ = self.label_encoder.classes_
         n_classes = len(self.classes_)
         
         if len(X.shape) == 2:
@@ -117,7 +122,7 @@ class ConvS4DClassifier(ClassifierMixin, BaseEstimator):
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         criterion = nn.CrossEntropyLoss()
         
-        dataset = torch.utils.data.TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long))
+        dataset = torch.utils.data.TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y_encoded, dtype=torch.long))
         loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         
         self.model.train()
@@ -142,8 +147,13 @@ class ConvS4DClassifier(ClassifierMixin, BaseEstimator):
         optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         criterion = nn.CrossEntropyLoss()
         
+        if self.label_encoder is not None:
+            y_encoded = self.label_encoder.transform(y)
+        else:
+            y_encoded = y
+            
         X_t = torch.tensor(X, dtype=torch.float32)
-        y_t = torch.tensor(y, dtype=torch.long)
+        y_t = torch.tensor(y_encoded, dtype=torch.long)
         
         for _ in range(3): # A few steps for online adaptation
             optimizer.zero_grad()
@@ -199,7 +209,11 @@ class ConvS4DClassifier(ClassifierMixin, BaseEstimator):
         with torch.no_grad():
             outputs = self.model(torch.tensor(X, dtype=torch.float32))
             _, predicted = torch.max(outputs.data, 1)
-        return predicted.numpy()
+            
+        preds = predicted.numpy()
+        if self.label_encoder is not None:
+            return self.label_encoder.inverse_transform(preds)
+        return preds
 
     def predict_proba(self, X):
         self.model.eval()

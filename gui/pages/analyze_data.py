@@ -13,7 +13,7 @@ from matplotlib.figure import Figure
 import matplotlib.ticker as ticker
 
 from PySide6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QObject
 
 from config.config import Configurations
 from gui.colors import colors
@@ -90,14 +90,13 @@ class LocalEDF(BaseDataset):
         return [self.edf_path]
 
 
-class AnalysisThread(QThread):
+class AnalysisWorker(QObject):
     analysis_finished = Signal(object, str, float)  # (DataFrame or None, error_message, chance_level)
     status = Signal(str)
 
     def __init__(self, edf_path):
         super().__init__()
         self.edf_path = edf_path
-        active_threads.append(self)
 
     def run(self):
         temp_dir = tempfile.mkdtemp(prefix="bids_temp_")
@@ -138,7 +137,7 @@ class AnalysisThread(QThread):
                 "Riemannian MDM": make_pipeline(Covariances(estimator='lwf'), MDM()),
                 "Cov + TS+ SVM": make_pipeline(Covariances(estimator='lwf'), TangentSpace(), SVC(kernel='linear')),
                 "CSP + SVM": make_pipeline(CSP(n_components=4), SVC(kernel='rbf')),
-                "Conv-S4D (CNN)": ConvS4DClassifier()
+                # "Conv-S4D (CNN)": ConvS4DClassifier()
             }
             
             paradigm = MotorImagery(events=events_list, n_classes=n_classes, fmin=2, fmax=36)
@@ -160,6 +159,13 @@ class AnalysisThread(QThread):
             from joblib import parallel_backend
             with parallel_backend('sequential'):
                 results = evaluation.process(pipelines)
+                
+            # Safely cleanup PyTorch objects in the worker thread before it exits
+            del pipelines
+            del evaluation
+            import gc
+            gc.collect()
+            
             self.analysis_finished.emit(results, "", chance_level)
             
         except Exception as e:
@@ -311,13 +317,15 @@ class AnalyzeData(QScrollArea):
         self.status_label.setText("Starting analysis...")
 
         # Start thread
-        thread = AnalysisThread(self.selected_file_path)
-        self.analysis_thread = thread
+        self.worker_thread = QThread()
+        self.worker = AnalysisWorker(self.selected_file_path)
+        self.worker.moveToThread(self.worker_thread)
+        self.worker_thread.started.connect(self.worker.run)
         
-        thread.status.connect(self.update_status)
-        thread.analysis_finished.connect(self.analysis_completed)
-        thread.finished.connect(lambda *args, t=thread: active_threads.remove(t) if t in active_threads else None)
-        thread.start()
+        self.worker.analysis_finished.connect(self.analysis_completed)
+        self.worker.status.connect(self.update_status)
+        
+        self.worker_thread.start()
 
     def update_status(self, text):
         self.status_label.setText(text)
@@ -453,7 +461,7 @@ class AnalyzeData(QScrollArea):
                 "Riemannian MDM": ("#440154", "#482878"),
                 "Cov + TS+ SVM": ("#31688e", "#2c728e"),
                 "CSP + SVM": ("#35b779", "#20a486"),
-                "Conv-S4D (CNN)": ("#fde725", "#d6c21a")
+                # "Conv-S4D (CNN)": ("#fde725", "#d6c21a")
             }
             
             for name, (bg_color, hover_color) in pipelines_styles.items():
@@ -507,6 +515,9 @@ class AnalyzeData(QScrollArea):
                 pipeline = make_pipeline(Covariances(estimator='oas'), TangentSpace(metric='riemann'), LogisticRegression(max_iter=1000))
             elif pipeline_name == "CSP + SVM":
                 pipeline = make_pipeline(CSP(n_components=4), SVC(kernel='rbf'))
+            elif pipeline_name == "Conv-S4D (CNN)":
+                from conv_s4d import ConvS4DClassifier
+                pipeline = ConvS4DClassifier()
             else:
                 raise ValueError(f"Unknown pipeline: {pipeline_name}")
                 

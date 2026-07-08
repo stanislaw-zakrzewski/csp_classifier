@@ -241,27 +241,30 @@ class AdaptiveRealTime(QScrollArea):
                 pipeline = pickle.load(f)
 
             # Validate pipeline structure
-            if not hasattr(pipeline, 'steps'):
-                raise ValueError("Selected file is not a valid scikit-learn Pipeline (missing 'steps' attribute).")
+            if not hasattr(pipeline, 'predict'):
+                raise ValueError("Selected file is not a valid scikit-learn estimator (missing 'predict' method).")
 
             self.loaded_pipeline = pipeline
 
-            # Format human-readable pipeline step name
-            name_mapping = {
-                'CSP': 'CSP',
-                'LinearDiscriminantAnalysis': 'LDA',
-                'Covariances': 'Cov',
-                'TangentSpace': 'Tangent Space',
-                'LogisticRegression': 'LR',
-                'SVC': 'SVM'
-            }
+            if hasattr(pipeline, 'steps'):
+                # Format human-readable pipeline step name
+                name_mapping = {
+                    'CSP': 'CSP',
+                    'LinearDiscriminantAnalysis': 'LDA',
+                    'Covariances': 'Cov',
+                    'TangentSpace': 'Tangent Space',
+                    'LogisticRegression': 'LR',
+                    'SVC': 'SVM'
+                }
 
-            steps_names = []
-            for _, step_obj in pipeline.steps:
-                class_name = step_obj.__class__.__name__
-                steps_names.append(name_mapping.get(class_name, class_name))
+                steps_names = []
+                for _, step_obj in pipeline.steps:
+                    class_name = step_obj.__class__.__name__
+                    steps_names.append(name_mapping.get(class_name, class_name))
 
-            pipeline_name = " + ".join(steps_names)
+                pipeline_name = " + ".join(steps_names)
+            else:
+                pipeline_name = pipeline.__class__.__name__
 
             # Update displays
             self.pipeline_label.setText(f"Loaded: {pipeline_name} ({os.path.basename(filepath)})")

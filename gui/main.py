@@ -4,6 +4,12 @@ from pathlib import Path
 # Add project root directory to sys.path to support running directly as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Patch PySide6 for debugpy (VSCode debugger) compatibility when using matplotlib/ipython hooks
+import PySide6.QtGui
+import PySide6.QtWidgets
+if not hasattr(PySide6.QtGui, 'QApplication'):
+    PySide6.QtGui.QApplication = PySide6.QtWidgets.QApplication
+
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
 
 from gui.menu.menu import ApplicationMenu
