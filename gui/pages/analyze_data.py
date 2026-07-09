@@ -128,7 +128,7 @@ class AnalysisWorker(QObject):
             # Setup pipelines
             from pyriemann.tangentspace import TangentSpace
             from pyriemann.classification import MDM
-            from conv_s4d import ConvS4DClassifier
+            # from conv_s4d import ConvS4DClassifier
             
             # The custom paradigm that uses the dynamic config
             from moabb.paradigms import MotorImagery
@@ -458,8 +458,8 @@ class AnalyzeData(QScrollArea):
             save_row_layout.setContentsMargins(0, 5, 0, 5)
             
             pipelines_styles = {
-                "Riemannian MDM": ("#440154", "#482878"),
-                "Cov + TS+ SVM": ("#31688e", "#2c728e"),
+                "CSP + LDA": ("#440154", "#482878"),
+                "Cov + Tangent Space + LR": ("#31688e", "#2c728e"),
                 "CSP + SVM": ("#35b779", "#20a486"),
                 # "Conv-S4D (CNN)": ("#fde725", "#d6c21a")
             }
@@ -515,9 +515,9 @@ class AnalyzeData(QScrollArea):
                 pipeline = make_pipeline(Covariances(estimator='oas'), TangentSpace(metric='riemann'), LogisticRegression(max_iter=1000))
             elif pipeline_name == "CSP + SVM":
                 pipeline = make_pipeline(CSP(n_components=4), SVC(kernel='rbf'))
-            elif pipeline_name == "Conv-S4D (CNN)":
-                from conv_s4d import ConvS4DClassifier
-                pipeline = ConvS4DClassifier()
+            # elif pipeline_name == "Conv-S4D (CNN)":
+            #     from conv_s4d import ConvS4DClassifier
+            #     pipeline = ConvS4DClassifier()
             else:
                 raise ValueError(f"Unknown pipeline: {pipeline_name}")
                 
