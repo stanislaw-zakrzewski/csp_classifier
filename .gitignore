@@ -202,3 +202,9 @@ preprocessed_subjects_car/
 /parafac_analysis/significant_heatmaps2
 /parafac_analysis/significant_heatmaps_stage_2
 /dataset_tmp_stage_2
+/config/bids_temp
+/D-
+trained_pipelines/Cho2017/accuracies.csv
+/trained_pipelines
+/simulation_results
+/pipelines
