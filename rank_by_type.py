@@ -28,7 +28,7 @@ def categorize_classifier(name):
 TOP_PERCENT = 0.1
 
 def main():
-    directory = os.path.normpath("simulation_results/PhysionetMI")
+    directory = os.path.normpath("simulation_results/Dreyer2023")
     print(f"Reading CSV files from: {directory}")
     csv_files = glob.glob(os.path.join(directory, "*.csv"))
     csv_files = [f for f in csv_files if not os.path.basename(f).startswith("averaged_accuracies") and not os.path.basename(f).startswith("classifier_ranking")]

@@ -208,3 +208,4 @@ trained_pipelines/Cho2017/accuracies.csv
 /trained_pipelines
 /simulation_results
 /pipelines
+/graph_results

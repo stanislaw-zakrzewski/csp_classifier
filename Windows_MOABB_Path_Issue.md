@@ -38,3 +38,35 @@ def _sanitize_path(path: Path) -> Path:
 ```
 
 This ensures that drive anchors (like `C:\` or `D:\` on Windows, or `/` on Linux) are preserved intact, while only subsequent directory names and files undergo sanitization.
+
+---
+
+# Yang2025 Dataset Infinite Zip Extraction Issue
+
+## The Problem
+In `moabb/datasets/yang2025.py`, the `data_path(subject)` method checks whether data for a subject already exists before triggering download or extraction:
+```python
+subj_str = f"sub-{subject:03d}"
+existing = list(basepath.rglob(f"*{subj_str}*data.bdf"))
+```
+Because the downloaded archive unpacks BDF files named simply `data.bdf` located within subdirectories named `sub-001`, `sub-002`, etc., matching the filename against `*{subj_str}*data.bdf` using `Path.rglob` always returns an empty list (`[]`).
+
+As a result, even after downloading and extracting the dataset, MOABB attempts to re-extract the entire 65.6 GB `WBCIC_SHU_Motor_Imagery_dataset.zip` archive on **every single call** to `get_data()`. In Python, extracting a 65.6 GB zip archive single-threaded takes tens of minutes to hours, making the execution appear completely stuck at `Loading dataset Yang2025 for subject...`.
+
+## The Solution
+Locate `moabb/datasets/yang2025.py` in your virtual environment:
+`venv/Lib/site-packages/moabb/datasets/yang2025.py`
+
+Modify lines 346–350 to check for `subj_str` in directory path parts rather than matching only the filename:
+
+```python
+# Check if data already exists (raw BDF files)
+subj_str = f"sub-{subject:03d}"
+existing = [
+    p for p in basepath.rglob("data.bdf")
+    if any(subj_str in part for part in p.parts)
+]
+if existing:
+    return str(basepath)
+```
+

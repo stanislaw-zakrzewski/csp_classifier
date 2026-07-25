@@ -2,16 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_accuracies(csv_file, window_size=1):
+def plot_accuracies(csv_file, window_size=1, only_above_baseline=False):
     # Load the data
     df = pd.read_csv(csv_file)
-    
-    if window_size > 1:
-        # Ensure data is sorted by Classifier and Trial for rolling calculation
-        df = df.sort_values(by=['Classifier', 'Trial'])
-        df['Cumulative_Accuracy'] = df.groupby('Classifier')['Cumulative_Accuracy'].transform(
-            lambda x: x.rolling(window=window_size, min_periods=1).mean()
-        )
     
     # Extract Classifier Type
     def get_classifier_type(name):
@@ -24,6 +17,31 @@ def plot_accuracies(csv_file, window_size=1):
         return "Other"
         
     df['Classifier_Type'] = df['Classifier'].apply(get_classifier_type)
+    
+    if only_above_baseline:
+        # Determine the final accuracy for each classifier (at max Trial)
+        idx_last = df.groupby('Classifier')['Trial'].idxmax()
+        final_df = df.loc[idx_last, ['Classifier', 'Classifier_Type', 'Cumulative_Accuracy']]
+        
+        # Get baseline final accuracies for each type
+        baseline_finals = final_df[final_df['Classifier'].str.startswith('baseline_')].set_index('Classifier_Type')['Cumulative_Accuracy'].to_dict()
+        
+        # Filter to keep only classifiers whose final accuracy is >= baseline's final accuracy
+        classifiers_to_keep = []
+        for row in final_df.itertuples():
+            if row.Classifier_Type not in baseline_finals:
+                classifiers_to_keep.append(row.Classifier)
+            elif row.Cumulative_Accuracy >= baseline_finals[row.Classifier_Type]:
+                classifiers_to_keep.append(row.Classifier)
+                
+        df = df[df['Classifier'].isin(classifiers_to_keep)].copy()
+    
+    if window_size > 1:
+        # Ensure data is sorted by Classifier and Trial for rolling calculation
+        df = df.sort_values(by=['Classifier', 'Trial'])
+        df['Cumulative_Accuracy'] = df.groupby('Classifier')['Cumulative_Accuracy'].transform(
+            lambda x: x.rolling(window=window_size, min_periods=1).mean()
+        )
     
     # Shorten names for labels (e.g. subject_1_... -> S1)
     def get_short_name(name):
@@ -102,7 +120,8 @@ def plot_accuracies(csv_file, window_size=1):
 
 if __name__ == "__main__":
     # csv_filename = "adaptive_simulation_Cho2017_sub14.csv"
-    csv_filename = "simulation_results/PhysionetMI/7.csv"
+    csv_filename = "simulation_results/Yang2025/1.csv"
     window_size = 5  # Moving average window size (set to 1 to show original chart)
-    print(f"Loading data from {csv_filename} and generating plot (moving average window = {window_size})...")
-    plot_accuracies(csv_filename, window_size=window_size)
+    only_above_baseline = True  # Set to True to only show classifiers with final accuracy >= baseline
+    print(f"Loading data from {csv_filename} and generating plot (moving average window = {window_size}, only_above_baseline = {only_above_baseline})...")
+    plot_accuracies(csv_filename, window_size=window_size, only_above_baseline=only_above_baseline)

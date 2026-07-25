@@ -3,15 +3,21 @@ import pandas as pd
 import numpy as np
 import joblib
 
+import moabb
 from moabb.paradigms import MotorImagery
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import StratifiedKFold, cross_val_score
+import mne
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from pyriemann.estimation import Covariances
 from pyriemann.tangentspace import TangentSpace
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
+
+# Suppress verbose MNE and MOABB log output
+mne.set_log_level('warning')
+moabb.set_log_level('warning')
 
 def train_and_evaluate_moabb(dataset, subject_list, bands, selected_channels, output_dir="trained_pipelines"):
     """
