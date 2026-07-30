@@ -3,6 +3,7 @@ import random
 import math
 from threading import Thread
 import numpy as np
+import time
 
 from PySide6.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, 
                              QLineEdit, QScrollArea, QProgressBar, QCheckBox)
@@ -226,6 +227,9 @@ class CollectData(QScrollArea):
         self.gnt = None
 
     def update_experiment_timeline_plot(self, value):
+
+        if True:
+            return # TODO replace the chart drawing below
         if self.current_queue is None:
             return
             
@@ -261,7 +265,7 @@ class CollectData(QScrollArea):
         # Prepare data
         data = {}
         previous_time_end = 0
-        for item in self.current_queue:
+        for item_idx, item in enumerate(self.current_queue):
             if item[0] not in data:
                 data[item[0]] = []
             data[item[0]].append((previous_time_end, item[1]))
@@ -279,11 +283,9 @@ class CollectData(QScrollArea):
         self.gnt.set_xlim(0, 40)
         self.gnt.set_yticklabels(self.labels)
         self.gnt.grid(True, color='#2d2d2d')
-
         for index, item in enumerate(self.labels):
             if item in data:
                 self.gnt.broken_barh(data[item], (index * 10, 9))
-
         if self.plot_canvas is None:
             self.plot_canvas = FigureCanvas(self.fig)
             self.plot_layout.addWidget(self.plot_canvas)
