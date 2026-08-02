@@ -168,8 +168,10 @@ python graph_tools/baseline_crossover_analysis.py --dataset PhysionetMI
 
 For full mathematical formulations, cross-dataset benchmarks, and clinical deployment guidelines, refer to:
 - **[gnn_clustering_master_takeaways.md](file:///c:/Users/stz/Documents/GitHub/csp_classifier/graph_results/gnn_clustering_master_takeaways.md)**: Master takeaways summary comparing all 6 datasets.
+- **[max_coverage_wearable_guide.md](file:///c:/Users/stz/Documents/GitHub/csp_classifier/graph_results/graphs/max_coverage_wearable_guide.md)**: Max-Coverage math formulation, deployment workflow, and generalization guide.
 - **[wearable_5_classifier_selection_guide.md](file:///c:/Users/stz/Documents/GitHub/csp_classifier/graph_results/graphs/wearable_5_classifier_selection_guide.md)**: Guide for 5-classifier wearable ensemble selection.
 - **[gnn_subject_clustering_guide.md](file:///c:/Users/stz/Documents/GitHub/csp_classifier/graph_results/graphs/gnn_subject_clustering_guide.md)**: PyTorch GNN architecture and DEC clustering guide.
+
 
 
 

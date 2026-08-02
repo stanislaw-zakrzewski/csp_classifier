@@ -280,15 +280,44 @@ def select_method_d_random_baseline(subjects: list[str], K: int = 5, n_trials: i
 
 # --- Strict Zero-Overlap Evaluation Engine ---
 
+def map_selected_set_to_test(S_star: list[str], subjects_train: list[str], subjects_test: list[str]) -> list[str]:
+    """Map selected source subject IDs from training cohort to test cohort by quantile rank for cross-dataset evaluation."""
+    if set(S_star).issubset(set(subjects_test)):
+        return S_star
+    N_train = len(subjects_train)
+    N_test = len(subjects_test)
+    train_to_idx = {s: i for i, s in enumerate(subjects_train)}
+
+    mapped_S = []
+    for s in S_star:
+        if s in train_to_idx:
+            rank = train_to_idx[s] / float(N_train)
+            test_idx = int(np.clip(np.round(rank * (N_test - 1)), 0, N_test - 1))
+            mapped_S.append(subjects_test[test_idx])
+        elif s in subjects_test:
+            mapped_S.append(s)
+    # If deduplication reduces size, fill remaining from top ranks
+    for t in subjects_test:
+        if len(mapped_S) >= len(S_star):
+            break
+        if t not in mapped_S:
+            mapped_S.append(t)
+    return mapped_S[:len(S_star)]
+
+
 def evaluate_selected_set(
     S_star: list[str],
     G_test: nx.DiGraph,
-    test_subjects: list[str]
+    test_subjects: list[str],
+    subjects_train: list[str] = None
 ) -> dict:
     """
     Evaluate a candidate K-classifier set S_star under strict zero-overlap protocol:
     For any target v ∈ test_subjects, v ∉ S_star.
     """
+    if subjects_train is not None and not set(S_star).issubset(set(test_subjects)):
+        S_star = map_selected_set_to_test(S_star, subjects_train, test_subjects)
+
     sub_to_idx = {s: i for i, s in enumerate(test_subjects)}
     S_indices = [sub_to_idx[s] for s in S_star if s in sub_to_idx]
 
@@ -299,10 +328,11 @@ def evaluate_selected_set(
 
     eval_targets = [j for j in range(len(test_subjects)) if j not in S_indices]
 
-    if not eval_targets:
+    if not eval_targets or not S_indices:
         return {
             'max_coverage_acc': 0.0,
             'ensemble_mean_acc': 0.0,
+            'target_baseline_mean_acc': float(np.mean(baselines)) if len(baselines) > 0 else 0.0,
             'crossover_rate': 0.0,
             'baseline_gain': 0.0
         }
@@ -315,7 +345,9 @@ def evaluate_selected_set(
     for v in eval_targets:
         b_v = baselines[v]
         # Transfers from all S_star classifiers to target v
-        transfers = [W_test[s, v] for s in S_indices]
+        transfers = [W_test[s, v] for s in S_indices if s < len(W_test)]
+        if not transfers:
+            continue
 
         max_acc = float(np.max(transfers))
         mean_acc = float(np.mean(transfers))
@@ -324,6 +356,15 @@ def evaluate_selected_set(
         ens_mean_accs.append(mean_acc)
         crossovers.append(max_acc >= b_v)
         gains.append(max_acc - b_v)
+
+    if not max_cov_accs:
+        return {
+            'max_coverage_acc': 0.0,
+            'ensemble_mean_acc': 0.0,
+            'target_baseline_mean_acc': float(np.mean(baselines)) if len(baselines) > 0 else 0.0,
+            'crossover_rate': 0.0,
+            'baseline_gain': 0.0
+        }
 
     return {
         'max_coverage_acc': round(float(np.mean(max_cov_accs)), 4),
@@ -343,17 +384,18 @@ def plot_wearable_coverage_curve(
     max_k: int = 10
 ):
     """Plot Max-Coverage Accuracy as K increases from 1 to 10 classifiers."""
+    subjects_test = sorted(list(G_test.nodes()), key=lambda x: int(x) if x.isdigit() else x)
     ks = list(range(1, min(max_k + 1, len(subjects))))
     submod_accs = []
     top_rank_accs = []
 
     for k in ks:
         S_submod = select_method_b_submodular_greedy(W_train, subjects, K=k)
-        eval_submod = evaluate_selected_set(S_submod, G_test, subjects)
+        eval_submod = evaluate_selected_set(S_submod, G_test, subjects_test, subjects_train=subjects)
         submod_accs.append(eval_submod['max_coverage_acc'])
 
         S_top = select_method_c_top_global_rank(W_train, subjects, K=k)
-        eval_top = evaluate_selected_set(S_top, G_test, subjects)
+        eval_top = evaluate_selected_set(S_top, G_test, subjects_test, subjects_train=subjects)
         top_rank_accs.append(eval_top['max_coverage_acc'])
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -376,13 +418,20 @@ def plot_wearable_coverage_curve(
 def plot_target_coverage_map(
     S_star: list[str],
     G_test: nx.DiGraph,
-    subjects: list[str],
+    subjects_test: list[str],
     pipe_name: str,
-    output_path: str
+    output_path: str,
+    subjects_train: list[str] = None
 ):
     """Plot target coverage matrix heatmap showing which of the 5 classifiers covers which target subject."""
-    W_test = nx.to_pandas_adjacency(G_test, nodelist=subjects, weight='weight')
-    S_df = W_test.loc[S_star]
+    if subjects_train is not None and not set(S_star).issubset(set(subjects_test)):
+        S_star = map_selected_set_to_test(S_star, subjects_train, subjects_test)
+
+    W_test = nx.to_pandas_adjacency(G_test, nodelist=subjects_test, weight='weight')
+    valid_S = [s for s in S_star if s in W_test.index]
+    if not valid_S:
+        return
+    S_df = W_test.loc[valid_S]
 
     fig, ax = plt.subplots(figsize=(14, 5))
     sns.heatmap(S_df, cmap="viridis", vmin=0, vmax=1, ax=ax, cbar_kws={'label': 'Accuracy'})
@@ -394,6 +443,123 @@ def plot_target_coverage_map(
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
+
+
+def plot_wearable_vs_baseline_trials(
+    S_submod: list[str],
+    S_random_sets: list[list[str]],
+    G_test: nx.DiGraph,
+    subjects: list[str],
+    pipe_name: str,
+    output_path: str,
+    dataset: str,
+    bin_size: int = 10
+):
+    """
+    Generate bin-by-bin trial trajectory plot comparing Submodular 5-Classifier Ensemble
+    vs Zero-Knowledge Baseline Model over 10-trial bins.
+    """
+    sub_to_idx = {s: i for i, s in enumerate(subjects)}
+    S_indices = [sub_to_idx[s] for s in S_submod if s in sub_to_idx]
+
+    has_binned_attrs = any('bin_interval_acc_1' in d for _, _, d in G_test.edges(data=True))
+
+    num_bins = 10
+    bins = list(range(1, num_bins + 1))
+
+    submod_max_bin_accs = [[] for _ in range(num_bins)]
+    submod_mean_bin_accs = [[] for _ in range(num_bins)]
+    baseline_bin_accs = [[] for _ in range(num_bins)]
+
+    sim_dir = os.path.join("simulation_results", dataset)
+    csv_available = os.path.exists(sim_dir) and glob.glob(os.path.join(sim_dir, "*.csv"))
+
+    if csv_available:
+        family = "Cov_Tangent_Space_LR" if "Cov_Tangent" in pipe_name else ("CSP_LDA" if "CSP_LDA" in pipe_name else "CSP_SVM")
+        is_adaptive = "adaptive" in pipe_name
+
+        for v in subjects:
+            v_idx = sub_to_idx[v]
+            if v_idx in S_indices:
+                continue
+
+            csv_file = os.path.join(sim_dir, f"{v}.csv")
+            if not os.path.exists(csv_file):
+                continue
+
+            try:
+                df = pd.read_csv(csv_file)
+                df['Bin'] = (df['Trial'] // bin_size) + 1
+                bin_accs = df.groupby(['Classifier', 'Bin'])['Is_Correct'].mean().reset_index()
+
+                base_clfs = [
+                    c for c in bin_accs['Classifier'].unique()
+                    if (c.startswith('baseline') or c == f"subject_{v}_{family}_pipeline" or c == f"subject_{v}_{family}_pipeline_adaptive")
+                    and family in c and not c.endswith('_static')
+                ]
+                base_dict = bin_accs[bin_accs['Classifier'] == base_clfs[0]].set_index('Bin')['Is_Correct'].to_dict() if base_clfs else {}
+
+                sub_clfs = [c for c in bin_accs['Classifier'].unique() if any(f"subject_{s}_" in c for s in S_submod) and family in c and (c.endswith('_static') != is_adaptive)]
+
+                for b_idx, b in enumerate(bins):
+                    b_val = base_dict.get(b, np.nan)
+                    if not np.isnan(b_val):
+                        baseline_bin_accs[b_idx].append(b_val)
+
+                    sub_b_df = bin_accs[(bin_accs['Classifier'].isin(sub_clfs)) & (bin_accs['Bin'] == b)]
+                    if not sub_b_df.empty:
+                        submod_max_bin_accs[b_idx].append(sub_b_df['Is_Correct'].max())
+                        submod_mean_bin_accs[b_idx].append(sub_b_df['Is_Correct'].mean())
+            except Exception:
+                continue
+
+    elif has_binned_attrs:
+        for v_idx, v in enumerate(subjects):
+            if v_idx in S_indices:
+                continue
+            for b_idx, b in enumerate(bins):
+                b_val = float(G_test.nodes[v].get(f'baseline_bin_interval_acc_{b}', G_test.nodes[v].get('baseline_accuracy', 0.0)))
+                baseline_bin_accs[b_idx].append(b_val)
+
+                transfers = [
+                    float(G_test[s][v].get(f'bin_interval_acc_{b}', G_test[s][v].get('weight', 0.0)))
+                    for s in S_submod if G_test.has_edge(s, v)
+                ]
+                if transfers:
+                    submod_max_bin_accs[b_idx].append(np.max(transfers))
+                    submod_mean_bin_accs[b_idx].append(np.mean(transfers))
+
+    submod_max_curve = [float(np.mean(accs)) if accs else 0.0 for accs in submod_max_bin_accs]
+    submod_mean_curve = [float(np.mean(accs)) if accs else 0.0 for accs in submod_mean_bin_accs]
+    baseline_curve = [float(np.mean(accs)) if accs else 0.0 for accs in baseline_bin_accs]
+
+    crossover_bin = None
+    for b_idx, (sub_a, base_a) in enumerate(zip(submod_max_curve, baseline_curve), 1):
+        if base_a > sub_a:
+            crossover_bin = b_idx
+            break
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    ax.plot(bins, submod_max_curve, marker='o', linewidth=2.5, color='#2ecc71', label='Submodular 5-Classifier Ensemble (Max-Coverage)')
+    ax.plot(bins, submod_mean_curve, marker='v', linewidth=2.0, color='#27ae60', linestyle='--', label='Submodular 5-Classifier Ensemble (Mean)')
+    ax.plot(bins, baseline_curve, marker='s', linewidth=2.5, color='#e74c3c', label='Zero-Knowledge Baseline Model (Adapting from Scratch)')
+
+    if crossover_bin is not None:
+        ax.axvline(x=crossover_bin, color='#e74c3c', linestyle=':', linewidth=2, label=f'Baseline Crossover Point (Bin {crossover_bin})')
+
+    ax.set_title(f"Wearable 5-Classifier Ensemble vs Baseline Trial Trajectories: {pipe_name}\n(10-Trial Bin Local Accuracy Over Time)", fontsize=12, fontweight='bold')
+    ax.set_xlabel("Trial Window Bin (1 Bin = 10 Trials)", fontsize=11)
+    ax.set_ylabel("Local Bin Transfer Accuracy", fontsize=11)
+    ax.set_xticks(bins)
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend(loc='lower right', fontsize=10)
+
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+
 
 
 def main():
@@ -489,11 +655,11 @@ def main():
         S_random_sets = select_method_d_random_baseline(subjects_train, K=args.num_classifiers, n_trials=100)
 
         # Evaluate all methods under zero-overlap protocol
-        eval_a = evaluate_selected_set(S_method_a, G_test, subjects_test)
-        eval_b = evaluate_selected_set(S_method_b, G_test, subjects_test)
-        eval_c = evaluate_selected_set(S_method_c, G_test, subjects_test)
+        eval_a = evaluate_selected_set(S_method_a, G_test, subjects_test, subjects_train=subjects_train)
+        eval_b = evaluate_selected_set(S_method_b, G_test, subjects_test, subjects_train=subjects_train)
+        eval_c = evaluate_selected_set(S_method_c, G_test, subjects_test, subjects_train=subjects_train)
 
-        rand_max_accs = [evaluate_selected_set(r_set, G_test, subjects_test)['max_coverage_acc'] for r_set in S_random_sets]
+        rand_max_accs = [evaluate_selected_set(r_set, G_test, subjects_test, subjects_train=subjects_train)['max_coverage_acc'] for r_set in S_random_sets]
         rand_mean_acc = float(np.mean(rand_max_accs))
 
         target_scratch_baseline = eval_b['target_baseline_mean_acc']
@@ -547,7 +713,18 @@ def main():
         plot_wearable_coverage_curve(W_train, G_test, subjects_train, pipe_name, curve_plot_path, max_k=10)
 
         map_plot_path = os.path.join(output_dir, f"{pipe_name}_target_coverage_map.png")
-        plot_target_coverage_map(S_method_b, G_test, subjects_test, pipe_name, map_plot_path)
+        plot_target_coverage_map(S_method_b, G_test, subjects_test, pipe_name, map_plot_path, subjects_train=subjects_train)
+
+        trial_plot_path = os.path.join(output_dir, f"{pipe_name}_wearable_vs_baseline_trials.png")
+        plot_wearable_vs_baseline_trials(
+            S_submod=S_method_b,
+            S_random_sets=S_random_sets,
+            G_test=G_test,
+            subjects=subjects_test,
+            pipe_name=pipe_name,
+            output_path=trial_plot_path,
+            dataset=args.dataset
+        )
 
     summary_df = pd.DataFrame(benchmark_rows)
     summary_csv_path = os.path.join(output_dir, "wearable_5_classifier_benchmark.csv")
@@ -592,6 +769,7 @@ def main():
         f"- **Zero-Overlap Strictness**: All test target subjects $v$ were strictly excluded from candidate set $S^*$ ($v \\notin S^*$).",
         f"",
         f"## 4. Generated Visual Artifacts",
+        f"- **Trial Trajectory Plots (`*_wearable_vs_baseline_trials.png`)**: Line plots comparing Submodular {args.num_classifiers}-Classifier Ensemble vs Baseline Model over 10-trial bins.",
         f"- **Coverage Curves (`*_wearable_coverage_curve.png`)**: Plots Max-Coverage Accuracy as $K$ increases from 1 to 10.",
         f"- **Target Coverage Maps (`*_target_coverage_map.png`)**: Heatmap showing classifier-to-target coverage."
     ]
