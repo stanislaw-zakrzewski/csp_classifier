@@ -8,21 +8,47 @@ This document provides a comprehensive analysis of all scientific and engineerin
 
 ```mermaid
 graph TD
-    Exp1["1. GNN DEC Clustering<br/>(graph_tools/)"] --> Exp2["2. PyTorch EEGNet Benchmarks<br/>(eegnet_tools/)"]
+    Exp0["0. Pairwise All-to-All Classical Transfer<br/>(graph_tools/rank_subjects_by_generalization.py)"] --> Exp1["1. GNN DEC Clustering<br/>(graph_tools/cluster_subjects.py)"]
+    Exp1 --> Exp2["2. PyTorch EEGNet Benchmarks<br/>(eegnet_tools/)"]
     Exp1 --> Exp3["3. PyTorch ATCNet Benchmarks<br/>(atcnet_tools/)"]
     Exp2 --> Exp4["4. Parameter-Efficient Head Adaptation"]
     Exp3 --> Exp4
     Exp4 --> Exp5["5. Multi-Day Cross-Session Transfer<br/>(cross_session_tools/)"]
-    Exp3 --> Exp6["6. Population Upper Limit (N-5 Donors)<br/>(population_transfer_tools/)"]
+    Exp2 --> Exp6["6. Population Upper Limit (N-5 Donors)<br/>(population_transfer_tools/)"]
+    Exp3 --> Exp6
     Exp1 --> Exp7["7. Zero-Shot Subject Selection<br/>(cluster_selection_tools/)"]
 ```
+
+---
+
+## 0. Pairwise All-to-All Classical Transfer Matrix & Subject Taxonomy
+
+### Description
+Evaluates pairwise cross-subject transfer for classical **CSP + LDA** and **Covariance Tangent Space + Logistic Regression** classifiers across every subject pair $(i, j)$ in each dataset. For $N$ subjects, it trains a model on Subject $i$ and tests it on Subject $j \neq i$ to construct a complete $N \times N$ transfer matrix. Based on this matrix, it ranks subjects and constructs a **Subject Taxonomy** (Universal Donors, Selective Donors, Recalcitrant Receivers).
+
+```mermaid
+flowchart LR
+    A["All Subjects (1..N)"] --> B["Pairwise Training: Subject i (CSP+LDA / Cov+LR)"]
+    B --> C["Pairwise Testing: Subject j (j ≠ i)"]
+    C --> D["N x N Cross-Subject Transfer Matrix"]
+    D --> E["Subject Taxonomy:<br/>Universal Donors vs Recalcitrant Receivers"]
+```
+
+### Related Experiments
+- **Inputs**: Raw EEG trial data from MOABB datasets.
+- **Outputs To**: Provided the affinity matrix and pairwise generalization distances used by **Experiment 1** (GNN DEC Clustering) to construct subject similarity graphs.
+
+### Key Findings
+1. **High Pairwise Variance**: Direct zero-shot transfer from a single arbitrary donor subject $i$ to receiver $j$ yields high variance (accuracies ranging from 45% to 88%).
+2. **Subject Taxonomy Discovery**: Identifies "Universal Donors" (subjects whose covariance dynamics transfer well to over 70% of receivers) vs "Recalcitrant Receivers" (subjects requiring custom cluster models).
+3. **Crossover Threshold**: Classical CSP+LDA and Cov+LR pairwise models established the baseline threshold required for GNN clustering and deep learning foundation models to outperform.
 
 ---
 
 ## 1. GNN Dual-Latent Space DEC Clustering & Manifold Discovery
 
 ### Description
-Constructs Riemannian Covariance Tangent Space manifolds and functional subject affinity graphs across BCI datasets. Fits a Graph Neural Network (GNN) with Deep Embedded Clustering (DEC) loss ($L_{DEC} = KL(P \parallel Q)$) to cluster donor subjects into 5 topologically aligned sub-populations.
+Constructs Riemannian Covariance Tangent Space manifolds and functional subject affinity graphs using the pairwise affinity data from Experiment 0. Fits a Graph Neural Network (GNN) with Deep Embedded Clustering (DEC) loss ($L_{DEC} = KL(P \parallel Q)$) to cluster donor subjects into 5 topologically aligned sub-populations.
 
 ```mermaid
 flowchart LR
@@ -35,7 +61,7 @@ flowchart LR
 ```
 
 ### Related Experiments
-- **Inputs**: Raw EEG trial data from 7 MOABB datasets (`Dreyer2023`, `Dreyer2023A`, `PhysionetMI`, `Lee2019_MI`, `GuttmannFlury2025_MI`, `GuttmannFlury2025_ME`, `Yang2025`).
+- **Inputs**: Pairwise affinity matrices from **Experiment 0**.
 - **Outputs To**: Used as the foundational donor clustering for **Experiment 2** (EEGNet), **Experiment 3** (ATCNet), **Experiment 5** (Cross-Session), and **Experiment 7** (Cluster Selection).
 
 ### Key Findings
@@ -60,8 +86,8 @@ flowchart TD
 
 ### Related Experiments
 - **Related To**: Uses GNN clusters from **Experiment 1**.
-- **Compared Against**: Classical **CSP + LDA** and **Covariance Tangent Space + Logistic Regression** pipelines.
-- **Outputs To**: Provided baseline architecture for **Experiment 3** (ATCNet) and **Experiment 4** (Head-Only Adaptation).
+- **Compared Against**: Classical **CSP + LDA** and **Covariance Tangent Space + Logistic Regression** pipelines from **Experiment 0**.
+- **Outputs To**: Provided baseline architecture for **Experiment 3** (ATCNet), **Experiment 4** (Head-Only Adaptation), and **Experiment 6** (Population Transfer).
 
 ### Key Findings
 1. **Strategy A Dominance**: GNN Cluster Pooled EEGNet achieves **74.83% Grand Mean Accuracy**, beating classical CSP+LDA (55.39%) by **+19.44%**.
@@ -84,7 +110,8 @@ flowchart LR
 
 ### Related Experiments
 - **Related To**: Uses GNN clusters from **Experiment 1**.
-- **Compared Against**: PyTorch EEGNet (**Experiment 2**) and Classical Baselines.
+- **Compared Against**: PyTorch EEGNet (**Experiment 2**) and Classical Baselines from **Experiment 0**.
+- **Outputs To**: Provided baseline architecture for **Experiment 4** (Head Adaptation), **Experiment 5** (Cross-Session), and **Experiment 6** (Population Transfer).
 
 ### Key Findings
 1. **Grand Mean Champion**: Strategy A (ATCNet Cluster Pooled) achieves **76.29% Grand Mean Accuracy** across 6 datasets.
@@ -156,6 +183,7 @@ flowchart TD
 ```
 
 ### Related Experiments
+- **Related To**: Trains both EEGNet (**Experiment 2**) and ATCNet (**Experiment 3**) on the population pool.
 - **Compared Against**: GNN Cluster Pooled (**Experiments 2 & 3**), Submodular Top-5 (**Strategy B**), and Cold-Start Scratch.
 
 ### Key Findings
@@ -194,6 +222,7 @@ flowchart LR
 | **Exp 1 & 3: GNN DEC Clustering** 🏆 | **~50 Matched Donors** | **Strategy A (ATCNet Cluster)** | **76.29%** | **55.39%** | 0 Trials (Soft Ensemble) |
 | **Exp 1 & 2: GNN DEC Clustering** | **~50 Matched Donors** | **Strategy A (EEGNet Cluster)** | **74.83%** | **55.39%** | 0 Trials (Soft Ensemble) |
 | **Exp 3: Submodular Selection** | **5 Donors** | **Strategy B (Top-5 Submodular)** | **72.15%** | **53.81%** | 0 Trials |
-| **Exp 6: Population Transfer** | **N - 5 Donors (100+)** | **Population ATCNet** | **69.11%** | **61.67%** | 0 Trials |
+| **Exp 6: Population Transfer** | **N - 5 Donors (100+)** | **Population ATCNet / EEGNet** | **69.11%** | **61.67%** | 0 Trials |
 | **Exp 5: Multi-Day Transfer** | **Session 0 (Day 1)** | **Day 1 Matched Single** | **61.91%** | **59.81%** | -27.8% Decay from Day 1 |
+| **Exp 0: Pairwise Classical Transfer** | **1 Single Donor** | **Pairwise Single-Donor CSP/Cov** | **55.39%** | **54.02%** | High Pairwise Variance |
 | **Baseline 1: Cold-Start Scratch** | **0 Donors** | **Scratch Model** | **53.78%** | N/A | 64+ Online Trials Needed |
