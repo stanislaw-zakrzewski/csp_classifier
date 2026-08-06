@@ -70,13 +70,13 @@
     "vr_mode": 7,
     "port": 25004,
     "labels": [
-      "movement",
-      "rest"
+      "left",
+      "right"
     ],
-    "trial_count": 5,
-    "pause_length": 2,
-    "trial_length": 6,
-    "patient_name": "Subject X",
+    "trial_count": 50,
+    "pause_length": 3,
+    "trial_length": 5,
+    "patient_name": "Stanislaw-Zakrzewski",
     "patient_gender": "male",
     "vr_audio_prompts": true
   },
@@ -86,13 +86,12 @@
     "ipaddress": "192.168.50.101",
     "port": 25002,
     "labels": [
-      "rest",
       "left",
       "right"
     ],
-    "trial_count": 5,
-    "pause_length": 2,
-    "trial_length": 6,
+    "trial_count": 50,
+    "pause_length": 4,
+    "trial_length": 20,
     "patient_name": "Subject X",
     "patient_gender": "male",
     "bandpass_filter_start_frequency": 4,
