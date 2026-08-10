@@ -273,16 +273,23 @@ def main():
             })
             print(f"  Submodular Top-5 ATCNet Pre-Training Acc: {acc_sub5 * 100:.2f}%")
 
-    # Mode 3: Single Subjects (Strategy C)
+    # Mode 3: Single Subjects (Strategy C - 80/20 Train/Test Split)
     if args.mode in ["single", "all"]:
-        print("\n--- Training Strategy C: Single-Subject ATCNets ---")
+        from sklearn.model_selection import train_test_split
+        print("\n--- Training Strategy C: Single-Subject ATCNets (80/20 Train/Test Split) ---")
         for s_id, (X_s, y_s) in subject_data.items():
-            model_s = train_pytorch_atcnet(X_s, y_s, epochs=args.epochs, batch_size=args.batch_size, device=args.device)
-            acc_s = evaluate_atcnet_acc(model_s, X_s, y_s, device=args.device)
+            if len(X_s) >= 10:
+                X_tr, X_te, y_tr, y_te = train_test_split(X_s, y_s, test_size=0.20, random_state=42, stratify=y_s)
+            else:
+                X_tr, X_te, y_tr, y_te = X_s, X_s, y_s, y_s
+
+            model_s = train_pytorch_atcnet(X_tr, y_tr, epochs=args.epochs, batch_size=args.batch_size, device=args.device)
+            acc_s = evaluate_atcnet_acc(model_s, X_te, y_te, device=args.device)
 
             s_dir = os.path.join(output_dir, f"subject_{s_id}")
             os.makedirs(s_dir, exist_ok=True)
             torch.save(model_s.state_dict(), os.path.join(s_dir, "ATCNet_model.pt"))
+            np.savez(os.path.join(s_dir, "single_subject_test_split.npz"), X_test=X_te, y_test=y_te)
 
             records.append({
                 'Pipeline': 'ATCNet_Single_Subject',
@@ -290,8 +297,11 @@ def main():
                 'Accuracy': acc_s,
                 'Epochs': args.epochs,
                 'Num_Subjects': 1,
-                'Total_Trials': len(y_s)
+                'Total_Trials': len(y_s),
+                'Train_Trials': len(y_tr),
+                'Test_Trials': len(y_te)
             })
+            print(f"  Subject {s_id:2d} | Train: {len(y_tr):3d} | Test: {len(y_te):3d} | Out-of-Sample Test Acc: {acc_s * 100:.2f}%")
 
     if records:
         df_new = pd.DataFrame(records)

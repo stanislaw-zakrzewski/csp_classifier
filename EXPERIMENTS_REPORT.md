@@ -210,8 +210,8 @@ flowchart LR
 - **Related To**: Uses pre-trained GNN cluster models from **Experiments 1, 2, and 3**.
 
 ### Key Findings
-1. **Option 2 is the Winner**: **Option 2 (Soft Cluster Mixture Ensemble) achieves 78.82% accuracy**, recovering **98.13% of the theoretical Oracle upper bound (80.32%)** on `Dreyer2023`.
-2. **100% Zero-Shot**: Option 2 outperforms Option 3 (77.22%) by **+1.60%** while requiring **0 calibration trials**. Blending cluster models using GNN soft membership weights $q_c$ creates smooth decision boundaries for subjects on cluster borders.
+1. **Option 2 is the Clear Winner**: **Option 2 (Soft Cluster Mixture Ensemble) achieves 78.10% Grand Mean Accuracy** across 423 subjects in 7 datasets, recovering **96.02% of the theoretical Oracle upper bound (81.34%)**.
+2. **100% Zero-Shot (0 Calibration Trials)**: Option 2 outperforms Option 3 (74.26%) by **+3.84%** while requiring **0 calibration trials**. Blending cluster models using GNN soft membership weights $q_c$ creates smooth decision boundaries for subjects on cluster borders.
 
 ---
 

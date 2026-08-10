@@ -224,12 +224,6 @@ def main():
         default=None,
         help="Custom output directory for trained model checkpoints."
     )
-    parser.add_argument(
-        "--device",
-        choices=["auto", "cuda", "cpu"],
-        default="auto",
-        help="Execution device ('auto', 'cuda', 'cpu'). Default: auto"
-    )
 
     args = parser.parse_args()
 
@@ -277,28 +271,37 @@ def main():
 
     summary_rows = []
 
-    # --- Strategy C: Single-Subject EEGNet Training ---
+    # --- Strategy C: Single-Subject EEGNet Training (80/20 Train/Test Split) ---
     if args.mode in ["all", "single"]:
-        print("--- Running Strategy C: Single-Subject EEGNet Pre-Training ---")
+        from sklearn.model_selection import train_test_split
+        print("--- Running Strategy C: Single-Subject EEGNet Pre-Training (80/20 Train/Test Split) ---")
         for s in valid_subs:
             X_s, y_s = subject_data[s]
+            if len(X_s) >= 10:
+                X_tr, X_te, y_tr, y_te = train_test_split(X_s, y_s, test_size=0.20, random_state=42, stratify=y_s)
+            else:
+                X_tr, X_te, y_tr, y_te = X_s, X_s, y_s, y_s
+
             s_dir = os.path.join(output_dir, f"subject_{s}")
             os.makedirs(s_dir, exist_ok=True)
 
-            model = train_pytorch_eegnet(X_s, y_s, channels=num_channels, samples=num_samples, epochs=args.epochs)
-            train_acc = evaluate_eegnet_acc(model, X_s, y_s)
+            model = train_pytorch_eegnet(X_tr, y_tr, channels=num_channels, samples=num_samples, epochs=args.epochs)
+            test_acc = evaluate_eegnet_acc(model, X_te, y_te)
 
             ckpt_path = os.path.join(s_dir, "EEGNet_model.pt")
             torch.save(model.state_dict(), ckpt_path)
+            np.savez(os.path.join(s_dir, "single_subject_test_split.npz"), X_test=X_te, y_test=y_te)
 
             summary_rows.append({
                 'Pipeline': 'EEGNet_single_subject',
                 'Subject_Or_Cohort': f"subject_{s}",
                 'Sample_Size_Trials': len(y_s),
-                'Pretrain_Acc': round(train_acc, 4),
+                'Train_Trials': len(y_tr),
+                'Test_Trials': len(y_te),
+                'Pretrain_Acc': round(test_acc, 4),
                 'Checkpoint_Path': ckpt_path
             })
-            print(f"  Subject {s:2d} | Trials: {len(y_s):3d} | Pre-train Acc: {train_acc:.4f} -> {ckpt_path}")
+            print(f"  Subject {s:2d} | Train: {len(y_tr):3d} | Test: {len(y_te):3d} | Out-of-Sample Test Acc: {test_acc:.4f} -> {ckpt_path}")
 
     # Read GNN Cluster Assignments & Submodular Selection Sets
     cluster_csv = os.path.join("graph_results", "clustering", args.dataset, "subject_cluster_assignments.csv")

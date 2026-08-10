@@ -296,8 +296,31 @@ def main():
                 for idx, m_key in enumerate(chosen_mismatched):
                     target_models[f"subject_mismatched_{idx+1}_ATCNet_pipeline"] = pretrained_models[m_key]
 
+            # Load matching single subject test split if available (80/20 split)
+            test_split_npz = os.path.join(models_dir, f"subject_{target_subject}", "single_subject_test_split.npz")
+            if os.path.exists(test_split_npz):
+                npz_data = np.load(test_split_npz)
+                X_te = npz_data['X_test']
+                y_te = npz_data['y_test']
+                # Convert numeric labels back to original class strings
+                unique_class_labels = sorted(list(set(labels)))
+                labels_te = [unique_class_labels[idx] for idx in y_te]
+                print(f"  [Strategy C Out-of-Sample] Target subject {target_subject:2d}: evaluating on {len(labels_te)} held-out test trials (20% split)...")
+                # Run evaluation for Strategy C matching model strictly on 20% held-out test split
+                if matching_key in pretrained_models:
+                    strat_c_models = {matching_key: pretrained_models[matching_key]}
+                    df_strat_c = simulate_atcnet_online_adaptation(X_te, labels_te, strat_c_models, args.dataset, target_subject, adapt_interval=args.adapt_interval, device=args.device, adapt_mode=args.adapt_mode, max_buffer=args.max_buffer)
+                    # Remove matching_key from target_models so it is not evaluated twice on full set
+                    target_models.pop(matching_key, None)
+
             print(f"Simulating target subject {target_subject:2d} ({len(labels)} trials, {len(target_models)} models, adapt mode: {args.adapt_mode}, max buffer: {args.max_buffer})...", flush=True)
-            simulate_atcnet_online_adaptation(X, labels, target_models, args.dataset, target_subject, adapt_interval=args.adapt_interval, device=args.device, adapt_mode=args.adapt_mode, max_buffer=args.max_buffer)
+            df_full = simulate_atcnet_online_adaptation(X, labels, target_models, args.dataset, target_subject, adapt_interval=args.adapt_interval, device=args.device, adapt_mode=args.adapt_mode, max_buffer=args.max_buffer)
+
+            # Combine Strategy C test split results if evaluated separately
+            out_file = os.path.join("simulation_results", "atcnet", args.dataset, f"{target_subject}.csv")
+            if os.path.exists(test_split_npz) and 'df_strat_c' in locals():
+                combined_res = pd.concat([df_full, df_strat_c], ignore_index=True)
+                combined_res.to_csv(out_file, index=False)
         except Exception as e:
             print(f"  Warning: Simulation failed for target subject {target_subject}: {e}")
 

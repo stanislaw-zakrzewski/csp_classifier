@@ -20,10 +20,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def parse_atcnet_model_category(clf_name: str) -> str:
+def parse_model_category(clf_name: str) -> str:
     """Categorize classifier name into its strategy / baseline group."""
     if clf_name.startswith("baseline_scratch"):
-        return "Baseline 1 (Scratch ATCNet)"
+        if "ATCNet" in clf_name:
+            return "Baseline Scratch (ATCNet)"
+        else:
+            return "Baseline Scratch (EEGNet)"
     elif "ATCNet" in clf_name:
         if clf_name.startswith("cluster_"):
             return "Strategy A (ATCNet Cluster Pooled)"
@@ -33,18 +36,27 @@ def parse_atcnet_model_category(clf_name: str) -> str:
             return "Strategy C (ATCNet Mismatched Single Donor)"
         else:
             return "Strategy C (ATCNet Matched Single Subject)"
+    elif "EEGNet" in clf_name:
+        if clf_name.startswith("cluster_"):
+            return "Strategy A (EEGNet Cluster Pooled)"
+        elif clf_name.startswith("submodular_"):
+            return "Strategy B (EEGNet Top-5 Submodular Pooled)"
+        elif "mismatched" in clf_name:
+            return "Strategy C (EEGNet Mismatched Single Donor)"
+        else:
+            return "Strategy C (EEGNet Matched Single Subject)"
     return "Other"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate master benchmark report and comparison plots for ATCNet vs EEGNet & Baselines.")
+    parser = argparse.ArgumentParser(description="Generate master benchmark report and comparison plots for ATCNet vs EEGNet.")
     parser.add_argument("--dataset", "-d", default="Dreyer2023", help="Dataset name. Default: Dreyer2023")
     parser.add_argument("--bin-size", "-b", type=int, default=10, help="Trial bin size for trajectory plotting. Default: 10")
 
     args = parser.parse_args()
 
     atc_sim_dir = os.path.join("simulation_results", "atcnet", args.dataset)
-    eeg_benchmark_csv = os.path.join("graph_results", "eegnet_benchmark", args.dataset, "eegnet_benchmark_summary.csv")
+    eeg_sim_dir = os.path.join("simulation_results", "eegnet", args.dataset)
     out_dir = os.path.join("graph_results", "atcnet_benchmark", args.dataset)
     os.makedirs(out_dir, exist_ok=True)
 
@@ -52,35 +64,63 @@ def main():
         raise FileNotFoundError(f"ATCNet simulation results directory '{atc_sim_dir}' does not exist. Run simulate_atcnet_adaptive.py first.")
 
     atc_files = glob.glob(os.path.join(atc_sim_dir, "*.csv"))
+    eeg_files = glob.glob(os.path.join(eeg_sim_dir, "*.csv")) if os.path.exists(eeg_sim_dir) else []
+
     print("================================================================================")
-    print(f" ATCNet Master Benchmark Evaluation Engine")
+    print(f" ATCNet & EEGNet Master Benchmark Evaluation Engine")
     print("================================================================================")
     print(f" Dataset             : {args.dataset}")
     print(f" ATCNet Analyzed CSVs: {len(atc_files)}")
+    print(f" EEGNet Analyzed CSVs: {len(eeg_files)}")
     print(f" Output Directory    : {out_dir}")
-    print("================================================================================\n")
+    print("================================================================universal\n")
 
     all_dfs = []
     for f in atc_files:
         sub_id = os.path.basename(f).replace(".csv", "")
         df = pd.read_csv(f)
         df['Subject'] = sub_id
-        df['Category'] = df['Classifier'].apply(parse_atcnet_model_category)
+        df['Category'] = df['Classifier'].apply(parse_model_category)
         all_dfs.append(df)
 
+    for f in eeg_files:
+        sub_id = os.path.basename(f).replace(".csv", "")
+        df = pd.read_csv(f)
+        # Keep only EEGNet models to avoid cluttering with classical
+        df = df[df['Classifier'].str.contains("EEGNet")].copy()
+        if not df.empty:
+            df['Subject'] = sub_id
+            df['Category'] = df['Classifier'].apply(parse_model_category)
+            all_dfs.append(df)
+
     if not all_dfs:
-        print("Error: No ATCNet simulation CSVs found.")
+        print("Error: No simulation CSVs found.")
         return
 
-    atc_df = pd.concat(all_dfs, ignore_index=True)
+    combined_df = pd.concat(all_dfs, ignore_index=True)
 
-    # Compute binned performance for ATCNet
-    atc_df['Bin'] = atc_df['Trial'] // args.bin_size
-    binned_acc = atc_df.groupby(['Category', 'Bin', 'Subject'])['Is_Correct'].mean().reset_index()
+    # Filter out "Mismatched" and "Other" for clean trajectory visualization
+    valid_categories = [
+        "Strategy A (ATCNet Cluster Pooled)",
+        "Strategy A (EEGNet Cluster Pooled)",
+        "Strategy B (ATCNet Top-5 Submodular Pooled)",
+        "Strategy B (EEGNet Top-5 Submodular Pooled)",
+        "Strategy C (ATCNet Matched Single Subject)",
+        "Strategy C (EEGNet Matched Single Subject)",
+        "Baseline Scratch (ATCNet)",
+        "Baseline Scratch (EEGNet)"
+    ]
+    combined_df = combined_df[combined_df['Category'].isin(valid_categories)].copy()
+
+    # Quantile temporal binning into exactly 10 bins (Bin 0 to Bin 9)
+    max_trial = combined_df['Trial'].max()
+    combined_df['Bin'] = np.clip((combined_df['Trial'] / (max_trial + 1) * 10).astype(int), 0, 9)
+
+    binned_acc = combined_df.groupby(['Category', 'Bin', 'Subject'])['Is_Correct'].mean().reset_index()
     category_bins = binned_acc.groupby(['Category', 'Bin'])['Is_Correct'].agg(['mean', 'std']).reset_index()
 
     # Compute overall category summary
-    cat_summary = atc_df.groupby('Category')['Is_Correct'].agg(['mean', 'std']).reset_index()
+    cat_summary = combined_df.groupby('Category')['Is_Correct'].agg(['mean', 'std']).reset_index()
     cat_summary.rename(columns={'mean': 'Mean_Accuracy', 'std': 'Std_Accuracy'}, inplace=True)
 
     # Compute final bin accuracy
@@ -89,22 +129,6 @@ def main():
     final_bin_acc.rename(columns={'Is_Correct': 'Final_Accuracy'}, inplace=True)
 
     cat_summary = pd.merge(cat_summary, final_bin_acc, on='Category', how='left')
-
-    # Load pre-computed EEGNet & Classical Baselines summary if available
-    precomputed_rows = []
-    if os.path.exists(eeg_benchmark_csv):
-        print(f"Loading pre-computed EEGNet & Classical baseline metrics from: {eeg_benchmark_csv}")
-        eeg_b_df = pd.read_csv(eeg_benchmark_csv)
-        for _, row in eeg_b_df.iterrows():
-            if not row['Category'].startswith("Strategy C (EEGNet Matched") and not row['Category'].startswith("Baseline 1"):
-                precomputed_rows.append(row.to_dict())
-
-    if precomputed_rows:
-        precomputed_df = pd.DataFrame(precomputed_rows)
-        if 'Std_Accuracy' not in precomputed_df.columns:
-            precomputed_df['Std_Accuracy'] = 0.0
-        cat_summary = pd.concat([cat_summary, precomputed_df], ignore_index=True)
-
     cat_summary.sort_values(by='Mean_Accuracy', ascending=False, inplace=True)
 
     # Save Summary CSV
@@ -112,7 +136,7 @@ def main():
     cat_summary.to_csv(summary_csv_path, index=False)
 
     # Plot Trajectory Chart
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(13, 6.5))
     sns.set_theme(style="whitegrid")
 
     palette = sns.color_palette("tab10", n_colors=len(category_bins['Category'].unique()))
@@ -128,10 +152,11 @@ def main():
         linewidth=2.5
     )
 
-    plt.title(f"ATCNet vs Baselines Online Adaptive Trajectories ({args.dataset})", fontsize=14, fontweight='bold')
-    plt.xlabel(f"Trial Bins ({args.bin_size} Trials per Bin)", fontsize=12)
+    plt.title(f"ATCNet vs EEGNet Online Adaptive Trajectories ({args.dataset})", fontsize=14, fontweight='bold')
+    plt.xlabel("Quantile Trial Bins (Bin 0 to Bin 9)", fontsize=12)
     plt.ylabel("Classification Accuracy", fontsize=12)
-    plt.ylim(0.40, 1.02)
+    plt.xticks(range(10), [f"Bin {i}" for i in range(10)])
+    plt.ylim(0.45, 0.95)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=True)
     plt.tight_layout()
 

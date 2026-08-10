@@ -127,7 +127,8 @@ def main():
         if 'Trial' not in df.columns or 'Is_Correct' not in df.columns:
             continue
 
-        df['Bin'] = (df['Trial'] // args.bin_size) + 1
+        max_trial_sub = df['Trial'].max()
+        df['Bin'] = np.clip((df['Trial'] / (max_trial_sub + 1) * 10).astype(int), 0, 9)
         df['Category'] = df['Classifier'].apply(parse_model_category)
 
         # Compute per-category bin accuracies
@@ -171,9 +172,11 @@ def main():
         marker = 's' if "Baseline" in cat else 'o'
         ax.plot(cat_df['Bin'], cat_df['Bin_Accuracy'], marker=marker, linestyle=style, linewidth=2.2, label=cat, color=palette[idx])
 
-    ax.set_title(f"EEGNet vs Classical Pooled Models: 10-Trial Bin Trajectories\n({args.dataset} Dataset)", fontsize=13, fontweight='bold')
-    ax.set_xlabel("Trial Window Bin (1 Bin = 10 Trials)", fontsize=11)
+    ax.set_title(f"EEGNet vs Classical Pooled Models: Quantile Bin Trajectories\n({args.dataset} Dataset)", fontsize=13, fontweight='bold')
+    ax.set_xlabel("Quantile Trial Bins (Bin 0 to Bin 9)", fontsize=11)
     ax.set_ylabel("Local Bin Accuracy", fontsize=11)
+    ax.set_xticks(range(10))
+    ax.set_xticklabels([f"Bin {i}" for i in range(10)])
     ax.grid(True, linestyle='--', alpha=0.5)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
 

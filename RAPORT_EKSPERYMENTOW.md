@@ -210,8 +210,8 @@ flowchart LR
 - **Powiązany Z**: Wykorzystuje pre-trenowane modele klastrów GNN z **Eksperymentów 1, 2 i 3**.
 
 ### Kluczowe Wyniki
-1. **Opcja 2 Zwycięzcą**: **Opcja 2 (Soft Cluster Mixture Ensemble) osiąga 78.82% dokładności**, odzyskując **98.13% teoretycznej górnej granicy Oracle (80.32%)** na zbiorze `Dreyer2023`.
-2. **100% Zero-Shot**: Opcja 2 przewyższa Opcję 3 (77.22%) o **+1.60%**, nie wymagając **żadnych prób kalibracyjnych (0 trials)**. Łączenie modeli klastrów z użyciem miękkich wag przypisania GNN $q_c$ tworzy gładkie granice decyzyjne dla badanych znajdujących się na granicach klastrów.
+1. **Opcja 2 Zdecydowanym Zwycięzcą**: **Opcja 2 (Soft Cluster Mixture Ensemble) osiąga 78.10% średniej dokładności (Grand Mean Accuracy)** na 423 badanych w 7 zbiorach danych, odzyskując **96.02% teoretycznej górnej granicy Oracle (81.34%)**.
+2. **100% Zero-Shot (0 Prób Kalibracyjnych)**: Opcja 2 przewyższa Opcję 3 (74.26%) o **+3.84%**, nie wymagając **żadnych prób kalibracyjnych (0 trials)**. Łączenie modeli klastrów z użyciem miękkich wag przypisania GNN $q_c$ tworzy gładkie granice decyzyjne dla badanych znajdujących się na granicach klastrów.
 
 ---
 
